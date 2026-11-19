@@ -34,6 +34,7 @@ export class Monster {
     return { x: this.x - h.width / 2, y: this.y - h.height, width: h.width, height: h.height };
   }
 
+  /** @returns {number} 실제로 들어간 데미지 */
   takeDamage(amount) {
     this.stats.takeDamage(amount);
     this.drawHpBar();
@@ -45,6 +46,7 @@ export class Monster {
     this.scene.tweens.add({ targets: s, x: this.x + 2, duration: 40, yoyo: true, repeat: 1, onComplete: () => { s.x = this.x; } });
 
     if (this.stats.isDead) this.die();
+    return amount;
   }
 
   die() {

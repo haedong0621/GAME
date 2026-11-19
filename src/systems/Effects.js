@@ -29,9 +29,9 @@ export function spawnFloatingLabel(scene, x, y, text) {
   scene.tweens.add({ targets: t, y: y - 10, alpha: 0, delay: 500, duration: 500, onComplete: () => t.destroy() });
 }
 
-export function spawnDamageNumber(scene, x, y, amount) {
+export function spawnDamageNumber(scene, x, y, amount, color = '#ffe08a') {
   const t = scene.add.text(x, y, String(amount), {
-    fontFamily: 'sans-serif', fontSize: '9px', fontStyle: 'bold', color: '#ffe08a', resolution: 2,
+    fontFamily: 'sans-serif', fontSize: '9px', fontStyle: 'bold', color, resolution: 2,
   }).setOrigin(0.5, 1).setStroke('#2a1a10', 3).setDepth(100000);
   scene.tweens.add({
     targets: t, y: y - 16, alpha: 0, duration: 600, ease: 'Cubic.out',

@@ -11,6 +11,8 @@ const State = {
   ACTIVE: 'active',     // 공격 판정 중
   RECOVERY: 'recovery', // 후딜레이 (chainAfterMs 이후에만 다음 타·구르기로 연결 가능)
   ROLL: 'roll',         // 구르기
+  HURT: 'hurt',         // 맞고 밀려남 (행동 불가)
+  DEAD: 'dead',         // 쓰러짐 → 잠시 뒤 부활
 };
 
 /** 가슴 높이: 공격 판정 중심은 발밑이 아니라 몸 가운데 */
@@ -47,6 +49,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     this.comboIndex = 0;          // 지금(또는 다음) 실행할 콤보 타 번호
     this.hitThisSwing = new Set();
     this.hitstopMs = 0;           // 맞힌 순간 잠깐 멈추는 시간
+    this.invulnMs = 0;            // 맞은 직후 잠깐 무적 (연속으로 맞지 않게)
+    this.knock = { x: 0, y: 0 };
+    /** 쓰러졌을 때 씬이 등록하는 콜백 */
+    this.onDeath = null;
 
     this.setOrigin(0.5, 1);
     this.body.setSize(16, 10, false);
@@ -69,6 +75,55 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   get stateName() { return this.state; }
   get inHitstop() { return this.hitstopMs > 0; }
   get currentMove() { return this.weapon.combo[this.comboIndex]; }
+  get isDead() { return this.state === State.DEAD; }
+
+  /** 맞는 범위 (발밑 위로 몸통 크기) */
+  getHurtbox() {
+    const h = this.data_.hurtbox;
+    return { x: this.x - h.width / 2, y: this.y - h.height, width: h.width, height: h.height };
+  }
+
+  get isHittable() { return !this.isDead; }
+
+  /**
+   * 적의 공격을 받는다.
+   * @returns {'hit'|'dodged'|'ignored'} 맞음 / 구르기 무적으로 피함 / 무시(이미 쓰러짐·피격 무적)
+   */
+  receiveHit(damage, fromX, fromY) {
+    if (this.isDead || this.invulnMs > 0) return 'ignored';
+    if (this.isInvincible) {
+      spawnFloatingLabel(this.scene, this.x, this.y - 30, '회피!');
+      return 'dodged';
+    }
+    this.stats.takeDamage(damage);
+    this.invulnMs = this.data_.hitInvulnMs;
+    this.hitstopMs = 0;
+    this.queued = null;
+    const dx = this.x - fromX, dy = this.y - fromY, d = Math.hypot(dx, dy) || 1;
+    this.knock = { x: dx / d, y: dy / d };
+    spawnDamageNumber(this.scene, this.x, this.y - 30, damage, '#ff8a7a');
+    this.scene.cameras.main.shake(180, 0.006);
+    this.visual.setTintFill(0xff4030);
+    this.scene.time.delayedCall(90, () => this.visual.clearTint());
+
+    if (this.stats.isDead) {
+      this.enter(State.DEAD);
+      this.onDeath?.();
+    } else {
+      this.enter(State.HURT);
+    }
+    return 'hit';
+  }
+
+  /** 부활: 위치·체력·상태 초기화 */
+  respawn(x, y) {
+    this.body.reset(x, y);
+    this.stats.reset();
+    this.invulnMs = this.data_.hitInvulnMs;
+    this.visual.setAngle(0).setAlpha(1);
+    this.enter(State.FREE);
+  }
+
   get isInvincible() {
     return this.state === State.ROLL
       && this.stateTime > this.data_.roll.durationMs - this.data_.roll.invincibleMs;
@@ -91,6 +146,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   /** @param {{move:{x,y}, attack:boolean, roll:boolean, switchWeapon:number|null}} cmd @param {number} dt ms */
   update(cmd, dt) {
     this.stats.update(dt, this.state === State.FREE);
+    if (this.invulnMs > 0) this.invulnMs -= dt;
 
     if (this.hitstopMs > 0) {
       // 멈칫: 시간이 흐르지 않는다. 입력만 예약해 둔다.
@@ -128,6 +184,15 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       case State.ROLL:
         this.setVelocity(this.rollDir.x * this.data_.roll.speed, this.rollDir.y * this.data_.roll.speed);
         if (this.stateTime <= 0) this.enter(State.FREE);
+        break;
+      case State.HURT: {
+        const k = Math.max(0, this.stateTime / this.data_.hurtMs) * this.data_.knockbackSpeed;
+        this.setVelocity(this.knock.x * k, this.knock.y * k);
+        if (this.stateTime <= 0) this.enter(State.FREE);
+        break;
+      }
+      case State.DEAD:
+        this.setVelocity(0, 0);
         break;
     }
 
@@ -220,6 +285,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         break;
       case State.RECOVERY: this.stateTime = m.recoveryMs; break;
       case State.ROLL: this.stateTime = this.data_.roll.durationMs; break;
+      case State.HURT: this.stateTime = this.data_.hurtMs; this.comboIndex = 0; break;
+      case State.DEAD: this.stateTime = 0; this.comboIndex = 0; break;
       default:
         this.stateTime = 0;
         this.comboIndex = 0;
@@ -245,8 +312,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     for (const target of hits) {
       if (this.hitThisSwing.has(target)) continue; // 한 번 휘두를 때 같은 대상은 한 번만
       this.hitThisSwing.add(target);
-      target.takeDamage(m.damage);
-      spawnDamageNumber(this.scene, target.x, target.y - target.data.hurtbox.height - 10, m.damage);
+      const dealt = target.takeDamage(m.damage);
+      spawnDamageNumber(this.scene, target.x, target.getHurtbox().y - 10, dealt);
       landed = true;
     }
     if (landed) {
@@ -278,12 +345,21 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       squash = 1 + ((1 - m.crouch) * 0.6 + 0.04) * (1 - t);
     } else if (this.state === State.ROLL) {
       squash = 0.8;
+    } else if (this.state === State.HURT) {
+      lean = -dir * 12;
+    }
+    if (this.state === State.DEAD) {
+      v.setAngle(90).setAlpha(0.6).setScale(1);
+      return;
     }
     if (!this.inHitstop) {
       v.setAngle(lean);
       v.setScale(1 / Math.sqrt(squash), squash);
     }
-    if (this.state === State.WINDUP) v.setTint(0xffd9a0); else v.clearTint();
+    if (this.state === State.WINDUP) v.setTint(0xffd9a0);
+    else if (this.state !== State.HURT) v.clearTint();
+    // 맞은 직후 무적: 깜빡임
+    if (this.state !== State.ROLL) v.setAlpha(this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0 ? 0.45 : 1);
   }
 
   spawnSlashFx(m) {
