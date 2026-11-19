@@ -2,18 +2,41 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>GAME — 프로토타입</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #1b1f24; overflow: hidden; }
+    html, body { margin: 0; height: 100%; background: #1b1f24; overflow: hidden; overscroll-behavior: none; }
     #game { width: 100%; height: 100%; }
-    canvas { display: block; image-rendering: pixelated; }
+    canvas { display: block; image-rendering: pixelated; touch-action: none; -webkit-user-select: none; user-select: none; }
+
+    /* 휴대폰을 세로로 들었을 때: 가로로 돌려 달라는 안내 */
+    #rotate { display: none; position: fixed; inset: 0; z-index: 10; background: #1b1f24; color: #f2e6c8;
+      font: 18px/1.6 sans-serif; text-align: center; align-items: center; justify-content: center; padding: 24px; }
+    @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+
+    /* 전체 화면 버튼 (터치 기기에서만) */
+    #fullscreen { display: none; position: fixed; top: 8px; right: 8px; z-index: 5; padding: 6px 10px;
+      font: 13px sans-serif; color: #f2e6c8; background: rgba(0,0,0,.45); border: 1px solid rgba(242,230,200,.4); border-radius: 6px; }
+    @media (pointer: coarse) { #fullscreen { display: block; } }
   </style>
   <!-- Phaser 3 (CDN, 버전 고정). 바꾸면 docs/DESIGN.md에 기록 -->
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 </head>
 <body>
   <div id="game"></div>
+  <div id="rotate"><div>📱 휴대폰을 <b>가로</b>로 돌려 주세요</div></div>
+  <button id="fullscreen" type="button">전체 화면</button>
+  <script>
+    // 전체 화면 + 가로 고정 (안드로이드 크롬 등 지원 브라우저에서만 동작, 아이폰은 무시됨)
+    document.getElementById('fullscreen').addEventListener('click', async () => {
+      try {
+        await document.documentElement.requestFullscreen();
+        await screen.orientation?.lock?.('landscape');
+      } catch (e) { /* 지원 안 함 */ }
+    });
+  </script>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

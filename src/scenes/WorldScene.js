@@ -71,9 +71,8 @@ export class WorldScene extends window.Phaser.Scene {
 
     // ---- 플레이어
     const playerData = this.registry.get('playerData');
-    const weapon = this.registry.get('weapons')[playerData.startWeapon];
-    this.inputSystem = new InputSystem(this);
-    this.player = new Player(this, spawn.x, spawn.y, playerData, weapon, () => this.monsters);
+    this.inputSystem = new InputSystem(this, () => this.registry.get('touch'));
+    this.player = new Player(this, spawn.x, spawn.y, playerData, this.registry.get('weapons'), () => this.monsters);
     this.registry.set('player', this.player); // HUD가 체력·스태미나를 읽음
 
     this.physics.add.collider(this.player, blockers);

@@ -13,6 +13,9 @@ export const WORLD_ZOOM = 2;
 /** 주소에 ?debug=1 이 있으면 충돌 박스를 그린다. */
 export const DEBUG = new URLSearchParams(window.location.search).has('debug');
 
+/** 터치 조작판 표시: 터치 화면이면 자동, 주소에 ?touch=1 이면 강제로 켬 */
+export const FORCE_TOUCH = new URLSearchParams(window.location.search).has('touch');
+
 /** 미리 불러올 파일 경로 (index.html 기준 상대 경로 — GitHub Pages 호환). */
 export const PATHS = {
   items: 'data/items.json',
