@@ -31,16 +31,24 @@
 ### 기본 프롬프트 틀 (영어가 더 잘 됩니다)
 ```
 pixel art, top-down 3/4 view RPG sprite, [대상 설명],
+dark gritty low fantasy, muted desaturated earthy palette,
 32x32 pixel grid, limited color palette, 1px dark outline,
 no anti-aliasing, flat shading, transparent background,
 centered, full body visible, game asset
 ```
 
+### 톤 가이드 (docs/CONCEPT.md의 세계관 방향)
+- **분위기:** 어둡고 거친 판타지 (Drova 느낌). 밝고 귀여운 표현은 피합니다.
+- **색:** 탁한 흙색·이끼색·녹슨 금속색 위주. 채도 낮게. 강조색(마법, 보스의 약점, 피)만 선명하게.
+- **피하고 싶을 때 붙이는 말:** `not cute, not chibi, no bright saturated colors`
+- **보스·몬스터:** 위협적이고 기괴하게. 공격 부위(발톱, 꼬리, 뿔)가 *실루엣만 봐도* 보이도록 — 전투에서 예고 동작을 읽기 쉬워집니다.
+
 ### 대상별 예시
-- **주인공:** `a wandering adventurer with a hooded cloak and a small backpack, earthy brown and green colors`
-- **나무:** `a single oak tree, round leafy crown, visible trunk base, fits 64x96 pixels`
-- **바닥 타일:** `seamless tileable grass ground texture, 32x32, top-down, muted green` (가장자리가 이어지는지 꼭 확인)
-- **몬스터:** `a small cave slime monster, glowing teal, cute but slightly creepy`
+- **주인공:** `a weathered wanderer in a worn hooded cloak and patched leather armor, rusty short sword, grim expression`
+- **나무:** `a single gnarled old tree, twisted trunk, dark mossy crown, visible trunk base, fits 64x96 pixels`
+- **바닥 타일:** `seamless tileable dark mossy forest floor texture, 32x32, top-down, muted green and brown` (가장자리가 이어지는지 꼭 확인)
+- **보스:** `a hulking swamp beast with bone plates and a long spiked tail, hunched, menacing, fits 96x96 pixels`
+- **몬스터:** `a feral ghoul with long claws, gaunt grey skin, crouching`
 
 ### 잘 뽑는 요령
 1. **한 장에 하나만.** 여러 개를 한 번에 그리게 하면 크기와 시점이 제각각이 됩니다.
