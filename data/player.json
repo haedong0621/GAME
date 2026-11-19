@@ -1,4 +1,14 @@
 {
   "speed": 140,
-  "maxHp": 100
+  "maxHp": 100,
+  "maxStamina": 100,
+  "staminaRegenPerSec": 35,
+  "staminaRegenDelayMs": 600,
+  "roll": {
+    "speed": 300,
+    "durationMs": 320,
+    "invincibleMs": 220,
+    "staminaCost": 25
+  },
+  "startWeapon": "rusty_sword"
 }

@@ -1,0 +1,15 @@
+{
+  "rusty_sword": {
+    "name": "녹슨 한손검",
+    "type": "sword",
+    "damage": 12,
+    "windupMs": 230,
+    "activeMs": 110,
+    "recoveryMs": 330,
+    "staminaCost": 12,
+    "lungeSpeed": 90,
+    "hitDistance": 18,
+    "hitRadius": 16,
+    "description": "어디서 주웠는지 모를 녹슨 검. 없는 것보단 낫다."
+  }
+}

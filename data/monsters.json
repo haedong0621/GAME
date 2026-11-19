@@ -1,0 +1,11 @@
+{
+  "training_dummy": {
+    "name": "연습용 허수아비",
+    "ai": "none",
+    "maxHp": 60,
+    "respawnMs": 1500,
+    "hurtbox": { "width": 22, "height": 34 },
+    "feetCollider": { "width": 16, "height": 8 },
+    "texture": "dummy"
+  }
+}
