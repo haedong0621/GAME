@@ -1,15 +1,33 @@
 {
+  "_설명": "combo = 연속기 목록. 각 타: from/to = 휘두르는 시작·끝 각도(도, 바라보는 방향 기준, +는 시계방향), windup/active/recovery = 예비동작/판정/후딜(ms), chainAfterMs = 후딜 시작 후 이 시간이 지나면 다음 타·구르기로 이어갈 수 있음, hitstopMs = 맞힌 순간 멈칫, lean = 몸 기울기(도), crouch = 웅크림(1=그대로)",
+
   "rusty_sword": {
     "name": "녹슨 한손검",
     "type": "sword",
-    "damage": 12,
-    "windupMs": 230,
-    "activeMs": 110,
-    "recoveryMs": 330,
-    "staminaCost": 12,
-    "lungeSpeed": 90,
-    "hitDistance": 18,
-    "hitRadius": 16,
-    "description": "어디서 주웠는지 모를 녹슨 검. 없는 것보단 낫다."
+    "description": "어디서 주웠는지 모를 녹슨 검. 없는 것보단 낫다.",
+    "moveSpeedMultiplier": 1.0,
+    "view": { "bladeLength": 18, "bladeWidth": 3, "bladeColor": "#b9b3a5", "hiltColor": "#5a3a22", "restAngle": 115 },
+    "combo": [
+      { "name": "가로 베기", "from": -110, "to": 75,  "windupMs": 140, "activeMs": 90,  "recoveryMs": 300, "chainAfterMs": 70,
+        "damage": 10, "staminaCost": 9,  "lungeSpeed": 80,  "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45,  "lean": 7,  "crouch": 1.0 },
+      { "name": "되베기",   "from": 110,  "to": -75, "windupMs": 110, "activeMs": 90,  "recoveryMs": 300, "chainAfterMs": 70,
+        "damage": 11, "staminaCost": 9,  "lungeSpeed": 90,  "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45,  "lean": 7,  "crouch": 1.0 },
+      { "name": "내려찍기", "from": -165, "to": 20,  "windupMs": 250, "activeMs": 110, "recoveryMs": 480, "chainAfterMs": 260,
+        "damage": 22, "staminaCost": 15, "lungeSpeed": 170, "hitDistance": 20, "hitRadius": 19, "shake": 0.006, "hitstopMs": 100, "lean": 11, "crouch": 0.85 }
+    ]
+  },
+
+  "old_greatsword": {
+    "name": "낡은 대검",
+    "type": "greatsword",
+    "description": "혼자 들기도 버거운 쇳덩이. 맞으면 아프다.",
+    "moveSpeedMultiplier": 0.85,
+    "view": { "bladeLength": 30, "bladeWidth": 6, "bladeColor": "#8f8a80", "hiltColor": "#3f2a1a", "restAngle": 140 },
+    "combo": [
+      { "name": "크게 휘두르기", "from": -135, "to": 100, "windupMs": 380, "activeMs": 150, "recoveryMs": 460, "chainAfterMs": 200,
+        "damage": 28, "staminaCost": 18, "lungeSpeed": 60,  "hitDistance": 22, "hitRadius": 23, "shake": 0.006, "hitstopMs": 110, "lean": 10, "crouch": 0.95 },
+      { "name": "내려찍기",     "from": -170, "to": 15,  "windupMs": 430, "activeMs": 130, "recoveryMs": 680, "chainAfterMs": 380,
+        "damage": 45, "staminaCost": 24, "lungeSpeed": 120, "hitDistance": 24, "hitRadius": 25, "shake": 0.011, "hitstopMs": 170, "lean": 14, "crouch": 0.78 }
+    ]
   }
 }

@@ -10,5 +10,8 @@
     "invincibleMs": 220,
     "staminaCost": 25
   },
-  "startWeapon": "rusty_sword"
+  "weaponSlots": [
+    "rusty_sword",
+    "old_greatsword"
+  ]
 }
