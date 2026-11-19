@@ -1,0 +1,13 @@
+# OS / 에디터
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Tiled 세션 파일 (개인 설정)
+*.tiled-session
+
+# 혹시 생길 수 있는 도구 산출물
+node_modules/
+*.log
+*.tmp
