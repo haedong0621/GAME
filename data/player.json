@@ -13,5 +13,13 @@
   "weaponSlots": [
     "rusty_sword",
     "old_greatsword"
-  ]
+  ],
+  "hurtbox": {
+    "width": 14,
+    "height": 24
+  },
+  "hitInvulnMs": 650,
+  "hurtMs": 300,
+  "knockbackSpeed": 230,
+  "respawnDelayMs": 2500
 }

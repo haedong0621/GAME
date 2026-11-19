@@ -11,7 +11,7 @@
  "infinite": false,
  "compressionlevel": -1,
  "nextlayerid": 3,
- "nextobjectid": 115,
+ "nextobjectid": 116,
  "tilesets": [
   {
    "firstgid": 1,
@@ -2502,33 +2502,9 @@
     {
      "name": "",
      "type": "tree",
-     "x": 1644,
-     "y": 956,
-     "id": 4,
-     "rotation": 0,
-     "visible": true,
-     "width": 0,
-     "height": 0,
-     "point": true
-    },
-    {
-     "name": "",
-     "type": "tree",
      "x": 430,
      "y": 252,
      "id": 5,
-     "rotation": 0,
-     "visible": true,
-     "width": 0,
-     "height": 0,
-     "point": true
-    },
-    {
-     "name": "",
-     "type": "tree",
-     "x": 1355,
-     "y": 892,
-     "id": 6,
      "rotation": 0,
      "visible": true,
      "width": 0,
@@ -2934,18 +2910,6 @@
     {
      "name": "",
      "type": "tree",
-     "x": 1547,
-     "y": 828,
-     "id": 40,
-     "rotation": 0,
-     "visible": true,
-     "width": 0,
-     "height": 0,
-     "point": true
-    },
-    {
-     "name": "",
-     "type": "tree",
      "x": 179,
      "y": 444,
      "id": 41,
@@ -2997,18 +2961,6 @@
      "x": 1237,
      "y": 156,
      "id": 45,
-     "rotation": 0,
-     "visible": true,
-     "width": 0,
-     "height": 0,
-     "point": true
-    },
-    {
-     "name": "",
-     "type": "tree",
-     "x": 1425,
-     "y": 828,
-     "id": 46,
      "rotation": 0,
      "visible": true,
      "width": 0,
@@ -3921,6 +3873,25 @@
        "name": "monsterId",
        "type": "string",
        "value": "training_dummy"
+      }
+     ]
+    },
+    {
+     "id": 115,
+     "name": "boss",
+     "type": "monster",
+     "x": 1504,
+     "y": 960,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "monsterId",
+       "type": "string",
+       "value": "swamp_brute"
       }
      ]
     }

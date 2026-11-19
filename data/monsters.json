@@ -13,5 +13,92 @@
       "height": 8
     },
     "texture": "dummy"
+  },
+  "swamp_brute": {
+    "name": "늪지 짐승",
+    "ai": "boss",
+    "texture": "boss_swamp",
+    "maxHp": 420,
+    "speed": 62,
+    "chaseStopDistance": 34,
+    "detectRadius": 170,
+    "leashRadius": 480,
+    "roarMs": 900,
+    "sneakAttackMultiplier": 2.0,
+    "attackCooldownMs": 450,
+    "hurtbox": {
+      "width": 46,
+      "height": 42
+    },
+    "feetCollider": {
+      "width": 36,
+      "height": 14
+    },
+    "respawnMs": 15000,
+    "phases": [
+      {
+        "hpBelow": 0.5,
+        "name": "분노",
+        "speedMultiplier": 1.25,
+        "windupMultiplier": 0.8
+      }
+    ],
+    "attacks": [
+      {
+        "id": "swipe",
+        "name": "할퀴기",
+        "type": "circle",
+        "minRange": 0,
+        "maxRange": 60,
+        "weight": 3,
+        "windupMs": 520,
+        "activeMs": 120,
+        "recoveryMs": 560,
+        "damage": 18,
+        "offset": 30,
+        "radius": 28,
+        "lunge": 60
+      },
+      {
+        "id": "slam",
+        "name": "몸통 내려찍기",
+        "type": "circle",
+        "minRange": 0,
+        "maxRange": 70,
+        "weight": 2,
+        "windupMs": 950,
+        "activeMs": 160,
+        "recoveryMs": 900,
+        "damage": 28,
+        "offset": 0,
+        "radius": 62,
+        "lunge": 0
+      },
+      {
+        "id": "charge",
+        "name": "돌진",
+        "type": "charge",
+        "minRange": 70,
+        "maxRange": 240,
+        "weight": 3,
+        "windupMs": 780,
+        "aimLockAt": 0.65,
+        "activeMs": 620,
+        "recoveryMs": 1000,
+        "damage": 24,
+        "speed": 310,
+        "width": 40
+      }
+    ],
+    "drops": [
+      {
+        "itemId": "beast_hide",
+        "amount": 2
+      },
+      {
+        "itemId": "beast_fang",
+        "amount": 1
+      }
+    ]
   }
 }
