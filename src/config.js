@@ -17,6 +17,8 @@ export const DEBUG = new URLSearchParams(window.location.search).has('debug');
 export const PATHS = {
   items: 'data/items.json',
   player: 'data/player.json',
+  weapons: 'data/weapons.json',
+  monsters: 'data/monsters.json',
   worldMap: 'maps/world.tmj',
   placeholderTiles: 'assets/tiles/placeholder_tiles.png',
 };

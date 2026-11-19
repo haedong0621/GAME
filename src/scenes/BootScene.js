@@ -15,6 +15,8 @@ export class BootScene extends window.Phaser.Scene {
   preload() {
     this.load.json('items', PATHS.items);
     this.load.json('player', PATHS.player);
+    this.load.json('weapons', PATHS.weapons);
+    this.load.json('monsters', PATHS.monsters);
     this.load.tilemapTiledJSON('world', PATHS.worldMap);
     this.load.image('placeholder_tiles', PATHS.placeholderTiles);
   }
@@ -29,6 +31,8 @@ export class BootScene extends window.Phaser.Scene {
     this.registry.set('items', items);
     this.registry.set('inventory', new Inventory());
     this.registry.set('playerData', this.cache.json.get('player'));
+    this.registry.set('weapons', this.cache.json.get('weapons'));
+    this.registry.set('monsters', this.cache.json.get('monsters'));
 
     this.scene.start('World');
     this.scene.launch('UI');

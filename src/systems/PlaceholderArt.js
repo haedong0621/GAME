@@ -25,6 +25,17 @@ export function createPlaceholderArt(scene, items) {
   g.fillStyle(0x5aa85c).fillCircle(17, 17, 7);              // 하이라이트
   g.generateTexture('tree', 48, 72);
 
+  // ---- 연습용 허수아비 32×40, 발은 맨 아래 가운데
+  g.clear();
+  g.fillStyle(0x000000, 0.25).fillEllipse(16, 38, 18, 5);
+  g.fillStyle(0x4a3826).fillRect(14, 14, 4, 26);             // 기둥
+  g.fillStyle(0x4a3826).fillRect(4, 16, 24, 3);              // 팔 막대
+  g.fillStyle(0x8a7448).fillRoundedRect(8, 12, 16, 16, 3);   // 짚 몸통
+  g.fillStyle(0x6e5a36).fillRect(8, 20, 16, 2);              // 묶은 끈
+  g.fillStyle(0x9a8656).fillCircle(16, 7, 6);                // 머리
+  g.fillStyle(0x3a2a1a).fillRect(13, 6, 2, 2).fillRect(18, 6, 2, 2);
+  g.generateTexture('dummy', 32, 40);
+
   // ---- 아이템: items.json의 placeholderColor로 작은 보석 모양 14×16
   for (const id of items.ids()) {
     const color = window.Phaser.Display.Color.HexStringToColor(items.get(id).placeholderColor ?? '#ffffff').color;
