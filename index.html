@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GAME — 프로토타입</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #1b1f24; overflow: hidden; }
+    #game { width: 100%; height: 100%; }
+    canvas { display: block; image-rendering: pixelated; }
+  </style>
+  <!-- Phaser 3 (CDN, 버전 고정). 바꾸면 docs/DESIGN.md에 기록 -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head>
+<body>
+  <div id="game"></div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
