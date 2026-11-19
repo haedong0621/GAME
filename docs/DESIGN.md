@@ -12,22 +12,27 @@
 
 ## 시스템 목록
 - **부팅/로딩** (`scenes/BootScene.js`) — JSON·맵·타일셋을 미리 로드하고 임시 그래픽 생성 후 World+UI 씬 시작 → Godot 메인 씬 `_ready()`에서 Autoload 초기화 후 `World.tscn` 로드
-- **입력** (`systems/InputSystem.js`) — 매 프레임 "명령" `{move, attack, roll}` 반환; WASD 이동, J/마우스 왼쪽 공격, Space/K 구르기; 공격·구르기는 keydown 이벤트를 다음 프레임까지 보관(짧은 탭 유실 방지) → Godot Input Map(`move_*`, `attack`, `roll`) + `Input.get_vector()`, 행동은 `_unhandled_input`에서 플래그로 보관
+- **입력** (`systems/InputSystem.js`) — 매 프레임 "명령" `{move, attack, roll, switchWeapon}` 반환; 키보드(WASD, J/마우스 왼쪽, Space/K, 1·2·Q)와 터치 조작판 결과를 합침; 버튼류는 이벤트를 다음 프레임까지 보관(짧은 탭 유실 방지) → Godot Input Map(`move_*`, `attack`, `roll`, `weapon_*`) + `Input.get_vector()`
 - **플레이어 이동** (`entities/Player.js`) — 방향 × `data/player.json`의 `speed` 로 속도 설정, 충돌은 발밑 작은 박스(16×10), 마지막 이동 방향 = 바라보는 방향(`facing`) → Godot `CharacterBody2D` + `move_and_slide()`, CollisionShape2D(16×10)를 발밑에
-- **플레이어 상태 머신** (`entities/Player.js`) — `free → windup → active → recovery → free`, `free → roll → free`; windup/active/recovery 중엔 이동·취소 불가, recovery 중 입력은 다음 행동으로 예약(버퍼) → Godot `enum State` + `match state` (또는 상태별 노드)
-- **무기 공격** (`entities/Player.js`, `data/weapons.json`) — 시간(windup/active/recovery ms), 데미지, 기력 소모, 전진 속도(lunge), 판정 원(가슴 높이에서 `hitDistance` 앞, 반경 `hitRadius`); 한 번 휘두를 때 같은 대상은 1회만 타격 → Godot AnimationPlayer로 타이밍, 공격 판정은 Area2D(CircleShape2D)를 active 구간에만 `monitoring = true`
+- **플레이어 상태 머신** (`entities/Player.js`) — `free → windup → active → recovery → (다음 타 windup | roll | free)`; windup/active/recovery 중 입력은 예약(버퍼), recovery 시작 후 `chainAfterMs`가 지나야 다음 타·구르기로 연결; 마지막 타 뒤 예약은 1타부터 → Godot `enum State` + `match state`
+- **무기·콤보** (`entities/Player.js`, `data/weapons.json`) — 무기마다 `combo` 배열(타마다 휘두르기 각도 from/to, windup/active/recovery/chainAfter ms, 데미지, 기력, 전진 속도, 판정 원, 화면 흔들림, 히트스톱, 몸 기울기·웅크림)과 이동속도 배율; 무기 슬롯은 `data/player.json` `weaponSlots`, free 상태에서만 교체 → Godot 무기 Resource(`WeaponData.tres`, `Array[AttackMove]`), 판정은 Area2D를 active 구간에만 켬
+- **히트스톱** (`entities/Player.js`) — 공격이 맞으면 `hitstopMs` 동안 플레이어 시간 정지(이동 0, 상태 타이머 멈춤, 입력은 예약) → Godot 플레이어 노드 `process_mode` 잠시 정지 또는 AnimationPlayer `speed_scale = 0`
+- **무기 겉모습** (`entities/WeaponView.js`) — 손(가슴 높이)에 무기 그림, 상태별 각도: 대기=`restAngle`, windup=이전 각도→from, active=from→to(easeOutCubic), recovery=55% 유지 후 대기로; 칼끝이 위면 몸 뒤, 아래면 몸 앞 → Godot 손 Node2D + Sprite2D, AnimationPlayer rotation 트랙
+- **몸 연출** (`entities/Player.js` `updatePose`) — 물리 몸체와 분리된 겉모습 이미지(`visual`)를 기울이고(lean) 웅크림/펴기(scale), windup 중 밝은 색 → Godot Sprite2D를 CharacterBody2D와 별도 노드로, 진짜 애니메이션으로 대체 예정
 - **구르기** (`entities/Player.js`, `data/player.json` `roll`) — 굴러가는 방향 = 입력 방향(없으면 바라보는 방향), 속도·시간·무적 시간(시작부터 `invincibleMs`)·기력 소모 → Godot 같은 상태 머신, 무적은 Hurtbox `monitorable = false`
 - **체력·기력** (`systems/Stats.js`) — hp/stamina, 기력은 행동 후 `staminaRegenDelayMs` 지나고 `free` 상태에서만 초당 `staminaRegenPerSec` 회복, 부족하면 행동 불가 → Godot `Stats.gd` + `signal changed`
 - **전투 판정** (`systems/Combat.js`) — 원(공격) vs 사각형(대상 hurtbox) 겹침 검사 → Godot Area2D 겹침 (`area_entered`)
 - **몬스터** (`entities/Monster.js`, `data/monsters.json`) — 맵의 `type=monster`(속성 `monsterId`), 발밑 충돌(길 막음) + 몸 전체 hurtbox(맞는 범위), 맞으면 흰색 번쩍·흔들림, hp 0이면 `respawnMs` 후 부활(허수아비용), 머리 위 체력 바; AI는 아직 없음(`ai: none`) → Godot `Monster.tscn` = Sprite2D + StaticBody2D + Hurtbox(Area2D) + Stats
-- **타격 연출** (`systems/Effects.js`) — 베기 궤적(220ms 페이드), 데미지 숫자(위로 떠오름), 타격 시 카메라 미세 흔들림 → Godot Tween + `Camera2D` 오프셋 흔들기
+- **타격 연출** (`systems/Effects.js`) — 베기 궤적(from→to 방향 호, 240ms 페이드, 굵기는 무기 크기에 따라), 데미지 숫자, 무기 이름 라벨, 맞힐 때 카메라 흔들림(타마다 세기 다름) → Godot Tween + `Camera2D` 오프셋 흔들기
 - **카메라** (`scenes/WorldScene.js`) — 캔버스 960×540, 월드만 2배 확대(`WORLD_ZOOM`), 플레이어를 부드럽게 따라감(lerp 0.12), 맵 경계에서 멈춤 → Godot `Camera2D`(`zoom = 2`)를 플레이어 자식으로, `position_smoothing_enabled`, `limit_*`를 맵 크기로; 뷰포트 960×540, stretch mode `canvas_items`
 - **나무** (`entities/Tree.js`) — 맵의 `type=tree` 점 위치(발밑)에 생성, 줄기에만 고정 충돌 박스(14×10), 잎은 통과·가림 → Godot `Tree.tscn` = Sprite2D + StaticBody2D(줄기 CollisionShape2D)
 - **지형 충돌** (`scenes/WorldScene.js`) — 타일 속성 `collides=true`(물)인 타일은 막힘 → Godot TileSet 물리 레이어에 해당 타일만 충돌 폴리곤
 - **아이템 DB** (`systems/ItemDatabase.js`) — `data/items.json`을 id로 조회 → Godot Autoload `ItemDB.gd` (Dictionary id→정보) 또는 Resource
 - **아이템 줍기** (`entities/ItemPickup.js`) — 맵의 `type=item`(속성 `itemId`, `amount`) 위치에 놓이고 닿으면 인벤토리에 추가 → Godot `Area2D` + `body_entered` 시그널
 - **인벤토리** (`systems/Inventory.js`) — id→개수 맵, 바뀌면 리스너 호출 → Godot Autoload `Inventory.gd` + `signal changed`
-- **HUD** (`scenes/UIScene.js`) — 월드 위에 겹친 별도 씬; 체력·기력 바(기력 회복 대기 중엔 어두운 색), 가방 목록, 조작 안내 → Godot `CanvasLayer` + ProgressBar + Label
+- **HUD** (`scenes/UIScene.js`) — 월드 위에 겹친 별도 씬; 체력·기력 바, 무기 이름 + 콤보 단계(예: 2/3 되베기), 가방 목록, 조작 안내(키보드일 때) → Godot `CanvasLayer` + ProgressBar + Label
+- **터치 조작** (`systems/TouchControls.js`) — 터치 기기(또는 `?touch=1`)에서 표시; 화면 왼쪽 절반 누른 자리 중심의 가상 조이스틱(반경 70, 데드존 0.25), 오른쪽 아래 공격·구르기·무기 버튼, 멀티터치 3개 → Godot CanvasLayer + 가상 조이스틱 + TouchScreenButton(action 지정)
+- **모바일 페이지** (`index.html`) — 확대 금지, 세로로 들면 "가로로 돌려 주세요" 안내, 터치 기기에 전체 화면 버튼(지원 브라우저는 가로 고정) → Godot 웹 내보내기 시 같은 HTML 셸 설정 / 모바일 앱은 프로젝트 설정 `orientation = landscape`
 - **임시 그래픽** (`systems/PlaceholderArt.js`) — 에셋이 없을 때 코드로 텍스처 생성 → Godot에서는 이식 대상 아님(진짜 에셋 사용)
 - **디버그** — 주소에 `?debug=1`이면 충돌 박스와 공격 판정 원 표시 → Godot 에디터 *Debug → Visible Collision Shapes*
 
