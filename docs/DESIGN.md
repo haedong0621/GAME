@@ -23,3 +23,8 @@
 - **HUD** (`scenes/UIScene.js`) — 월드 위에 겹친 별도 씬, 인벤토리 변경을 받아 텍스트 갱신 → Godot `CanvasLayer` + Label
 - **임시 그래픽** (`systems/PlaceholderArt.js`) — 에셋이 없을 때 코드로 텍스처 생성 → Godot에서는 이식 대상 아님(진짜 에셋 사용)
 - **디버그** — 주소에 `?debug=1`이면 충돌 박스 표시 → Godot 에디터 *Debug → Visible Collision Shapes*
+
+## 결정된 방향 (아직 미구현)
+- **저장** — 클라우드 저장(Supabase 무료 플랜 + 구글 로그인) 주 사용, 브라우저 localStorage는 오프라인·비로그인 보조; 저장 데이터는 JSON 한 덩어리(플레이어·인벤토리·세계 변화) → Godot `user://` JSON 파일 + 같은 백엔드 HTTP API
+- **협동** — 2~4명 협동, 무료 방식(P2P 또는 Supabase Realtime), 싱글 재미 검증 후 착수 → Godot `MultiplayerAPI`(WebSocket/WebRTC)로 재구현
+- **협동 대비 원칙** — 게임 상태는 렌더링과 분리해 한곳에 모으고, 입력은 "명령"으로 변환해 처리 (지금부터 모든 기능에 적용)
