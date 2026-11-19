@@ -6,7 +6,7 @@
 - **다음 단계:** 재미있으면 Godot 4로 다시 만들기 (그래서 콘텐츠는 데이터 파일로, 설계는 문서로 따로 정리해 둡니다)
 
 ## 플레이하기
-- **웹에서:** GitHub Pages 주소 — `https://haedong0621.github.io/GAME/ (대문자 주의)`
+- **웹에서:** GitHub Pages 주소 — `https://haedong0621.github.io/GAME/` (저장소 이름과 같이 **대문자** GAME)
   (처음 한 번은 저장소 *Settings → Pages*에서 *Branch: `main` / `(root)`*로 설정해야 열립니다)
 - **조작:** `W` `A` `S` `D` 로 이동
 - **충돌 박스 보기:** 주소 끝에 `?debug=1` 을 붙이기
