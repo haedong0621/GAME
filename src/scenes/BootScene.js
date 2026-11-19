@@ -25,7 +25,7 @@ export class BootScene extends window.Phaser.Scene {
     const items = new ItemDatabase(this.cache.json.get('items'));
     console.log(`[Boot] 아이템 데이터 ${items.count}종 로드:`, items.ids().join(', '));
 
-    createPlaceholderArt(this, items);
+    createPlaceholderArt(this, items, this.cache.json.get('weapons'));
 
     // 씬끼리 공유하는 시스템은 registry에 둔다 (Godot의 Autoload 역할).
     this.registry.set('items', items);
