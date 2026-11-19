@@ -8,7 +8,7 @@
 ## 플레이하기
 - **웹에서:** GitHub Pages 주소 — `https://haedong0621.github.io/GAME/` (저장소 이름과 같이 **대문자** GAME)
   (처음 한 번은 저장소 *Settings → Pages*에서 *Branch: `main` / `(root)`*로 설정해야 열립니다)
-- **조작:** `W` `A` `S` `D` 로 이동
+- **조작:** `W` `A` `S` `D` 이동 · `J` 또는 마우스 왼쪽 공격 · `Space` 또는 `K` 구르기
 - **충돌 박스 보기:** 주소 끝에 `?debug=1` 을 붙이기
 
 ## 내 컴퓨터에서 실행하기
