@@ -23,6 +23,13 @@
 - **체력·기력** (`systems/Stats.js`) — hp/stamina, 기력은 행동 후 `staminaRegenDelayMs` 지나고 `free` 상태에서만 초당 `staminaRegenPerSec` 회복, 부족하면 행동 불가 → Godot `Stats.gd` + `signal changed`
 - **전투 판정** (`systems/Combat.js`) — 원(공격) vs 사각형(대상 hurtbox) 겹침 검사 → Godot Area2D 겹침 (`area_entered`)
 - **몬스터** (`entities/Monster.js`, `data/monsters.json`) — 맵의 `type=monster`(속성 `monsterId`), 발밑 충돌(길 막음) + 몸 전체 hurtbox(맞는 범위), 맞으면 흰색 번쩍·흔들림, hp 0이면 `respawnMs` 후 부활(허수아비용), 머리 위 체력 바; AI는 아직 없음(`ai: none`) → Godot `Monster.tscn` = Sprite2D + StaticBody2D + Hurtbox(Area2D) + Stats
+- **보스** (`entities/Boss.js`, `data/monsters.json` `ai: "boss"`) — 상태 머신 `idle → roar → chase → windup → active → recovery → chase`, 놓치면(`leashRadius`) `return`(집으로, 도착하면 체력 회복) ; 거리에 맞는 공격을 `weight`로 무작위 선택, 공격 사이 `attackCooldownMs`; 체력 비율 `phases`(예: 50% 미만 분노 — 이동·예고 속도 배율); 물리 몸체는 발밑 박스(밀리지 않음), 겉모습은 별도 이미지 → Godot `Boss.tscn` CharacterBody2D + 상태 머신, 공격 데이터는 Resource 배열
+- **보스 공격 패턴** (`data/monsters.json` `attacks`) — `circle`형(앞 `offset` 거리에 반경 `radius` 원, 판정 중 짧은 전진 `lunge`), `charge`형(예고 중 `aimLockAt` 비율까지 플레이어 조준 후 방향 고정, `speed`로 돌진, 몸 원 판정, 벽에 막히면 정지); 한 공격은 플레이어에게 최대 1회 → Godot 공격별 Area2D + AnimationPlayer
+- **예고 표시(텔레그래프)** (`entities/Boss.js` `drawTelegraph`) — 예고 동작 중 바닥에 빨간 범위(원은 타원, 돌진은 직사각형 경로)가 점점 진해지고 안쪽 원이 차오름, 판정 순간 진하게; 보스 몸은 웅크림+붉은 색, 빈틈(recovery)은 창백한 색 → Godot 바닥 레이어의 Polygon2D/Sprite2D + Tween
+- **경계 단계** (`entities/Boss.js` `senses`, `Awareness`) — `unaware → alert`(발견: 포효), 놓치면 `suspicious`(귀가), 지금은 거리(`detectRadius`)만 판정; 눈치채기 전 피격 시 `sneakAttackMultiplier` 배율(기습) → M4 스닉에서 `senses()`에 시야각·소리·은신 추가; Godot 같은 enum + RayCast2D 시야
+- **플레이어 피격** (`entities/Player.js` `receiveHit`) — 구르기 무적 중이면 '회피!'(데미지 없음), 아니면 체력 감소 + `hurt` 상태(밀려남 `knockbackSpeed`, `hurtMs`, 콤보·예약 취소) + `hitInvulnMs` 동안 무적(깜빡임); 결과 `hit/dodged/ignored` 반환 → Godot Hurtbox Area2D + 같은 규칙
+- **쓰러짐·부활** (`scenes/WorldScene.js` `onPlayerDeath`) — 체력 0이면 `dead`, `respawnDelayMs` 후 시작 지점에서 체력 가득 부활, 보스는 집으로 돌아가 체력 회복 → Godot 같은 흐름 (GameState 싱글톤에서 처리)
+- **보스 처치 보상** (`scenes/WorldScene.js` `onBossDefeated`) — `drops` 목록의 재료를 쓰러진 자리 주변에 떨굼(주워야 획득), '토벌!' 알림, `respawnMs` 후 보스 재등장(반복 사냥용) → Godot 같은 흐름, 드롭 테이블은 Resource
 - **타격 연출** (`systems/Effects.js`) — 베기 궤적(from→to 방향 호, 240ms 페이드, 굵기는 무기 크기에 따라), 데미지 숫자, 무기 이름 라벨, 맞힐 때 카메라 흔들림(타마다 세기 다름) → Godot Tween + `Camera2D` 오프셋 흔들기
 - **카메라** (`scenes/WorldScene.js`) — 캔버스 960×540, 월드만 2배 확대(`WORLD_ZOOM`), 플레이어를 부드럽게 따라감(lerp 0.12), 맵 경계에서 멈춤 → Godot `Camera2D`(`zoom = 2`)를 플레이어 자식으로, `position_smoothing_enabled`, `limit_*`를 맵 크기로; 뷰포트 960×540, stretch mode `canvas_items`
 - **나무** (`entities/Tree.js`) — 맵의 `type=tree` 점 위치(발밑)에 생성, 줄기에만 고정 충돌 박스(14×10), 잎은 통과·가림 → Godot `Tree.tscn` = Sprite2D + StaticBody2D(줄기 CollisionShape2D)
@@ -30,7 +37,7 @@
 - **아이템 DB** (`systems/ItemDatabase.js`) — `data/items.json`을 id로 조회 → Godot Autoload `ItemDB.gd` (Dictionary id→정보) 또는 Resource
 - **아이템 줍기** (`entities/ItemPickup.js`) — 맵의 `type=item`(속성 `itemId`, `amount`) 위치에 놓이고 닿으면 인벤토리에 추가 → Godot `Area2D` + `body_entered` 시그널
 - **인벤토리** (`systems/Inventory.js`) — id→개수 맵, 바뀌면 리스너 호출 → Godot Autoload `Inventory.gd` + `signal changed`
-- **HUD** (`scenes/UIScene.js`) — 월드 위에 겹친 별도 씬; 체력·기력 바, 무기 이름 + 콤보 단계(예: 2/3 되베기), 가방 목록, 조작 안내(키보드일 때) → Godot `CanvasLayer` + ProgressBar + Label
+- **HUD** (`scenes/UIScene.js`) — 월드 위에 겹친 별도 씬; 체력·기력 바, 무기 이름 + 콤보 단계(예: 2/3 되베기), 보스 체력 바(화면 아래 가운데, 발견했을 때만, 분노 단계 표시), 큰 알림 글씨(registry `banner` 변경 이벤트), 가방 목록, 조작 안내(키보드일 때) → Godot `CanvasLayer` + ProgressBar + Label
 - **터치 조작** (`systems/TouchControls.js`) — 터치 기기(또는 `?touch=1`)에서 표시; 화면 왼쪽 절반 누른 자리 중심의 가상 조이스틱(반경 70, 데드존 0.25), 오른쪽 아래 공격·구르기·무기 버튼, 멀티터치 3개 → Godot CanvasLayer + 가상 조이스틱 + TouchScreenButton(action 지정)
 - **모바일 페이지** (`index.html`) — 확대 금지, 세로로 들면 "가로로 돌려 주세요" 안내, 터치 기기에 전체 화면 버튼(지원 브라우저는 가로 고정) → Godot 웹 내보내기 시 같은 HTML 셸 설정 / 모바일 앱은 프로젝트 설정 `orientation = landscape`
 - **임시 그래픽** (`systems/PlaceholderArt.js`) — 에셋이 없을 때 코드로 텍스처 생성 → Godot에서는 이식 대상 아님(진짜 에셋 사용)
