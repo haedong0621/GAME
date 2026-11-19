@@ -36,6 +36,20 @@ export function createPlaceholderArt(scene, items, weapons) {
   g.fillStyle(0x3a2a1a).fillRect(13, 6, 2, 2).fillRect(18, 6, 2, 2);
   g.generateTexture('dummy', 32, 40);
 
+  // ---- 보스: 늪지 짐승 64×56, 오른쪽을 봄, 발은 맨 아래 가운데
+  g.clear();
+  g.fillStyle(0x000000, 0.3).fillEllipse(32, 52, 50, 10);                       // 그림자
+  g.fillStyle(0x2b3320).fillTriangle(4, 30, 14, 22, 16, 36);                   // 꼬리
+  g.fillStyle(0x3a4529).fillEllipse(30, 34, 44, 30);                           // 몸통
+  g.fillStyle(0x2f3a22).fillRect(16, 42, 7, 12).fillRect(36, 42, 7, 12);       // 다리
+  g.fillStyle(0xc9bd98);                                                       // 등뼈 판
+  g.fillTriangle(16, 24, 21, 12, 25, 23).fillTriangle(25, 21, 30, 9, 34, 21).fillTriangle(34, 22, 39, 12, 42, 24);
+  g.fillStyle(0x45512f).fillEllipse(49, 32, 20, 18);                           // 머리
+  g.fillStyle(0xd8e36a).fillRect(52, 28, 3, 3);                                // 눈
+  g.fillStyle(0xe8dcb8).fillTriangle(56, 36, 60, 40, 55, 41).fillTriangle(50, 38, 53, 43, 49, 42); // 송곳니
+  g.fillStyle(0x1e2416).fillTriangle(42, 46, 48, 52, 40, 52);                  // 앞발톱
+  g.generateTexture('boss_swamp', 64, 56);
+
   // ---- 무기: weapons.json의 view 값으로 칼 모양. 손잡이가 왼쪽, 칼끝이 오른쪽(0도 방향)
   const hex = (s) => window.Phaser.Display.Color.HexStringToColor(s).color;
   for (const [id, w] of Object.entries(weapons)) {

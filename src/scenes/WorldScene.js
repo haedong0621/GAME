@@ -2,6 +2,7 @@ import { Player } from '../entities/Player.js';
 import { Tree } from '../entities/Tree.js';
 import { ItemPickup } from '../entities/ItemPickup.js';
 import { Monster } from '../entities/Monster.js';
+import { Boss } from '../entities/Boss.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH } from '../systems/YSort.js';
@@ -30,9 +31,11 @@ export class WorldScene extends window.Phaser.Scene {
     const objects = map.getObjectLayer('objects')?.objects ?? [];
     const blockers = this.physics.add.staticGroup(); // 나무 줄기, 몬스터 발밑 등 길을 막는 것
     const pickups = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.pickups = pickups;
     const items = this.registry.get('items');
     const monsterData = this.registry.get('monsters');
     this.monsters = [];
+    this.bosses = [];
     let spawn = { x: map.widthInPixels / 2, y: map.heightInPixels / 2 };
 
     for (const obj of objects) {
@@ -59,9 +62,15 @@ export class WorldScene extends window.Phaser.Scene {
             console.warn(`[World] 맵에 알 수 없는 몬스터 id: ${monsterId}`);
             break;
           }
-          const m = new Monster(this, obj.x, obj.y, monsterId, data);
-          blockers.add(m.feet);
-          this.monsters.push(m);
+          if (data.ai === 'boss') {
+            const b = new Boss(this, obj.x, obj.y, monsterId, data, () => this.player, (boss) => this.onBossDefeated(boss));
+            this.bosses.push(b);
+            this.monsters.push(b);
+          } else {
+            const m = new Monster(this, obj.x, obj.y, monsterId, data);
+            blockers.add(m.feet);
+            this.monsters.push(m);
+          }
           break;
         }
         default:
@@ -75,8 +84,16 @@ export class WorldScene extends window.Phaser.Scene {
     this.player = new Player(this, spawn.x, spawn.y, playerData, this.registry.get('weapons'), () => this.monsters);
     this.registry.set('player', this.player); // HUD가 체력·스태미나를 읽음
 
+    this.spawnPoint = spawn;
+    this.player.onDeath = () => this.onPlayerDeath();
+
     this.physics.add.collider(this.player, blockers);
     this.physics.add.collider(this.player, ground);
+    for (const b of this.bosses) {
+      this.physics.add.collider(this.player, b);
+      this.physics.add.collider(b, blockers);
+      this.physics.add.collider(b, ground);
+    }
     this.physics.add.overlap(this.player, pickups, (_player, pickup) => {
       this.registry.get('inventory').add(pickup.itemId, pickup.amount);
       pickup.collect();
@@ -91,5 +108,32 @@ export class WorldScene extends window.Phaser.Scene {
 
   update(_time, delta) {
     this.player.update(this.inputSystem.getCommand(), delta);
+    for (const b of this.bosses) b.update(delta);
+    // HUD에 보여 줄 보스: 플레이어를 발견한 보스
+    this.registry.set('activeBoss', this.bosses.find((b) => b.isAlert) ?? null);
+  }
+
+  /** HUD 가운데 큰 글씨 알림 (Godot: signal banner(text)) */
+  banner(text, color) {
+    this.registry.set('banner', { text, color, at: this.time.now });
+  }
+
+  onPlayerDeath() {
+    this.banner('쓰러졌다…', '#d06050');
+    this.time.delayedCall(this.player.data_.respawnDelayMs, () => {
+      this.player.respawn(this.spawnPoint.x, this.spawnPoint.y);
+      for (const b of this.bosses) b.resetToHome();
+    });
+  }
+
+  onBossDefeated(boss) {
+    this.banner(`${boss.displayName} 토벌!`, '#e8c860');
+    // 보상: 쓰러진 자리 주변에 재료를 떨군다 (data/monsters.json 의 drops)
+    const items = this.registry.get('items');
+    (boss.data_.drops ?? []).forEach((d, i, all) => {
+      if (!items.has(d.itemId)) return;
+      const a = (i / all.length) * Math.PI * 2;
+      this.pickups.add(new ItemPickup(this, boss.x + Math.cos(a) * 22, boss.y + Math.sin(a) * 14, d.itemId, d.amount));
+    });
   }
 }
