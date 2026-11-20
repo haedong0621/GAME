@@ -2,6 +2,7 @@ import { applyYSort } from '../systems/YSort.js';
 import { Stats } from '../systems/Stats.js';
 import { findHits } from '../systems/Combat.js';
 import { spawnFloatingLabel } from '../systems/Effects.js';
+import { StatusEffects } from '../systems/StatusEffects.js';
 
 /** 보스 행동 상태 (Godot: enum State) */
 const State = {
@@ -44,6 +45,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.getPlayer = getPlayer;
     this.onDefeated = onDefeated;
     this.stats = new Stats(data);
+    this.status = new StatusEffects(this);
     this.home = { x, y };
 
     const f = data.feetCollider;
@@ -80,10 +82,10 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   /** @returns {number} 실제로 들어간 데미지 */
-  takeDamage(amount) {
+  takeDamage(amount, opts = {}) {
     if (this.state === State.DEAD) return 0;
     let dealt = amount;
-    if (this.awareness !== Awareness.ALERT) {
+    if (this.awareness !== Awareness.ALERT && !opts.fromStatus) {
       // 기습: 눈치채기 전에 맞으면 배율 (스닉 시스템의 기초)
       dealt = Math.round(amount * this.data_.sneakAttackMultiplier);
       spawnFloatingLabel(this.scene, this.x, this.y - this.data_.hurtbox.height - 18, '기습!');
@@ -92,7 +94,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.stats.takeDamage(dealt);
 
     const v = this.visual;
-    v.setTintFill(0xffffff);
+    v.setTintFill(opts.fromStatus ? 0x9adf5a : 0xffffff);
     this.scene.time.delayedCall(70, () => { if (this.state !== State.DEAD) this.applyTint(); });
 
     if (this.stats.isDead) this.die();
@@ -102,6 +104,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   // ---------- 매 프레임 ----------
   update(dt) {
     if (this.state === State.DEAD) { this.syncVisual(); return; }
+    this.status.update(dt);
+    if (this.state === State.DEAD) return; // 독으로 쓰러졌을 수 있음
     this.stateTime -= dt;
     this.cooldown -= dt;
 
@@ -211,6 +215,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   /** 플레이어가 쓰러졌을 때 등: 집으로 즉시 돌려보내고 초기화 (몬스터 헌터의 "수레" 후 상황) */
   resetToHome() {
     if (this.state === State.DEAD) return;
+    this.status.clear();
     this.body.reset(this.home.x, this.home.y);
     this.stats.reset();
     this.awareness = Awareness.UNAWARE;
@@ -275,6 +280,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
 
   die() {
     this.state = State.DEAD;
+    this.status.clear();
     this.setVelocity(0, 0);
     this.body.enable = false;
     this.telegraph.clear();

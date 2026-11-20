@@ -1,5 +1,6 @@
 import { applyYSort } from '../systems/YSort.js';
 import { Stats } from '../systems/Stats.js';
+import { StatusEffects } from '../systems/StatusEffects.js';
 
 /**
  * 몬스터(현재는 AI 없는 연습용 허수아비만). 수치는 data/monsters.json.
@@ -12,6 +13,7 @@ export class Monster {
     this.id = id;
     this.data = data;
     this.stats = new Stats(data);
+    this.status = new StatusEffects(this);
     this.x = x;
     this.y = y;
 
@@ -34,22 +36,30 @@ export class Monster {
     return { x: this.x - h.width / 2, y: this.y - h.height, width: h.width, height: h.height };
   }
 
+  update(dt) {
+    this.status.update(dt);
+  }
+
   /** @returns {number} 실제로 들어간 데미지 */
-  takeDamage(amount) {
+  takeDamage(amount, opts = {}) {
+    if (this.stats.isDead) return 0;
     this.stats.takeDamage(amount);
     this.drawHpBar();
 
     // 맞은 연출: 하얗게 번쩍 + 흔들림
     const s = this.sprite;
-    s.setTintFill(0xffffff);
+    s.setTintFill(opts.fromStatus ? 0x9adf5a : 0xffffff);
     this.scene.time.delayedCall(70, () => s.clearTint());
-    this.scene.tweens.add({ targets: s, x: this.x + 2, duration: 40, yoyo: true, repeat: 1, onComplete: () => { s.x = this.x; } });
+    if (!opts.fromStatus) {
+      this.scene.tweens.add({ targets: s, x: this.x + 2, duration: 40, yoyo: true, repeat: 1, onComplete: () => { s.x = this.x; } });
+    }
 
     if (this.stats.isDead) this.die();
     return amount;
   }
 
   die() {
+    this.status.clear();
     this.sprite.setAlpha(0.35);
     if (this.data.respawnMs) {
       this.scene.time.delayedCall(this.data.respawnMs, () => {

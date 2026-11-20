@@ -13,6 +13,20 @@ export class Inventory {
     this.listeners.forEach((fn) => fn());
   }
 
+  count(itemId) {
+    return this.counts.get(itemId) ?? 0;
+  }
+
+  /** 개수가 충분하면 빼고 true, 아니면 아무것도 안 하고 false */
+  remove(itemId, amount = 1) {
+    const have = this.count(itemId);
+    if (have < amount) return false;
+    if (have === amount) this.counts.delete(itemId);
+    else this.counts.set(itemId, have - amount);
+    this.listeners.forEach((fn) => fn());
+    return true;
+  }
+
   /** @returns {[string, number][]} */
   entries() {
     return [...this.counts.entries()];
