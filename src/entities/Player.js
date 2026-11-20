@@ -159,6 +159,11 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (this.invulnMs > 0) this.invulnMs -= dt;
     this.dt = dt;
     this.updateLock(cmd);
+    // 진단용: 이동 입력이 있는데 못 움직이는 이유 (HUD 입력 진단 화면에 표시)
+    const wantsMove = cmd.move.x !== 0 || cmd.move.y !== 0;
+    this.moveBlockedBy = !wantsMove ? null
+      : this.hitstopMs > 0 ? '히트스톱'
+      : ({ windup: '공격 예비동작', active: '공격 중', recovery: '공격 후딜', roll: '구르기', hurt: '피격', dead: '쓰러짐' })[this.state] ?? null;
 
     if (this.hitstopMs > 0) {
       // 멈칫: 시간이 흐르지 않는다. 입력만 예약해 둔다.
@@ -309,7 +314,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     // 가속·감속: 지금 속도에서 목표 속도로 부드럽게 (8방향 꺾임 완화)
     const v = this.body.velocity;
     const tx = move.x * speed, ty = move.y * speed;
-    const rate = (moving ? this.data_.accel : this.data_.decel) * (this.dt / 1000);
+    // 반대 방향으로 꺾을 때는 더 빠르게 전환 (방향 전환이 굼떠서 키가 씹힌 느낌이 들지 않게)
+    const reversing = moving && (v.x * tx + v.y * ty) < 0;
+    const accel = moving ? this.data_.accel * (reversing ? this.data_.reverseAccelMultiplier : 1) : this.data_.decel;
+    const rate = accel * (this.dt / 1000);
     const dx = tx - v.x, dy = ty - v.y, d = Math.hypot(dx, dy);
     if (d <= rate) this.setVelocity(tx, ty);
     else this.setVelocity(v.x + (dx / d) * rate, v.y + (dy / d) * rate);
@@ -327,6 +335,13 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     }
     if (canChain && this.queued === 'attack' && hasNext) {
       if (this.tryAttack(this.comboIndex + 1, cmd)) { this.queued = null; return; }
+    }
+    // 후딜 후반: 이동 입력으로 끊고 바로 움직이기 (예약된 행동이 없을 때)
+    const moving = cmd.move.x !== 0 || cmd.move.y !== 0;
+    if (moving && !this.queued && elapsed >= (m.moveCancelAfterMs ?? m.recoveryMs)) {
+      this.enter(State.FREE);
+      this.updateFree(cmd);
+      return;
     }
     if (this.stateTime <= 0) {
       // 콤보 끝 (또는 입력 없음) → 자유 상태. 마지막 타 뒤의 공격 예약은 1타부터 다시.
