@@ -39,7 +39,17 @@ export class InputSystem {
     this.scene = scene;
     this.mouseActive = false; // 마우스가 화면 위에서 움직였으면 조준 모드
 
+    /** 진단용: 브라우저가 실제로 받은 키 이벤트 최근 기록 */
+    this.log = [];
+    const record = (type, e) => {
+      this.log.push({ type, code: e.code, key: e.key, at: performance.now(), composing: e.isComposing || e.keyCode === 229 });
+      if (this.log.length > 10) this.log.shift();
+    };
+    this.rawHeld = new Set(); // 진단 화면용: 지금 눌려 있는 모든 키
+
     const onDown = (e) => {
+      if (!e.repeat) record('down', e);
+      this.rawHeld.add(e.code);
       if (PREVENT.has(e.code)) e.preventDefault();
       const dir = MOVE_CODES[e.code];
       if (dir) this.held.add(e.code);
@@ -47,10 +57,12 @@ export class InputSystem {
       if (btn && !e.repeat) this.pressed[btn[0]] = btn[1];
     };
     const onUp = (e) => {
+      record('up', e);
+      this.rawHeld.delete(e.code);
       this.held.delete(e.code);
     };
     // 창을 벗어나면(알트탭, 다른 탭) 눌린 키를 모두 놓은 것으로 — 키가 눌린 채로 남는 문제 방지
-    const releaseAll = () => this.held.clear();
+    const releaseAll = () => { if (this.held.size) this.log.push({ type: 'release-all', code: '창 이탈', at: performance.now() }); this.held.clear(); this.rawHeld.clear(); };
 
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
@@ -70,8 +82,9 @@ export class InputSystem {
     scene.input.on('pointerdown', (p) => {
       if (p.wasTouch) { this.mouseActive = false; return; }
       this.mouseActive = true;
-      if (p.rightButtonDown()) this.pressed.lockToggle = true;
-      else if (p.leftButtonDown()) this.pressed.attack = true;
+      if (p.rightButtonDown()) { this.pressed.lockToggle = true; this.log.push({ type: 'down', code: '마우스 오른쪽', at: performance.now() }); }
+      else if (p.leftButtonDown()) { this.pressed.attack = true; this.log.push({ type: 'down', code: '마우스 왼쪽(공격)', at: performance.now() }); }
+      if (this.log.length > 10) this.log.shift();
     });
   }
 
@@ -96,6 +109,7 @@ export class InputSystem {
     let x = (this.isHeld('right') ? 1 : 0) - (this.isHeld('left') ? 1 : 0);
     let y = (this.isHeld('down') ? 1 : 0) - (this.isHeld('up') ? 1 : 0);
 
+    this.lastMove = { x, y };
     const touch = this.getTouch();
     const t = touch ? touch.consume() : null;
     if (t && (t.move.x !== 0 || t.move.y !== 0)) {

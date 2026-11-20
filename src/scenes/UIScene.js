@@ -1,5 +1,6 @@
 import { DEBUG, FORCE_TOUCH } from '../config.js';
 import { TouchControls } from '../systems/TouchControls.js';
+import { InputDebugPanel } from '../systems/InputDebugPanel.js';
 
 const BAR_W = 160;
 const BAR_H = 10;
@@ -52,16 +53,20 @@ export class UIScene extends window.Phaser.Scene {
       this.tweens.add({ targets: this.bannerText, alpha: 0, delay: 1800, duration: 600 });
     });
 
+    const params = new URLSearchParams(window.location.search);
+    this.inputDebug = new InputDebugPanel(this, DEBUG || params.has('input'));
+
     if (isTouch) {
       this.registry.set('touch', new TouchControls(this));
     } else {
       this.add.text(12, this.scale.height - 8,
-        'WASD 이동 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기' + (DEBUG ? '   [debug]' : ''),
+        'WASD 이동 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기 · ` 입력 진단' + (DEBUG ? '   [debug]' : ''),
         { ...small, color: '#c9ced4' }).setOrigin(0, 1).setShadow(1, 1, '#000', 0);
     }
   }
 
-  update() {
+  update(_time, delta) {
+    this.inputDebug.update(delta);
     const player = this.registry.get('player');
     if (!player) return;
     const s = player.stats;

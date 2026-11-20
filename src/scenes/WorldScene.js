@@ -81,6 +81,7 @@ export class WorldScene extends window.Phaser.Scene {
     // ---- 플레이어
     const playerData = this.registry.get('playerData');
     this.inputSystem = new InputSystem(this, () => this.registry.get('touch'));
+    this.registry.set('inputSystem', this.inputSystem); // 입력 진단 화면용
     this.player = new Player(this, spawn.x, spawn.y, playerData, this.registry.get('weapons'), () => this.monsters);
     this.registry.set('player', this.player); // HUD가 체력·스태미나를 읽음
 
