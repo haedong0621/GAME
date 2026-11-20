@@ -50,6 +50,13 @@ centered, full body visible, game asset
 - **보스:** `a hulking swamp beast with bone plates and a long spiked tail, hunched, menacing, fits 96x96 pixels`
 - **몬스터:** `a feral ghoul with long claws, gaunt grey skin, crouching`
 
+### 보스 테마 장비 (중요)
+보스 소재로 만든 장비는 **그 보스의 특징이 은근히 녹아 있어야** 합니다 (docs/CONCEPT.md "또 잡고 싶다"의 기준).
+- 보스 그림을 먼저 확정하고, 장비를 뽑을 때 **보스 그림을 같이 첨부**하세요.
+- 프롬프트 예: `same pixel art style, the wanderer wearing armor crafted from the attached swamp beast: mossy green hide, bone plates on the shoulders taken from its spine, a hood with small bone spikes, faint yellow-green eye glow, subtle not costume-like`
+- 무기 예: `a short sword made from the attached beast's fang, serrated bone-colored blade, faint green venom glow along the edge, leather-wrapped hilt`
+- 핵심 단어: **subtle(은근히)**, **crafted from(~로 만든)**, 보스의 색 2개 + 부위 1~2개(뼈판, 송곳니, 가죽 무늬)만 가져오기.
+
 ### 잘 뽑는 요령
 1. **한 장에 하나만.** 여러 개를 한 번에 그리게 하면 크기와 시점이 제각각이 됩니다.
 2. **스타일 문구를 매번 똑같이 붙이기.** 위 "기본 프롬프트 틀"을 고정해 두면 그림체가 통일됩니다.

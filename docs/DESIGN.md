@@ -32,6 +32,13 @@
 - **플레이어 피격** (`entities/Player.js` `receiveHit`) — 구르기 무적 중이면 '회피!'(데미지 없음), 아니면 체력 감소 + `hurt` 상태(밀려남 `knockbackSpeed`, `hurtMs`, 콤보·예약 취소) + `hitInvulnMs` 동안 무적(깜빡임); 결과 `hit/dodged/ignored` 반환 → Godot Hurtbox Area2D + 같은 규칙
 - **쓰러짐·부활** (`scenes/WorldScene.js` `onPlayerDeath`) — 체력 0이면 `dead`, `respawnDelayMs` 후 시작 지점에서 체력 가득 부활, 보스는 집으로 돌아가 체력 회복 → Godot 같은 흐름 (GameState 싱글톤에서 처리)
 - **보스 처치 보상** (`scenes/WorldScene.js` `onBossDefeated`) — `drops` 목록의 재료를 쓰러진 자리 주변에 떨굼(주워야 획득), '토벌!' 알림, `respawnMs` 후 보스 재등장(반복 사냥용) → Godot 같은 흐름, 드롭 테이블은 Resource
+- **장비** (`entities/Player.js` `ownedWeapons`/`ownedArmors`/`equip`/`equipArmor`) — 무기는 가진 목록에서 1·2·3/Q로 교체, 갑옷 1칸; 갑옷은 `data/armors.json`(최대 체력 보너스, 겉모습 텍스처, 스킬) → Godot Equipment.gd + Resource
+- **장비 겉모습** (`systems/PlaceholderArt.js`) — 갑옷마다 플레이어 텍스처(`player`, `player-swamp`), 무기 `view.style: "fang"`이면 톱날·독 빛; 보스 소재 장비에는 그 보스의 색·뼈판·눈빛을 녹임 → Godot 갑옷별 SpriteFrames, 무기별 텍스처
+- **스킬** (`data/skills.json`, `entities/Player.js` `skills`/`modifier`) — 장비(무기+갑옷)가 가진 스킬 id 목록; `passive`는 배율 곱(`knockbackMultiplier`, `rollStaminaMultiplier`), `onHitPoison`은 적중 시 독 → Godot Skill Resource, 장비 변경 시 재계산
+- **상태 이상: 독** (`systems/StatusEffects.js`) — 몬스터·보스마다 보유, `tickMs`마다 `damagePerTick`(초록 숫자·초록 번쩍), `durationMs`, 다시 걸리면 시간만 초기화; 독 피해로는 기습·흔들림 없음 → Godot StatusEffects 노드 + Timer
+- **제작** (`systems/Crafting.js`, `data/recipes.json`) — 레시피(결과 kind/id, 재료 목록), 재료 확인→소모→지급→즉시 장착, 이미 가진 것은 제작 불가 → Godot Crafting.gd (Autoload)
+- **제작대·상호작용** (`entities/Workbench.js`, `scenes/WorldScene.js` `nearestInteractable`/`openPanel`) — 맵 `type=workbench`, 반경 안이면 "[E] 제작대 열기"(휴대폰은 "열기" 버튼), 열면 월드 일시정지 → Godot Area2D 범위 + `get_tree().paused`
+- **제작 화면** (`systems/CraftingPanel.js`) — 목록(제작 가능/재료 부족/보유 중), 상세(설명, 데미지 비교, 스킬, 재료 보유/필요), 제작·닫기 버튼; ↑↓ Enter Esc, 마우스·터치 → Godot Control 씬
 - **타격 연출** (`systems/Effects.js`) — 베기 궤적(from→to 방향 호, 240ms 페이드, 굵기는 무기 크기에 따라), 데미지 숫자, 무기 이름 라벨, 맞힐 때 카메라 흔들림(타마다 세기 다름) → Godot Tween + `Camera2D` 오프셋 흔들기
 - **카메라** (`scenes/WorldScene.js`) — 캔버스 960×540, 월드만 2배 확대(`WORLD_ZOOM`), 플레이어를 부드럽게 따라감(lerp 0.12), 맵 경계에서 멈춤 → Godot `Camera2D`(`zoom = 2`)를 플레이어 자식으로, `position_smoothing_enabled`, `limit_*`를 맵 크기로; 뷰포트 960×540, stretch mode `canvas_items`
 - **나무** (`entities/Tree.js`) — 맵의 `type=tree` 점 위치(발밑)에 생성, 줄기에만 고정 충돌 박스(14×10), 잎은 통과·가림 → Godot `Tree.tscn` = Sprite2D + StaticBody2D(줄기 CollisionShape2D)
@@ -40,6 +47,7 @@
 - **아이템 줍기** (`entities/ItemPickup.js`) — 맵의 `type=item`(속성 `itemId`, `amount`) 위치에 놓이고 닿으면 인벤토리에 추가 → Godot `Area2D` + `body_entered` 시그널
 - **인벤토리** (`systems/Inventory.js`) — id→개수 맵, 바뀌면 리스너 호출 → Godot Autoload `Inventory.gd` + `signal changed`
 - **HUD** (`scenes/UIScene.js`) — 월드 위에 겹친 별도 씬; 체력·기력 바, 무기 이름 + 콤보 단계(예: 2/3 되베기), 보스 체력 바(화면 아래 가운데, 발견했을 때만, 분노 단계 표시), 큰 알림 글씨(registry `banner` 변경 이벤트), 가방 목록, 조작 안내(키보드일 때) → Godot `CanvasLayer` + ProgressBar + Label
+- **알림·패널 신호** (`scenes/BootScene.js`) — registry 키 `banner`, `openPanel`, `panelOpen`, `interactPrompt`를 시작 시 미리 생성(Phaser는 첫 저장 때 changedata 이벤트를 안 보냄) → Godot 시그널로 대체
 - **터치 조작** (`systems/TouchControls.js`) — 터치 기기(또는 `?touch=1`)에서 표시; 화면 왼쪽 절반 누른 자리 중심의 가상 조이스틱(반경 70, 데드존 0.25, 360도), 오른쪽 아래 공격·구르기·무기·고정 버튼, 멀티터치 3개; 공격 방향은 자동 조준 → Godot CanvasLayer + 가상 조이스틱 + TouchScreenButton(action 지정)
 - **모바일 페이지** (`index.html`) — 확대 금지, 세로로 들면 "가로로 돌려 주세요" 안내, 터치 기기에 전체 화면 버튼(지원 브라우저는 가로 고정) → Godot 웹 내보내기 시 같은 HTML 셸 설정 / 모바일 앱은 프로젝트 설정 `orientation = landscape`
 - **임시 그래픽** (`systems/PlaceholderArt.js`) — 에셋이 없을 때 코드로 텍스처 생성 → Godot에서는 이식 대상 아님(진짜 에셋 사용)
