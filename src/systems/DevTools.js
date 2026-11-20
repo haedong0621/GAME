@@ -17,6 +17,7 @@ export class DevTools {
       ['무적 켜기/끄기', () => world().devToggleGod()],
       ['체력·기력 회복', () => world().devHeal()],
       ['장비 초기화', () => world().devResetGear()],
+      ['새로 시작 (저장 삭제)', () => world().devNewGame()],
       ['기록 저장 (F8)', () => world().recorder.download()],
     ];
     const x = 12, y0 = ui.scale.height - 40 - actions.length * 34; // 왼쪽 아래 (진단 화면과 안 겹치게)

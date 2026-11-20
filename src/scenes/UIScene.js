@@ -77,7 +77,11 @@ export class UIScene extends window.Phaser.Scene {
         player: this.registry.get('player'),
         items,
         skills: this.registry.get('skills'),
-        onCrafted: (info) => this.showBanner(`${info.name} 제작!`, '#e8c860'),
+        onCrafted: (info) => {
+          this.scene.get('World').saveGame(); // 제작하면 바로 저장
+          this.showBanner(`${info.name} 제작!`, '#e8c860');
+        },
+        onNewGame: () => this.scene.get('World').newGame(),
         onClose: () => { this.panel = null; this.registry.set('panelOpen', false); this.scene.resume('World'); },
       });
     });

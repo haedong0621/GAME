@@ -5,6 +5,7 @@ import { Monster } from '../entities/Monster.js';
 import { Boss } from '../entities/Boss.js';
 import { Workbench } from '../entities/Workbench.js';
 import { FrameRecorder } from '../systems/FrameRecorder.js';
+import { SaveSystem } from '../systems/SaveSystem.js';
 import { Mob } from '../entities/Mob.js';
 import { Bush } from '../entities/Bush.js';
 import { NoiseBus, StealthEnv, Level } from '../systems/Stealth.js';
@@ -42,6 +43,10 @@ export class WorldScene extends window.Phaser.Scene {
     this.monsters = [];
     this.bosses = [];
     this.interactables = []; // 제작대 등 상호작용 가능한 것
+    // 저장 데이터 (없으면 새 게임)
+    const save = SaveSystem.load();
+    this.collectedPickups = new Set(save?.world?.collectedPickups ?? []);
+    this.playTimeMs = save?.playTimeMs ?? 0;
     this.mobs = [];
     const bushes = [];
     const darkZones = [];
@@ -78,7 +83,8 @@ export class WorldScene extends window.Phaser.Scene {
             console.warn(`[World] 맵에 알 수 없는 아이템 id: ${itemId}`);
             break;
           }
-          pickups.add(new ItemPickup(this, obj.x, obj.y, itemId, getProperty(obj, 'amount', 1)));
+          if (this.collectedPickups.has(obj.id)) break; // 이미 주운 것 (저장 기록)
+          pickups.add(new ItemPickup(this, obj.x, obj.y, itemId, getProperty(obj, 'amount', 1), obj.id));
           break;
         }
         case 'monster': {
@@ -121,7 +127,8 @@ export class WorldScene extends window.Phaser.Scene {
     this.player = new Player(this, spawn.x, spawn.y, playerData, db, () => this.monsters);
     this.registry.set('player', this.player); // HUD가 체력·스태미나를 읽음
 
-    this.spawnPoint = spawn;
+    this.spawnPoint = spawn; // 저장소를 못 쓰는 환경에서만 쓰는 부활 지점
+    if (save) this.applySave(save);
     this.player.onDeath = () => this.onPlayerDeath();
     this.player.noiseBus = this.noiseBus;
 
@@ -140,6 +147,7 @@ export class WorldScene extends window.Phaser.Scene {
     this.physics.add.collider(this.player, this.mobs);
     this.physics.add.overlap(this.player, pickups, (_player, pickup) => {
       this.registry.get('inventory').add(pickup.itemId, pickup.amount);
+      if (pickup.mapId !== null) this.collectedPickups.add(pickup.mapId);
       pickup.collect();
     });
 
@@ -150,13 +158,55 @@ export class WorldScene extends window.Phaser.Scene {
     cam.startFollow(this.player, true, 0.12, 0.12);
   }
 
+  // ---------- 저장 ----------
+  /** 지금 상태를 저장하고, 부활 지점을 이 자리로 */
+  saveGame() {
+    const ok = SaveSystem.save(SaveSystem.snapshot({
+      player: this.player,
+      inventory: this.registry.get('inventory'),
+      collectedPickups: this.collectedPickups,
+      playTimeMs: this.playTimeMs,
+    }));
+    this.banner(ok ? '저장됨' : '저장 실패 (브라우저 저장소를 쓸 수 없음)', ok ? '#9adf5a' : '#d06050');
+    return ok;
+  }
+
+  /** 저장 데이터를 게임에 적용 (위치, 장비, 가방) */
+  applySave(save) {
+    const p = this.player;
+    const sp = save.player ?? {};
+    if (Number.isFinite(sp.x) && Number.isFinite(sp.y)) p.body.reset(sp.x, sp.y);
+    const weapons = this.registry.get('weapons'), armors = this.registry.get('armors');
+    const ownedW = (sp.ownedWeapons ?? []).filter((id) => weapons[id]?.combo);
+    if (ownedW.length) p.ownedWeapons = ownedW;
+    const ownedA = (sp.ownedArmors ?? []).filter((id) => armors[id]);
+    if (ownedA.length) p.ownedArmors = ownedA;
+    const wi = p.ownedWeapons.indexOf(sp.weapon);
+    p.equip(wi >= 0 ? wi : 0, false);
+    p.equipArmor(armors[sp.armor] ? sp.armor : p.ownedArmors[0], false);
+    p.stats.hp = p.stats.maxHp;
+    const inv = this.registry.get('inventory');
+    for (const [id, n] of save.inventory ?? []) if (this.registry.get('items').has(id)) inv.add(id, n);
+    const when = save.savedAt ? new Date(save.savedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    const notice = SaveSystem.takeNotice();
+    this.time.delayedCall(300, () => this.banner(notice ?? `이어하기${when ? ` (${when} 저장)` : ''}`, '#c8d8b0'));
+  }
+
+  /** 저장을 지우고 처음부터 */
+  newGame() {
+    SaveSystem.clear();
+    window.location.reload();
+  }
+
   update(_time, delta) {
+    this.playTimeMs += delta;
     const cmd = this.inputSystem.getCommand();
 
     // 상호작용: 가장 가까운 대상이 범위 안이면 안내 표시, 누르면 열기
     const near = this.nearestInteractable();
     this.registry.set('interactPrompt', near && !this.player.isDead ? near.label : null);
     if (cmd.interact && near && this.player.stateName === 'free') {
+      if (near.isSavePoint) this.saveGame(); // 거점에 들르면 저장
       this.openPanel(near.action);
       return;
     }
@@ -226,6 +276,10 @@ export class WorldScene extends window.Phaser.Scene {
     this.player.stats.stamina = this.player.stats.maxStamina;
   }
 
+  devNewGame() {
+    this.newGame();
+  }
+
   devResetGear() {
     const p = this.player;
     p.ownedWeapons = [...p.data_.weaponSlots];
@@ -278,6 +332,15 @@ export class WorldScene extends window.Phaser.Scene {
 
   onPlayerDeath() {
     this.banner('쓰러졌다…', '#d06050');
+    // 마지막 저장 시점으로 되돌아간다 (저장이 없으면 처음부터). 페이지를 새로 불러와 깨끗하게 시작.
+    if (SaveSystem.available()) {
+      this.time.delayedCall(this.player.data_.respawnDelayMs, () => {
+        SaveSystem.setNotice(SaveSystem.load() ? '마지막 저장 시점으로 돌아왔다' : '처음부터 다시 시작');
+        window.location.reload();
+      });
+      return;
+    }
+    // 저장소를 못 쓰는 환경(비공개 창 등): 예전처럼 시작 지점에서 부활
     this.time.delayedCall(this.player.data_.respawnDelayMs, () => {
       this.player.respawn(this.spawnPoint.x, this.spawnPoint.y);
       for (const b of this.bosses) b.resetToHome();

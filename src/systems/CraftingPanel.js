@@ -46,6 +46,12 @@ export class CraftingPanel {
     // 버튼
     this.craftBtn = this.button(this.x0 + W - 210, this.y0 + H - 46, 110, '제작', () => this.craft());
     this.closeBtn = this.button(this.x0 + W - 90, this.y0 + H - 46, 70, '닫기', () => this.close());
+    // 처음부터 다시 (저장 삭제) — 실수로 누르지 않게 확인 창
+    const ng = scene.add.text(this.x0 + W - 20, this.y0 + 18, '처음부터 다시', { fontFamily: 'sans-serif', fontSize: '12px', color: '#8a7a64' })
+      .setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    ng.on('pointerdown', () => { if (window.confirm('저장을 지우고 처음부터 시작할까요? 되돌릴 수 없어요.')) ctx.onNewGame?.(); });
+    this.root.add(ng);
+    this.root.add(scene.add.text(this.x0 + 130, this.y0 + 22, '거점 — 여기서 저장됨 · 쓰러지면 이 시점으로 돌아옴', { fontFamily: 'sans-serif', fontSize: '12px', color: '#9adf5a' }));
     this.root.add(scene.add.text(this.x0 + 20, this.y0 + H - 34, '↑↓ 선택 · Enter 제작 · Esc 닫기', { fontFamily: 'sans-serif', fontSize: '12px', color: COL.dim }));
 
     this.onKey = (e) => {
