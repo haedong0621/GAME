@@ -4,6 +4,7 @@
 > 형식: `시스템 — 지금(Phaser)은 어떻게 동작하는가 → Godot에서는 무엇으로 만든다`
 
 ## 공통 규약
+- **물리 시간** (`src/main.js`) — Arcade `fixedStep: false`: 물리를 화면 프레임마다 실제 경과 시간으로 계산 (고정 1/60초는 120Hz 모니터·프레임 박자 흔들림 때 "안 움직이는 프레임"이 생겨 끊겨 보였음) → Godot은 `_physics_process` 고정 틱 + **Physics Interpolation**(프로젝트 설정) 켜기로 같은 문제 해결
 - **타일 크기** — 32px 고정 (`src/config.js` `TILE_SIZE`) → Godot TileSet `tile_size = 32x32`
 - **좌표/정렬** — 세워진 물체의 위치 = 발밑 좌표, origin (0.5, 1) → Godot Sprite2D `offset.y = -높이/2`(또는 `centered=false`+offset)로 노드 위치를 발밑에 맞춤
 - **Y-sort** — 매 프레임 `depth = 발밑 y`, 바닥 타일은 depth -1 → Godot `y_sort_enabled = true`인 부모 노드 아래에 캐릭터·나무를 둠, 바닥 TileMapLayer는 그 밖(아래)에
@@ -52,7 +53,9 @@
 - **모바일 페이지** (`index.html`) — 확대 금지, 세로로 들면 "가로로 돌려 주세요" 안내, 터치 기기에 전체 화면 버튼(지원 브라우저는 가로 고정) → Godot 웹 내보내기 시 같은 HTML 셸 설정 / 모바일 앱은 프로젝트 설정 `orientation = landscape`
 - **임시 그래픽** (`systems/PlaceholderArt.js`) — 에셋이 없을 때 코드로 텍스처 생성 → Godot에서는 이식 대상 아님(진짜 에셋 사용)
 - **디버그** — 주소에 `?debug=1`이면 충돌 박스와 공격 판정 원 표시 → Godot 에디터 *Debug → Visible Collision Shapes*
-- **입력 진단 화면** (`systems/InputDebugPanel.js`) — `` ` ``/F2 토글, `?debug=1`·`?input=1`이면 시작부터 표시; 눌린 키, 브라우저가 받은 키 이벤트 기록(한글 조합 여부), 이동 막힘 이유와 누적, 원인불명 정지 횟수, 프레임 끊김 → Godot 이식 대상 아님(에디터 디버거 사용)
+- **입력 진단 화면** (`systems/InputDebugPanel.js`) — `` ` ``/F2 토글, `?debug=1`·`?input=1`이면 시작부터 표시; 눌린 키, 브라우저가 받은 키 이벤트 기록(한글 조합 여부), 이동 막힘 이유와 누적, 원인불명 정지 횟수, 프레임 끊김, 최근 150프레임 간격 그래프(초록 정상·노랑·빨강 끊김) → Godot 이식 대상 아님(에디터 디버거 사용)
+- **블랙박스 기록** (`systems/FrameRecorder.js`) — 최근 10초 매 프레임(프레임 간격, 눌린 키, 이동·버튼 입력, 상태, 막힘 이유, 위치·속도, 벽 닿음, 카메라, FPS) 보관, F8로 JSON 내려받기 → 이식 대상 아님
+- **테스트 모드** (`systems/DevTools.js`, `?dev=1`) — 왼쪽 아래 버튼: 보스 앞으로, 보스 체력 20%, 보스 즉시 부활, 재료 받기, 무적, 회복, 장비 초기화, 기록 저장; 화면 버튼 클릭은 공격으로 처리 안 함(registry `uiClickAt`) → 이식 대상 아님 (Godot은 디버그 콘솔/치트 씬)
 
 ## 결정된 방향 (아직 미구현)
 - **저장** — 클라우드 저장(Supabase 무료 플랜 + 구글 로그인) 주 사용, 브라우저 localStorage는 오프라인·비로그인 보조; 저장 데이터는 JSON 한 덩어리(플레이어·인벤토리·세계 변화) → Godot `user://` JSON 파일 + 같은 백엔드 HTTP API

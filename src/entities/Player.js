@@ -102,10 +102,11 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
   /**
    * 적의 공격을 받는다.
-   * @returns {'hit'|'dodged'|'ignored'} 맞음 / 구르기 무적으로 피함 / 무시(이미 쓰러짐·피격 무적)
+   * @returns {'hit'|'dodged'|'blocked'|'ignored'} 맞음 / 구르기 무적으로 피함 / 테스트 무적 / 무시(이미 쓰러짐·피격 무적)
    */
   receiveHit(damage, fromX, fromY) {
     if (this.isDead || this.invulnMs > 0) return 'ignored';
+    if (this.godMode) { spawnFloatingLabel(this.scene, this.x, this.y - 30, '무적'); return 'blocked'; } // 'ignored'가 아니면 그 공격은 한 번만 판정
     if (this.isInvincible) {
       spawnFloatingLabel(this.scene, this.x, this.y - 30, '회피!');
       return 'dodged';

@@ -4,6 +4,7 @@ import { ItemPickup } from '../entities/ItemPickup.js';
 import { Monster } from '../entities/Monster.js';
 import { Boss } from '../entities/Boss.js';
 import { Workbench } from '../entities/Workbench.js';
+import { FrameRecorder } from '../systems/FrameRecorder.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH } from '../systems/YSort.js';
@@ -90,6 +91,7 @@ export class WorldScene extends window.Phaser.Scene {
     const playerData = this.registry.get('playerData');
     this.inputSystem = new InputSystem(this, () => this.registry.get('touch'));
     this.registry.set('inputSystem', this.inputSystem); // 입력 진단 화면용
+    this.recorder = new FrameRecorder(this); // F8: 직전 10초 기록 저장
     const db = { weapons: this.registry.get('weapons'), armors: this.registry.get('armors'), skills: this.registry.get('skills') };
     this.player = new Player(this, spawn.x, spawn.y, playerData, db, () => this.monsters);
     this.registry.set('player', this.player); // HUD가 체력·스태미나를 읽음
@@ -129,8 +131,52 @@ export class WorldScene extends window.Phaser.Scene {
 
     this.player.update(cmd, delta);
     for (const m of this.monsters) m.update?.(delta); // 보스 AI, 상태 이상(독) 등
+    this.recorder.record(delta, cmd, this.player, this.inputSystem);
     // HUD에 보여 줄 보스: 플레이어를 발견한 보스
     this.registry.set('activeBoss', this.bosses.find((b) => b.isAlert) ?? null);
+  }
+
+  // ---------- 테스트 모드(?dev=1) 동작 ----------
+  devTeleportToBoss() {
+    const b = this.bosses[0];
+    if (b) this.player.body.reset(b.x - 110, b.y + 10);
+  }
+
+  devBossHp(ratio) {
+    const b = this.bosses[0];
+    if (b && !b.isDeadState) b.stats.hp = Math.max(1, Math.round(b.stats.maxHp * ratio));
+  }
+
+  devReviveBoss() {
+    const b = this.bosses[0];
+    if (b && b.isDeadState) b.revive();
+  }
+
+  devGiveMaterials() {
+    const inv = this.registry.get('inventory');
+    inv.add('beast_hide', 4);
+    inv.add('beast_fang', 3);
+    inv.add('wood', 2);
+    this.banner('재료 받음', '#9adf5a');
+  }
+
+  devToggleGod() {
+    this.player.godMode = !this.player.godMode;
+    this.banner(this.player.godMode ? '무적 켜짐' : '무적 꺼짐', '#9adf5a');
+  }
+
+  devHeal() {
+    this.player.stats.hp = this.player.stats.maxHp;
+    this.player.stats.stamina = this.player.stats.maxStamina;
+  }
+
+  devResetGear() {
+    const p = this.player;
+    p.ownedWeapons = [...p.data_.weaponSlots];
+    p.ownedArmors = [p.data_.startArmor];
+    p.equip(0, false);
+    p.equipArmor(p.data_.startArmor, false);
+    this.banner('장비 초기화', '#9adf5a');
   }
 
   nearestInteractable() {

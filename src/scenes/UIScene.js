@@ -2,6 +2,7 @@ import { DEBUG, FORCE_TOUCH } from '../config.js';
 import { TouchControls } from '../systems/TouchControls.js';
 import { InputDebugPanel } from '../systems/InputDebugPanel.js';
 import { CraftingPanel } from '../systems/CraftingPanel.js';
+import { DevTools } from '../systems/DevTools.js';
 
 const BAR_W = 160;
 const BAR_H = 10;
@@ -53,6 +54,7 @@ export class UIScene extends window.Phaser.Scene {
 
     const params = new URLSearchParams(window.location.search);
     this.inputDebug = new InputDebugPanel(this, DEBUG || params.has('input'));
+    if (params.has('dev')) this.devTools = new DevTools(this);
 
     // 상호작용 안내 ("E  제작대 열기")
     this.promptText = this.add.text(this.scale.width / 2, this.scale.height * 0.66, '', {

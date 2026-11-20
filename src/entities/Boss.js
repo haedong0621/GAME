@@ -290,16 +290,24 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.onDefeated(this);
 
     if (this.data_.respawnMs) {
-      this.scene.time.delayedCall(this.data_.respawnMs, () => {
-        this.body.enable = true;
-        this.body.reset(this.home.x, this.home.y);
-        this.visual.setAlpha(1).setAngle(0);
-        this.stats.reset();
-        this.awareness = Awareness.UNAWARE;
-        this.enter(State.IDLE);
-      });
+      this.respawnTimer = this.scene.time.delayedCall(this.data_.respawnMs, () => this.revive());
     }
   }
+
+  /** 다시 나타남 (집에서, 체력 가득, 경계 해제) */
+  revive() {
+    this.respawnTimer?.remove();
+    this.respawnTimer = null;
+    this.scene.tweens.killTweensOf(this.visual);
+    this.body.enable = true;
+    this.body.reset(this.home.x, this.home.y);
+    this.visual.setAlpha(1).setAngle(0).clearTint();
+    this.stats.reset();
+    this.awareness = Awareness.UNAWARE;
+    this.enter(State.IDLE);
+  }
+
+  get isDeadState() { return this.state === State.DEAD; }
 
   face(dir) {
     this.facing = dir;

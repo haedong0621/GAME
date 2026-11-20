@@ -82,6 +82,7 @@ export class InputSystem {
     scene.input.on('gameout', () => { this.mouseActive = false; });
     scene.input.on('pointerdown', (p) => {
       if (p.wasTouch) { this.mouseActive = false; return; }
+      if (scene.registry.get('uiClickAt') === p.downTime) return; // 화면 버튼(테스트 모드 등)을 누른 클릭은 공격 아님
       this.mouseActive = true;
       if (p.rightButtonDown()) { this.pressed.lockToggle = true; this.log.push({ type: 'down', code: '마우스 오른쪽', at: performance.now() }); }
       else if (p.leftButtonDown()) { this.pressed.attack = true; this.log.push({ type: 'down', code: '마우스 왼쪽(공격)', at: performance.now() }); }
