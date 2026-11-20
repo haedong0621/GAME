@@ -12,7 +12,7 @@
 
 ## 시스템 목록
 - **부팅/로딩** (`scenes/BootScene.js`) — JSON·맵·타일셋을 미리 로드하고 임시 그래픽 생성 후 World+UI 씬 시작 → Godot 메인 씬 `_ready()`에서 Autoload 초기화 후 `World.tscn` 로드
-- **입력** (`systems/InputSystem.js`) — 매 프레임 "명령" `{move, attack, roll, switchWeapon}` 반환; 키보드(WASD, J/마우스 왼쪽, Space/K, 1·2·Q)와 터치 조작판 결과를 합침; 버튼류는 이벤트를 다음 프레임까지 보관(짧은 탭 유실 방지) → Godot Input Map(`move_*`, `attack`, `roll`, `weapon_*`) + `Input.get_vector()`
+- **입력** (`systems/InputSystem.js`) — 매 프레임 "명령" `{move, attack, roll, switchWeapon}` 반환; 키는 `event.code`(물리 키 위치)로 읽음 — 한글 입력 상태에서도 동작, 창 이탈 시 눌린 키 해제; WASD/방향키, J/마우스 왼쪽, Space/K, 1·2·Q; 터치 조작판 결과를 합침; 버튼류는 다음 프레임까지 보관 → Godot Input Map을 `physical_keycode`로 등록 + `Input.get_vector()`
 - **플레이어 이동** (`entities/Player.js`) — 방향 × `data/player.json`의 `speed` 로 속도 설정, 충돌은 발밑 작은 박스(16×10), 마지막 이동 방향 = 바라보는 방향(`facing`) → Godot `CharacterBody2D` + `move_and_slide()`, CollisionShape2D(16×10)를 발밑에
 - **플레이어 상태 머신** (`entities/Player.js`) — `free → windup → active → recovery → (다음 타 windup | roll | free)`; windup/active/recovery 중 입력은 예약(버퍼), recovery 시작 후 `chainAfterMs`가 지나야 다음 타·구르기로 연결; 마지막 타 뒤 예약은 1타부터 → Godot `enum State` + `match state`
 - **무기·콤보** (`entities/Player.js`, `data/weapons.json`) — 무기마다 `combo` 배열(타마다 휘두르기 각도 from/to, windup/active/recovery/chainAfter ms, 데미지, 기력, 전진 속도, 판정 원, 화면 흔들림, 히트스톱, 몸 기울기·웅크림)과 이동속도 배율; 무기 슬롯은 `data/player.json` `weaponSlots`, free 상태에서만 교체 → Godot 무기 Resource(`WeaponData.tres`, `Array[AttackMove]`), 판정은 Area2D를 active 구간에만 켬
