@@ -1,0 +1,39 @@
+{
+  "_설명": "제작대에서 만들 수 있는 것. result.kind = weapon | armor, materials = 필요한 재료와 개수",
+  "recipes": [
+    {
+      "id": "fang_sword",
+      "result": {
+        "kind": "weapon",
+        "id": "fang_sword"
+      },
+      "materials": [
+        {
+          "itemId": "beast_fang",
+          "amount": 2
+        },
+        {
+          "itemId": "wood",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "swamp_hide_armor",
+      "result": {
+        "kind": "armor",
+        "id": "swamp_hide_armor"
+      },
+      "materials": [
+        {
+          "itemId": "beast_hide",
+          "amount": 4
+        },
+        {
+          "itemId": "beast_fang",
+          "amount": 1
+        }
+      ]
+    }
+  ]
+}

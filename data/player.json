@@ -29,5 +29,6 @@
   "backpedalSpeedMultiplier": 0.7,
   "autoAimRange": 110,
   "lockOnRange": 260,
-  "reverseAccelMultiplier": 1.8
+  "reverseAccelMultiplier": 1.8,
+  "startArmor": "rags"
 }

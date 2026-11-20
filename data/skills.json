@@ -1,0 +1,19 @@
+{
+  "venom_fang": {
+    "name": "독니",
+    "from": "늪지 짐승",
+    "type": "onHitPoison",
+    "description": "적중하면 독을 남긴다: 3초 동안 0.5초마다 3 피해 (다시 맞히면 시간 초기화).",
+    "damagePerTick": 3,
+    "tickMs": 500,
+    "durationMs": 3000
+  },
+  "swamp_toughness": {
+    "name": "늪의 질김",
+    "from": "늪지 짐승",
+    "type": "passive",
+    "description": "맞아도 덜 밀려나고(-50%), 구르기 기력 소모가 줄어든다(-20%).",
+    "knockbackMultiplier": 0.5,
+    "rollStaminaMultiplier": 0.8
+  }
+}

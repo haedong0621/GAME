@@ -7,6 +7,7 @@
     "description": "어디서 주웠는지 모를 녹슨 검. 없는 것보단 낫다.",
     "moveSpeedMultiplier": 1.0,
     "view": {"bladeLength": 18, "bladeWidth": 3, "bladeColor": "#b9b3a5", "hiltColor": "#5a3a22", "restAngle": 115},
+    "skills": [],
     "combo": [
       {"name": "가로 베기", "from": -110, "to": 75, "windupMs": 140, "activeMs": 90, "recoveryMs": 300, "chainAfterMs": 70, "damage": 10, "staminaCost": 9, "lungeSpeed": 80, "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45, "lean": 7, "crouch": 1.0, "moveCancelAfterMs": 170},
       {"name": "되베기", "from": 110, "to": -75, "windupMs": 110, "activeMs": 90, "recoveryMs": 300, "chainAfterMs": 70, "damage": 11, "staminaCost": 9, "lungeSpeed": 90, "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45, "lean": 7, "crouch": 1.0, "moveCancelAfterMs": 170},
@@ -20,9 +21,24 @@
     "description": "혼자 들기도 버거운 쇳덩이. 맞으면 아프다.",
     "moveSpeedMultiplier": 0.85,
     "view": {"bladeLength": 30, "bladeWidth": 6, "bladeColor": "#8f8a80", "hiltColor": "#3f2a1a", "restAngle": 140},
+    "skills": [],
     "combo": [
       {"name": "크게 휘두르기", "from": -135, "to": 100, "windupMs": 380, "activeMs": 150, "recoveryMs": 460, "chainAfterMs": 200, "damage": 28, "staminaCost": 18, "lungeSpeed": 60, "hitDistance": 22, "hitRadius": 23, "shake": 0.006, "hitstopMs": 110, "lean": 10, "crouch": 0.95, "moveCancelAfterMs": 320},
       {"name": "내려찍기", "from": -170, "to": 15, "windupMs": 430, "activeMs": 130, "recoveryMs": 680, "chainAfterMs": 380, "damage": 45, "staminaCost": 24, "lungeSpeed": 120, "hitDistance": 24, "hitRadius": 25, "shake": 0.011, "hitstopMs": 170, "lean": 14, "crouch": 0.78, "moveCancelAfterMs": 520}
+    ]
+  },
+
+  "fang_sword": {
+    "name": "늪짐승 송곳니 검",
+    "type": "sword",
+    "description": "늪지 짐승의 송곳니를 갈아 만든 톱날 검. 베인 상처가 썩어 들어간다.",
+    "moveSpeedMultiplier": 1.0,
+    "view": {"bladeLength": 20, "bladeWidth": 4, "bladeColor": "#d8cca6", "hiltColor": "#3a4529", "restAngle": 115, "style": "fang", "glowColor": "#9adf5a"},
+    "skills": ["venom_fang"],
+    "combo": [
+      {"name": "가로 베기", "from": -110, "to": 75, "windupMs": 140, "activeMs": 90, "recoveryMs": 300, "chainAfterMs": 70, "damage": 14, "staminaCost": 9, "lungeSpeed": 80, "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45, "lean": 7, "crouch": 1.0, "moveCancelAfterMs": 170},
+      {"name": "되베기", "from": 110, "to": -75, "windupMs": 110, "activeMs": 90, "recoveryMs": 300, "chainAfterMs": 70, "damage": 15, "staminaCost": 9, "lungeSpeed": 90, "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45, "lean": 7, "crouch": 1.0, "moveCancelAfterMs": 170},
+      {"name": "내려찍기", "from": -165, "to": 20, "windupMs": 250, "activeMs": 110, "recoveryMs": 480, "chainAfterMs": 260, "damage": 31, "staminaCost": 15, "lungeSpeed": 170, "hitDistance": 20, "hitRadius": 19, "shake": 0.006, "hitstopMs": 100, "lean": 11, "crouch": 0.85, "moveCancelAfterMs": 360}
     ]
   }
 }
