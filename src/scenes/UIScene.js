@@ -81,7 +81,7 @@ export class UIScene extends window.Phaser.Scene {
       this.registry.set('touch', new TouchControls(this));
     } else {
       this.add.text(12, this.scale.height - 8,
-        'WASD 이동 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기 · ` 입력 진단' + (DEBUG ? '   [debug]' : ''),
+        'WASD/TFGH 이동 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기 · ` 입력 진단' + (DEBUG ? '   [debug]' : ''),
         { ...small, color: '#c9ced4' }).setOrigin(0, 1).setShadow(1, 1, '#000', 0);
     }
   }

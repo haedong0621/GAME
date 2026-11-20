@@ -3,8 +3,8 @@
  * 엔티티는 입력 장치를 직접 보지 않고 명령만 받는다 → 나중에 협동 플레이에서 명령을 네트워크로 주고받기 쉽다.
  * Godot: Input Map(move_*, attack, roll, weapon_1/2) + Input.get_vector() — Godot은 물리 키(physical_keycode) 기준으로 매핑.
  *
- * 조작: WASD 또는 방향키 이동 / 마우스 커서 = 조준 / J 또는 마우스 왼쪽 = 공격 / Space 또는 K = 구르기
- *       Tab·L·마우스 오른쪽 = 대상 고정(락온) / E·F = 상호작용(제작대 등) / 1·2·3 = 무기 선택, Q = 다음 무기
+ * 조작: WASD·TFGH(보조)·방향키 이동 / 마우스 커서 = 조준 / J 또는 마우스 왼쪽 = 공격 / Space 또는 K = 구르기
+ *       Tab·L·마우스 오른쪽 = 대상 고정(락온) / E = 상호작용(제작대 등) / 1·2·3 = 무기 선택, Q = 다음 무기
  * 조준: 마우스가 게임 화면 위에 있으면 커서 쪽, 아니면(키보드만·터치) 공격 때 가까운 적 자동 조준
  *
  * 키는 event.code(키보드의 "물리적 위치")로 읽는다.
@@ -13,16 +13,16 @@
  * 버튼류(공격·구르기·무기)는 "눌렀다" 이벤트를 다음 프레임까지 보관한다 (아주 짧은 탭도 놓치지 않게).
  */
 const MOVE_CODES = {
-  KeyW: 'up', ArrowUp: 'up',
-  KeyS: 'down', ArrowDown: 'down',
-  KeyA: 'left', ArrowLeft: 'left',
-  KeyD: 'right', ArrowRight: 'right',
+  KeyW: 'up', ArrowUp: 'up', KeyT: 'up',
+  KeyS: 'down', ArrowDown: 'down', KeyG: 'down',
+  KeyA: 'left', ArrowLeft: 'left', KeyF: 'left',
+  KeyD: 'right', ArrowRight: 'right', KeyH: 'right',
 };
 const BUTTON_CODES = {
   KeyJ: ['attack', true],
   Space: ['roll', true], KeyK: ['roll', true],
   Tab: ['lockToggle', true], KeyL: ['lockToggle', true],
-  KeyE: ['interact', true], KeyF: ['interact', true],
+  KeyE: ['interact', true],
   Digit1: ['switchWeapon', 0], Digit2: ['switchWeapon', 1], Digit3: ['switchWeapon', 2], KeyQ: ['switchWeapon', 'next'],
 };
 /** 브라우저 기본 동작(스크롤 등)을 막을 키 */

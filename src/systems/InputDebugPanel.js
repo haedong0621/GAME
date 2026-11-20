@@ -7,8 +7,9 @@
  * Godot 이식 대상 아님 (Godot은 에디터 디버거 사용).
  */
 const KEYS = [
-  ['KeyW', 'W'], ['KeyA', 'A'], ['KeyS', 'S'], ['KeyD', 'D'],
-  ['Space', 'Spc'], ['KeyJ', 'J'],
+  // 1줄: WASD + J, 2줄: TFGH + Space
+  ['KeyW', 'W'], ['KeyA', 'A'], ['KeyS', 'S'], ['KeyD', 'D'], ['KeyJ', 'J'],
+  ['KeyT', 'T'], ['KeyF', 'F'], ['KeyG', 'G'], ['KeyH', 'H'], ['Space', 'Spc'],
 ];
 const ARROW = (x, y) => {
   if (!x && !y) return '없음';
@@ -21,6 +22,10 @@ export class InputDebugPanel {
     this.scene = scene;
     this.visible = startVisible;
     this.g = scene.add.graphics().setDepth(50);
+    // 키 상자 위 글자 (상자마다 하나)
+    this.keyTexts = KEYS.map(([, l]) => scene.add.text(0, 0, l, {
+      fontFamily: 'monospace', fontSize: '12px', color: '#e8eef2',
+    }).setOrigin(0.5).setDepth(51));
     this.text = scene.add.text(0, 0, '', {
       fontFamily: 'monospace', fontSize: '12px', color: '#e8eef2', lineSpacing: 2,
     }).setDepth(51);
@@ -63,6 +68,7 @@ export class InputDebugPanel {
 
     this.g.clear();
     this.text.setVisible(this.visible);
+    this.keyTexts.forEach((t) => t.setVisible(false));
     if (!this.visible) return;
 
     const W = this.scene.scale.width;
@@ -78,12 +84,12 @@ export class InputDebugPanel {
     });
 
     // 키 상자
-    KEYS.forEach(([code, label], i) => {
+    KEYS.forEach(([code], i) => {
       const on = input.rawHeld.has(code);
-      const bx = x0 + i * 44, by = y0;
-      this.g.fillStyle(on ? 0x5ad06a : 0x333a40).fillRoundedRect(bx, by, 40, 26, 4);
+      const bx = x0 + (i % 5) * 52, by = y0 + Math.floor(i / 5) * 30;
+      this.g.fillStyle(on ? 0x5ad06a : 0x333a40).fillRoundedRect(bx, by, 46, 26, 4);
+      this.keyTexts[i].setPosition(bx + 23, by + 13).setVisible(true);
     });
-    const keyLabels = KEYS.map(([, l]) => ` ${l}`.padEnd(4)).join('  ');
 
     const now = performance.now();
     const log = [...input.log].reverse().slice(0, 8).map((e) => {
@@ -94,9 +100,7 @@ export class InputDebugPanel {
     });
     const blocks = Object.entries(this.blockCounts).map(([k, n]) => `${k} ${n}`).join(', ') || '-';
 
-    this.text.setPosition(x0, y0 + 6).setText([
-      keyLabels,
-      '',
+    this.text.setPosition(x0, y0 + 66).setText([
       `동시에 눌린 키: ${input.rawHeld.size}개`,
       `이동 입력: ${ARROW(mv.x, mv.y)}`,
       `캐릭터 상태: ${player.stateName}`,

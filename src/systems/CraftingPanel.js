@@ -52,7 +52,7 @@ export class CraftingPanel {
       if (['ArrowUp', 'KeyW'].includes(e.code)) { this.sel = (this.sel + this.rows.length - 1) % this.rows.length; this.render(); }
       else if (['ArrowDown', 'KeyS'].includes(e.code)) { this.sel = (this.sel + 1) % this.rows.length; this.render(); }
       else if (['Enter', 'Space', 'KeyJ'].includes(e.code)) { e.preventDefault(); this.craft(); }
-      else if (['Escape', 'KeyE', 'KeyF'].includes(e.code)) { e.preventDefault(); this.close(); }
+      else if (['Escape', 'KeyE'].includes(e.code)) { e.preventDefault(); this.close(); }
     };
     // 여는 키(E)가 바로 닫기로 처리되지 않도록 한 박자 뒤에 연결
     this.keyTimer = setTimeout(() => window.addEventListener('keydown', this.onKey), 0);
