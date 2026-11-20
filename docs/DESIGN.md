@@ -30,7 +30,7 @@
 - **보스 공격 패턴** (`data/monsters.json` `attacks`) — `circle`형(앞 `offset` 거리에 반경 `radius` 원, 판정 중 짧은 전진 `lunge`), `charge`형(예고 중 `aimLockAt` 비율까지 플레이어 조준 후 방향 고정, `speed`로 돌진, 몸 원 판정, 벽에 막히면 정지); 한 공격은 플레이어에게 최대 1회 → Godot 공격별 Area2D + AnimationPlayer
 - **예고 표시(텔레그래프)** (`entities/Boss.js` `drawTelegraph`) — 예고 동작 중 바닥에 빨간 범위(원은 타원, 돌진은 직사각형 경로)가 점점 진해지고 안쪽 원이 차오름, 판정 순간 진하게; 보스 몸은 웅크림+붉은 색, 빈틈(recovery)은 창백한 색 → Godot 바닥 레이어의 Polygon2D/Sprite2D + Tween
 - **경계 단계** (`entities/Boss.js` `senses`, `Awareness`) — `unaware → alert`(발견: 포효), 놓치면 `suspicious`(귀가), 지금은 거리(`detectRadius`)만 판정; 눈치채기 전 피격 시 `sneakAttackMultiplier` 배율(기습) → M4 스닉에서 `senses()`에 시야각·소리·은신 추가; Godot 같은 enum + RayCast2D 시야
-- **플레이어 피격** (`entities/Player.js` `receiveHit`) — 구르기 무적 중이면 '회피!'(데미지 없음), 아니면 체력 감소 + `hurt` 상태(밀려남 `knockbackSpeed`, `hurtMs`, 콤보·예약 취소) + `hitInvulnMs` 동안 무적(깜빡임); 결과 `hit/dodged/ignored` 반환 → Godot Hurtbox Area2D + 같은 규칙
+- **플레이어 피격** (`entities/Player.js` `receiveHit`) — 구르기 무적 중이면 '회피!'(데미지 없음), 아니면 체력 감소 + `hurt` 상태(밀려남 `knockbackSpeed`, `hurtMs`, 콤보·예약 취소, 밀려나는 중 누른 구르기·공격은 예약했다가 끝나자마자 실행) + `hitInvulnMs` 동안 무적(깜빡임); 결과 `hit/dodged/ignored` 반환 → Godot Hurtbox Area2D + 같은 규칙
 - **쓰러짐·부활** (`scenes/WorldScene.js` `onPlayerDeath`) — 체력 0이면 `dead`, `respawnDelayMs` 후 시작 지점에서 체력 가득 부활, 보스는 집으로 돌아가 체력 회복 → Godot 같은 흐름 (GameState 싱글톤에서 처리)
 - **보스 처치 보상** (`scenes/WorldScene.js` `onBossDefeated`) — `drops` 목록의 재료를 쓰러진 자리 주변에 떨굼(주워야 획득), '토벌!' 알림, `respawnMs` 후 보스 재등장(반복 사냥용) → Godot 같은 흐름, 드롭 테이블은 Resource
 - **장비** (`entities/Player.js` `ownedWeapons`/`ownedArmors`/`equip`/`equipArmor`) — 무기는 가진 목록에서 1·2·3/Q로 교체, 갑옷 1칸; 갑옷은 `data/armors.json`(최대 체력 보너스, 겉모습 텍스처, 스킬) → Godot Equipment.gd + Resource

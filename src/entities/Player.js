@@ -250,7 +250,15 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       case State.HURT: {
         const k = Math.max(0, this.stateTime / this.data_.hurtMs) * this.data_.knockbackSpeed * this.modifier('knockbackMultiplier');
         this.setVelocity(this.knock.x * k, this.knock.y * k);
-        if (this.stateTime <= 0) this.enter(State.FREE);
+        // 맞고 밀려나는 중에 누른 구르기·공격은 버리지 않고 예약 → 끝나자마자 실행 (구르기 우선)
+        this.bufferInput(cmd);
+        if (this.stateTime <= 0) {
+          const next = this.queued;
+          this.queued = null;
+          this.enter(State.FREE);
+          if (next === 'roll') this.tryRoll(cmd);
+          else if (next === 'attack') this.tryAttack(0, cmd);
+        }
         break;
       }
       case State.DEAD:
