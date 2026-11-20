@@ -60,6 +60,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.visual = scene.add.image(x, y, data.texture).setOrigin(0.5, 1);
     this.telegraph = scene.add.graphics();
     this.hpBarSmall = scene.add.graphics();
+    this.icon = scene.add.text(x, y, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffe060', resolution: 2 })
+      .setOrigin(0.5, 1).setStroke('#1b1410', 3);
 
     this.state = State.IDLE;
     this.awareness = Awareness.UNAWARE;
@@ -106,6 +108,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   // ---------- 매 프레임 ----------
   /** @param {{player, env, noises, mobs, stealth}} ctx */
   update(dt, ctx) {
+    this.ctx = ctx;
     if (this.state === State.DEAD) { this.syncVisual(); return; }
     this.status.update(dt);
     if (this.state === State.DEAD) return; // 독으로 쓰러졌을 수 있음
@@ -372,6 +375,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
 
     this.drawTelegraph();
     this.drawSmallHpBar();
+    this.drawSenses();
   }
 
   /** 바닥의 위험 범위 표시: 예고 동작 중 점점 진해지고, 판정 순간 번쩍 */
@@ -404,6 +408,30 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
       // 진행 정도를 보여 주는 안쪽 원 (다 차면 공격)
       g.fillStyle(0xff5030, alpha * 0.8).fillEllipse(c.x, groundY, c.radius * 2 * t, c.radius * 1.4 * t);
     }
+  }
+
+  /** 경계 표시(? / 경계 막대)와, 웅크린 동안 바닥에 보이는 시야 부채꼴 (잡몹과 같은 규칙) */
+  drawSenses() {
+    const ctx = this.ctx;
+    const level = this.meter.level;
+    const dead = this.state === State.DEAD;
+    const top = this.y - this.data_.hurtbox.height - 6;
+    this.icon.setPosition(this.x, top - (this.awareness === Awareness.UNAWARE ? 0 : 8)).setDepth(this.depth + 2)
+      .setText(!dead && this.awareness === Awareness.SUSPICIOUS ? '?' : '');
+    const g = this.hpBarSmall;
+    if (!dead && this.awareness !== Awareness.ALERT && this.meter.value > 0.02) {
+      g.setDepth(this.depth + 1);
+      g.fillStyle(0x000000, 0.6).fillRect(this.x - 14, top - 16, 28, 3);
+      g.fillStyle(level === Level.SUSPICIOUS ? 0xffe060 : 0xc8c8c8).fillRect(this.x - 14, top - 16, 28 * this.meter.value, 3);
+    }
+    if (dead || !ctx?.showCones || this.awareness === Awareness.ALERT) return;
+    const pr = this.data_.perception;
+    const range = pr.visionRange * (ctx.env.isDark(this.x, this.y) ? ctx.stealth.darkVisionMultiplier : 1);
+    const ang = Math.atan2(this.facing.y, this.facing.x), half = (pr.visionAngleDeg / 2) * Math.PI / 180;
+    const gc = ctx.coneGfx;
+    gc.fillStyle(level === Level.SUSPICIOUS ? 0xffb040 : 0xff8060, 0.09);
+    gc.slice(this.x, this.y - 6, range, ang - half, ang + half, false).fillPath();
+    gc.lineStyle(1, 0xff8060, 0.18).strokeCircle(this.x, this.y - 6, pr.closeSenseRadius); // 바로 옆은 등 뒤도 느낌
   }
 
   drawSmallHpBar() {

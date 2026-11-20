@@ -200,11 +200,23 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   // ---------- 매 프레임 ----------
   /** @param {{move:{x,y}, attack:boolean, roll:boolean, switchWeapon:number|null}} cmd @param {number} dt ms */
   update(cmd, dt) {
-    this.stats.update(dt, this.state === State.FREE);
+    // 웅크림: 웅크린 채 움직이면 기력이 천천히 줄고(회복도 멈춤), 바닥나면 자동으로 일어선다
+    const moving = cmd.move.x !== 0 || cmd.move.y !== 0;
+    const wantSneak = !!cmd.sneak && this.state === State.FREE;
+    if (wantSneak && this.stats.stamina <= 0.5) {
+      if (!this.outOfBreath) spawnFloatingLabel(this.scene, this.x, this.y - 30, '숨이 차다');
+      this.outOfBreath = true;
+    } else if (!wantSneak || this.stats.stamina > 15) {
+      this.outOfBreath = false; // 웅크림을 풀었거나 기력이 어느 정도 돌아오면 다시 웅크릴 수 있음
+    }
+    this.isSneaking = wantSneak && !this.outOfBreath;
+    const sneakMoving = this.isSneaking && moving;
+    if (sneakMoving) this.stats.stamina = Math.max(0, this.stats.stamina - this.data_.stealth.sneakStaminaPerSec * (dt / 1000));
+
+    this.stats.update(dt, this.state === State.FREE && !sneakMoving);
     if (this.invulnMs > 0) this.invulnMs -= dt;
     this.dt = dt;
     this.updateLock(cmd);
-    this.isSneaking = !!cmd.sneak && this.state === State.FREE;
     // 진단용: 이동 입력이 있는데 못 움직이는 이유 (HUD 입력 진단 화면에 표시)
     const wantsMove = cmd.move.x !== 0 || cmd.move.y !== 0;
     this.moveBlockedBy = !wantsMove ? null

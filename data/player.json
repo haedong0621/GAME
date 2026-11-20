@@ -44,6 +44,7 @@
     "bushVisibility": 0.35,
     "bushSneakVisibility": 0.12,
     "sneakVisibility": 0.55,
-    "darkVisionMultiplier": 0.5
+    "darkVisionMultiplier": 0.5,
+    "sneakStaminaPerSec": 8
   }
 }
