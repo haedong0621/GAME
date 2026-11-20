@@ -51,6 +51,7 @@
 - **알림·패널 신호** (`scenes/BootScene.js`) — registry 키 `banner`, `openPanel`, `panelOpen`, `interactPrompt`를 시작 시 미리 생성(Phaser는 첫 저장 때 changedata 이벤트를 안 보냄) → Godot 시그널로 대체
 - **터치 조작** (`systems/TouchControls.js`) — 터치 기기(또는 `?touch=1`)에서 표시; 화면 왼쪽 절반 누른 자리 중심의 가상 조이스틱(반경 70, 데드존 0.25, 360도), 오른쪽 아래 공격·구르기·무기·고정 버튼, 멀티터치 3개; 공격 방향은 자동 조준 → Godot CanvasLayer + 가상 조이스틱 + TouchScreenButton(action 지정)
 - **모바일 페이지** (`index.html`) — 확대 금지, 세로로 들면 "가로로 돌려 주세요" 안내, 터치 기기에 전체 화면 버튼(지원 브라우저는 가로 고정) → Godot 웹 내보내기 시 같은 HTML 셸 설정 / 모바일 앱은 프로젝트 설정 `orientation = landscape`
+- **키보드 초점 안내** (`index.html`) — 창이 초점을 잃으면(다운로드 창·주소창·다른 창) "화면을 클릭하면 계속" 표시, 클릭 시 초점 복귀 (키를 눌러도 반응 없던 원인) → Godot 웹 내보내기에도 같은 셸 처리, 데스크톱 앱은 불필요
 - **임시 그래픽** (`systems/PlaceholderArt.js`) — 에셋이 없을 때 코드로 텍스처 생성 → Godot에서는 이식 대상 아님(진짜 에셋 사용)
 - **디버그** — 주소에 `?debug=1`이면 충돌 박스와 공격 판정 원 표시 → Godot 에디터 *Debug → Visible Collision Shapes*
 - **입력 진단 화면** (`systems/InputDebugPanel.js`) — `` ` ``/F2 토글, `?debug=1`·`?input=1`이면 시작부터 표시; 눌린 키, 브라우저가 받은 키 이벤트 기록(한글 조합 여부), 이동 막힘 이유와 누적, 원인불명 정지 횟수, 프레임 끊김, 최근 150프레임 간격 그래프(초록 정상·노랑·빨강 끊김) → Godot 이식 대상 아님(에디터 디버거 사용)

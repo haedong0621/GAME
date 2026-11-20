@@ -16,6 +16,11 @@
       font: 18px/1.6 sans-serif; text-align: center; align-items: center; justify-content: center; padding: 24px; }
     @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
 
+    /* 게임 화면이 키보드 초점을 잃었을 때 (다운로드 창·주소창·다른 창 클릭 등) */
+    #focus { display: none; position: fixed; inset: 0; z-index: 8; background: rgba(0,0,0,.45); color: #f2e6c8;
+      font: 18px/1.6 sans-serif; align-items: center; justify-content: center; text-align: center; cursor: pointer; }
+    #focus.show { display: flex; }
+
     /* 전체 화면 버튼 (터치 기기에서만) */
     #fullscreen { display: none; position: fixed; top: 8px; right: 8px; z-index: 5; padding: 6px 10px;
       font: 13px sans-serif; color: #f2e6c8; background: rgba(0,0,0,.45); border: 1px solid rgba(242,230,200,.4); border-radius: 6px; }
@@ -28,7 +33,15 @@
   <div id="game"></div>
   <div id="rotate"><div>📱 휴대폰을 <b>가로</b>로 돌려 주세요</div></div>
   <button id="fullscreen" type="button">전체 화면</button>
+  <div id="focus"><div>⌨️ 키보드 입력이 게임 밖에 있어요<br><b>화면을 클릭하면 계속</b></div></div>
   <script>
+    // 키보드 초점 안내: 창이 초점을 잃으면 표시, 클릭하면 게임으로 초점을 돌려놓고 숨김 (터치 기기는 해당 없음)
+    const focusEl = document.getElementById('focus');
+    const isTouch = matchMedia('(pointer: coarse)').matches;
+    window.addEventListener('blur', () => { if (!isTouch) focusEl.classList.add('show'); });
+    window.addEventListener('focus', () => focusEl.classList.remove('show'));
+    focusEl.addEventListener('mousedown', (e) => { e.preventDefault(); window.focus(); document.querySelector('canvas')?.focus?.(); focusEl.classList.remove('show'); });
+
     // 전체 화면 + 가로 고정 (안드로이드 크롬 등 지원 브라우저에서만 동작, 아이폰은 무시됨)
     document.getElementById('fullscreen').addEventListener('click', async () => {
       try {
