@@ -12,7 +12,7 @@
 - **맵** — Tiled `.tmj`, 타일셋 임베드, 오브젝트는 Object Layer `objects`에 `type`+속성 → Godot에서는 YATI(Tiled 임포터) 애드온으로 가져오거나 TileMapLayer로 다시 그림; 오브젝트는 `type`별로 씬 인스턴스 생성
 
 ## 시스템 목록
-- **부팅/로딩** (`scenes/BootScene.js`) — JSON·맵·타일셋을 미리 로드하고 임시 그래픽 생성 후 World+UI 씬 시작 → Godot 메인 씬 `_ready()`에서 Autoload 초기화 후 `World.tscn` 로드
+- **부팅/로딩** (`scenes/BootScene.js`) — JSON·맵·타일셋을 미리 로드하고 임시 그래픽 생성 후 시작 화면(Title) → World+UI 씬 → Godot 메인 씬 `_ready()`에서 Autoload 초기화 후 `World.tscn` 로드
 - **입력** (`systems/InputSystem.js`) — 매 프레임 "명령" `{move, aim, autoAim, attack, roll, lockToggle, switchWeapon}` 반환; 키는 `event.code`(물리 키 위치)로 읽음 — 한글 입력 상태에서도 동작, 창 이탈 시 눌린 키 해제; WASD/TFGH(보조)/방향키 이동, Shift 웅크림(`sneak`), 마우스 커서 = 조준 지점(월드 좌표, 마우스가 화면 위에 있을 때만), 왼쪽 클릭/J 공격, Space/K 구르기, 오른쪽 클릭/Tab/L 락온, E 상호작용, 1·2·3·Q 무기; 조준이 없으면 `autoAim`; 터치 조작판 결과를 합침 → Godot Input Map을 `physical_keycode`로 등록 + `Input.get_vector()` + `get_global_mouse_position()`
 - **플레이어 이동** (`entities/Player.js` `updateFree`) — 목표 속도 = 방향 × `speed`, 현재 속도에서 `accel`/`decel`(px/s²)로 부드럽게 접근(8방향 꺾임 완화), 반대 방향 전환 시 `reverseAccelMultiplier`배 가속; 바라보는 반대쪽으로 움직이면 `backpedalSpeedMultiplier`까지 감속(뒷걸음질); 충돌은 발밑 박스(16×10) → Godot `CharacterBody2D`, `velocity = velocity.move_toward(target, accel * delta)` + `move_and_slide()`
 - **조준·회전** (`entities/Player.js` `desiredDir`/`attackDir`/`turnTo`) — 바라보는 방향은 360도 각도(`facingAngle`); 원하는 방향 우선순위: 락온 대상 > 마우스 조준 > 이동 방향; 평소 `turnSpeedDegPerSec`로 부드럽게 회전, 공격 시작 시 원하는 방향으로 즉시 돌고, 예비 동작 중엔 `attackSteerDegPerSec`로 미세 조정; 조준 없음(키보드만·터치)이면 공격 때 `autoAimRange` 안의 가장 가까운 적 자동 조준; 조준 중 구르기는 시선 유지(백스텝) → Godot `rotation`/각도 변수 + `rotate_toward()`
@@ -37,7 +37,7 @@
 - **잡몹** (`entities/Mob.js`, `data/monsters.json` `ai: "mob"`) — 상태 `idle(어슬렁) → investigate(소리·흔적 확인, 도착 후 2초 두리번) → chase → windup → active(물어뜯기 돌진) → recovery`, `hurt`(넉백), `return`; 발견 시 `packAlertRadius` 안 무리도 발견; 시야에서 `loseSightMs` 동안 놓치면 마지막 위치 수색; 집에서 `leashRadius` 넘으면 포기; 머리 위 ?/!, 경계 막대; 처치 시 드롭, `respawnMs` 후 부활 → Godot `Mob.tscn` CharacterBody2D + 상태 머신
 - **크기 등급 충돌(구현분)** — 잡몹은 플레이어와 같은 판정(나무·물·서로·플레이어와 충돌), 보스는 밀리지 않고 잡몹을 밀어냄, 중형 보스 돌진은 잡몹에게 `mobChargeDamage` 피해 + 크게 밀어내고 계속 돌진
 - **플레이어 피격** (`entities/Player.js` `receiveHit`) — 구르기 무적 중이면 '회피!'(데미지 없음), 아니면 체력 감소 + `hurt` 상태(밀려남 `knockbackSpeed`, `hurtMs`, 콤보·예약 취소, 밀려나는 중 누른 구르기·공격은 예약했다가 끝나자마자 실행) + `hitInvulnMs` 동안 무적(깜빡임); 결과 `hit/dodged/ignored` 반환 → Godot Hurtbox Area2D + 같은 규칙
-- **쓰러짐** (`scenes/WorldScene.js` `onPlayerDeath`) — 체력 0이면 `dead`, `respawnDelayMs` 후 **마지막 저장 시점을 다시 불러옴**(페이지 새로 불러오기, 저장 없으면 처음부터; 저장 이후 얻은 것은 사라짐), 안내 문구는 sessionStorage로 전달; 저장소를 못 쓰는 환경만 시작 지점 부활 → Godot `get_tree().reload_current_scene()` + SaveSystem.load()
+- **쓰러짐** (`scenes/WorldScene.js` `onPlayerDeath`) — 체력 0이면 `dead`, `respawnDelayMs` 후 **수동·자동 중 더 최근 저장을 바로 불러옴**(저장 없으면 처음부터; 그 사이 얻은 것은 사라짐), 안내 문구 표시; 저장소를 못 쓰는 환경만 시작 지점 부활 → Godot 같은 흐름
 - **보스 처치 보상** (`scenes/WorldScene.js` `onBossDefeated`) — `drops` 목록의 재료를 쓰러진 자리 주변에 떨굼(주워야 획득), '토벌!' 알림, `respawnMs` 후 보스 재등장(반복 사냥용) → Godot 같은 흐름, 드롭 테이블은 Resource
 - **장비** (`entities/Player.js` `ownedWeapons`/`ownedArmors`/`equip`/`equipArmor`) — 무기는 가진 목록에서 1·2·3/Q로 교체, 갑옷 1칸; 갑옷은 `data/armors.json`(최대 체력 보너스, 겉모습 텍스처, 스킬) → Godot Equipment.gd + Resource
 - **장비 겉모습** (`systems/PlaceholderArt.js`) — 갑옷마다 플레이어 텍스처(`player`, `player-swamp`), 무기 `view.style: "fang"`이면 톱날·독 빛; 보스 소재 장비에는 그 보스의 색·뼈판·눈빛을 녹임 → Godot 갑옷별 SpriteFrames, 무기별 텍스처
@@ -45,8 +45,10 @@
 - **상태 이상: 독** (`systems/StatusEffects.js`) — 몬스터·보스마다 보유, `tickMs`마다 `damagePerTick`(초록 숫자·초록 번쩍), `durationMs`, 다시 걸리면 시간만 초기화; 독 피해로는 기습·흔들림 없음 → Godot StatusEffects 노드 + Timer
 - **제작** (`systems/Crafting.js`, `data/recipes.json`) — 레시피(결과 kind/id, 재료 목록), 재료 확인→소모→지급→즉시 장착, 이미 가진 것은 제작 불가 → Godot Crafting.gd (Autoload)
 - **제작대·상호작용** (`entities/Workbench.js`, `scenes/WorldScene.js` `nearestInteractable`/`openPanel`) — 맵 `type=workbench`, 반경 안이면 "[E] 제작대 (저장 · 제작)"(휴대폰은 "열기" 버튼), 열면 거점 저장 후 월드 일시정지 → Godot Area2D 범위 + `get_tree().paused`
-- **저장** (`systems/SaveSystem.js`) — 브라우저 localStorage 1칸(`game.save`), JSON 한 덩어리 + `version`(형식 바뀌면 올리고 변환); 내용: 플레이 시간, 플레이어 위치·장착/보유 무기·갑옷, 가방, 주운 맵 아이템 id(Tiled 오브젝트 id — 지금은 다시 안 생김, 채집이 생기면 재생성으로 변경 예정); 체력·몬스터는 저장 안 함; 깨지거나 형식이 다르면 무시 → Godot `user://save.json` + FileAccess, 나중에 같은 JSON을 클라우드(Supabase)
-- **거점 저장** (`isSavePoint`) — 저장은 거점에서만: 거점 오브젝트(지금은 제작대, 나중에 마을 등)에 상호작용하면 저장, 제작하면 다시 저장; 시작하면 저장 시점 위치에서 이어하기; 새로 시작은 제작 화면 "처음부터 다시"(확인 창)·테스트 모드 버튼 → Godot SavePoint 그룹/컴포넌트
+- **저장** (`systems/SaveSystem.js`) — 브라우저 localStorage에 **슬롯 2개**: `manual`(수동, 거점) · `auto`(자동, 지역 이동); JSON 한 덩어리 + `version`; 내용: 장소 이름, 플레이 시간, 플레이어 위치·장착/보유 무기·갑옷, 가방, 주운 맵 아이템 id(지금은 다시 안 생김, 채집 단계에서 재생성으로 변경 예정); 체력·몬스터는 저장 안 함; 예전 1칸 저장은 수동 슬롯으로 옮김 → Godot `user://save_manual.json`, `user://save_auto.json`, 나중에 같은 JSON을 클라우드(Supabase)
+- **수동 저장(거점)** (`isSavePoint`, `locationName`) — 거점 오브젝트(지금은 제작대 "들머리 거점", 나중에 마을 등)에 상호작용하면 수동 슬롯 저장, 제작하면 다시 저장 → Godot SavePoint 그룹/컴포넌트
+- **자동 저장(지역 이동)** (맵 `type=autosave` 사각형, 이름 = 장소) — 구역 밖→안으로 들어오는 순간 자동 슬롯 저장(머무는 동안 반복 안 함, 불러온 자리가 구역 안이면 저장 안 함); 지금: 늪지 짐승의 터 앞, 어두운 숲 입구, 북서쪽 들판, 연못가 들개 굴 앞 → Godot Area2D `body_entered`
+- **불러오기** (`scenes/TitleScene.js`, `systems/PauseMenu.js`, `systems/MenuList.js`) — 시작 화면: 이어하기(두 슬롯 중 최근)/불러오기(슬롯 선택, 장소·시각·플레이 시간·무기 표시)/새로 시작; 게임 중 Esc·[메뉴]: 계속하기/수동·자동 불러오기/처음부터 다시(확인 창); 불러오기는 슬롯을 sessionStorage에 넘기고 페이지를 새로 불러옴; `?dev=1`·`?play=1`이면 시작 화면 없이 최근 저장으로 시작 → Godot Title.tscn, PauseMenu.tscn, `get_tree().reload_current_scene()`
 - **제작 화면** (`systems/CraftingPanel.js`) — 목록(제작 가능/재료 부족/보유 중), 상세(설명, 데미지 비교, 스킬, 재료 보유/필요), 제작·닫기 버튼; ↑↓ Enter Esc, 마우스·터치 → Godot Control 씬
 - **타격 연출** (`systems/Effects.js`) — 베기 궤적(from→to 방향 호, 240ms 페이드, 굵기는 무기 크기에 따라), 데미지 숫자, 무기 이름 라벨, 맞힐 때 카메라 흔들림(타마다 세기 다름) → Godot Tween + `Camera2D` 오프셋 흔들기
 - **카메라** (`scenes/WorldScene.js`) — 캔버스 960×540, 월드만 2배 확대(`WORLD_ZOOM`), 플레이어를 부드럽게 따라감(lerp 0.12), 맵 경계에서 멈춤 → Godot `Camera2D`(`zoom = 2`)를 플레이어 자식으로, `position_smoothing_enabled`, `limit_*`를 맵 크기로; 뷰포트 960×540, stretch mode `canvas_items`
