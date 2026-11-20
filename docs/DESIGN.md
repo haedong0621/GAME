@@ -13,7 +13,7 @@
 
 ## 시스템 목록
 - **부팅/로딩** (`scenes/BootScene.js`) — JSON·맵·타일셋을 미리 로드하고 임시 그래픽 생성 후 World+UI 씬 시작 → Godot 메인 씬 `_ready()`에서 Autoload 초기화 후 `World.tscn` 로드
-- **입력** (`systems/InputSystem.js`) — 매 프레임 "명령" `{move, aim, autoAim, attack, roll, lockToggle, switchWeapon}` 반환; 키는 `event.code`(물리 키 위치)로 읽음 — 한글 입력 상태에서도 동작, 창 이탈 시 눌린 키 해제; WASD/TFGH(보조)/방향키 이동, 마우스 커서 = 조준 지점(월드 좌표, 마우스가 화면 위에 있을 때만), 왼쪽 클릭/J 공격, Space/K 구르기, 오른쪽 클릭/Tab/L 락온, E 상호작용, 1·2·3·Q 무기; 조준이 없으면 `autoAim`; 터치 조작판 결과를 합침 → Godot Input Map을 `physical_keycode`로 등록 + `Input.get_vector()` + `get_global_mouse_position()`
+- **입력** (`systems/InputSystem.js`) — 매 프레임 "명령" `{move, aim, autoAim, attack, roll, lockToggle, switchWeapon}` 반환; 키는 `event.code`(물리 키 위치)로 읽음 — 한글 입력 상태에서도 동작, 창 이탈 시 눌린 키 해제; WASD/TFGH(보조)/방향키 이동, Shift 웅크림(`sneak`), 마우스 커서 = 조준 지점(월드 좌표, 마우스가 화면 위에 있을 때만), 왼쪽 클릭/J 공격, Space/K 구르기, 오른쪽 클릭/Tab/L 락온, E 상호작용, 1·2·3·Q 무기; 조준이 없으면 `autoAim`; 터치 조작판 결과를 합침 → Godot Input Map을 `physical_keycode`로 등록 + `Input.get_vector()` + `get_global_mouse_position()`
 - **플레이어 이동** (`entities/Player.js` `updateFree`) — 목표 속도 = 방향 × `speed`, 현재 속도에서 `accel`/`decel`(px/s²)로 부드럽게 접근(8방향 꺾임 완화), 반대 방향 전환 시 `reverseAccelMultiplier`배 가속; 바라보는 반대쪽으로 움직이면 `backpedalSpeedMultiplier`까지 감속(뒷걸음질); 충돌은 발밑 박스(16×10) → Godot `CharacterBody2D`, `velocity = velocity.move_toward(target, accel * delta)` + `move_and_slide()`
 - **조준·회전** (`entities/Player.js` `desiredDir`/`attackDir`/`turnTo`) — 바라보는 방향은 360도 각도(`facingAngle`); 원하는 방향 우선순위: 락온 대상 > 마우스 조준 > 이동 방향; 평소 `turnSpeedDegPerSec`로 부드럽게 회전, 공격 시작 시 원하는 방향으로 즉시 돌고, 예비 동작 중엔 `attackSteerDegPerSec`로 미세 조정; 조준 없음(키보드만·터치)이면 공격 때 `autoAimRange` 안의 가장 가까운 적 자동 조준; 조준 중 구르기는 시선 유지(백스텝) → Godot `rotation`/각도 변수 + `rotate_toward()`
 - **락온(대상 고정)** (`entities/Player.js` `updateLock`) — 토글 시 `lockOnRange` 안 가장 가까운 적 고정, 죽거나 1.6배 거리 밖이면 해제; 고정 중 항상 대상을 바라봄(이동과 무관), 대상 발밑 노란 테두리 + 머리 위 화살표 → Godot 같은 규칙, 표시는 대상 자식 Sprite
@@ -29,7 +29,13 @@
 - **보스** (`entities/Boss.js`, `data/monsters.json` `ai: "boss"`) — 상태 머신 `idle → roar → chase → windup → active → recovery → chase`, 놓치면(`leashRadius`) `return`(집으로, 도착하면 체력 회복) ; 거리에 맞는 공격을 `weight`로 무작위 선택, 공격 사이 `attackCooldownMs`; 체력 비율 `phases`(예: 50% 미만 분노 — 이동·예고 속도 배율); 물리 몸체는 발밑 박스(밀리지 않음), 겉모습은 별도 이미지 → Godot `Boss.tscn` CharacterBody2D + 상태 머신, 공격 데이터는 Resource 배열
 - **보스 공격 패턴** (`data/monsters.json` `attacks`) — `circle`형(앞 `offset` 거리에 반경 `radius` 원, 판정 중 짧은 전진 `lunge`), `charge`형(예고 중 `aimLockAt` 비율까지 플레이어 조준 후 방향 고정, `speed`로 돌진, 몸 원 판정, 벽에 막히면 정지); 한 공격은 플레이어에게 최대 1회 → Godot 공격별 Area2D + AnimationPlayer
 - **예고 표시(텔레그래프)** (`entities/Boss.js` `drawTelegraph`) — 예고 동작 중 바닥에 빨간 범위(원은 타원, 돌진은 직사각형 경로)가 점점 진해지고 안쪽 원이 차오름, 판정 순간 진하게; 보스 몸은 웅크림+붉은 색, 빈틈(recovery)은 창백한 색 → Godot 바닥 레이어의 Polygon2D/Sprite2D + Tween
-- **경계 단계** (`entities/Boss.js` `senses`, `Awareness`) — `unaware → alert`(발견: 포효), 놓치면 `suspicious`(귀가), 지금은 거리(`detectRadius`)만 판정; 눈치채기 전 피격 시 `sneakAttackMultiplier` 배율(기습) → M4 스닉에서 `senses()`에 시야각·소리·은신 추가; Godot 같은 enum + RayCast2D 시야
+- **경계 단계** (`systems/Stealth.js` `AwarenessMeter`) — 몬스터·보스 공통 0~1 수치: 보이는 만큼(`detectPerSec × 보임 정도`) 차오르고 항상 초당 0.2씩 식음(발견 상태 제외) → 0.35 이상 의심(?), 1 발견(!); 소리를 들으면 최소 0.5(가까운 큰 소리는 즉시 1); 눈치채기 전 피격 시 `sneakAttackMultiplier` 배율(기습) → Godot 같은 수치 + 시그널
+- **시야 판정** (`systems/Stealth.js` `visibility`) — `visionRange`(어두운 구역이면 × `darkVisionMultiplier`) 안 + 바라보는 방향 `visionAngleDeg` 부채꼴 안(단 `closeSenseRadius` 이내는 등 뒤도 느낌); 보임 정도 = 거리 계수(0.3~1) × 은신 배율(풀숲+웅크림 0.12, 풀숲 0.35, 웅크림 0.55); 나무 가림(시선 차단)은 아직 없음 → Godot RayCast2D로 시선 차단 추가 권장
+- **소리** (`systems/Stealth.js` `NoiseBus`, `entities/Player.js` `makeNoise`) — 플레이어 행동이 반경 소리를 냄(걷기 90/0.3초마다, 웅크림 18, 구르기 140, 휘두름 110 — 칼이 지나간 뒤, 타격 170), 몬스터가 같은 프레임에 듣고 프레임 끝에 비움 → Godot 시그널 `noise_made(pos, radius)`
+- **웅크리기(스닉)** (`entities/Player.js` `isSneaking`) — Shift 누르는 동안(휴대폰은 "웅크림" 토글), free 상태에서만, 이동 × `sneakSpeedMultiplier`, 몸 낮춤; 웅크리는 동안 주변 적의 시야 부채꼴을 바닥에 희미하게 표시 → Godot 같은 규칙
+- **풀숲·어두운 구역** (`entities/Bush.js`, 맵 `type=bush` / `type=dark` 사각형) — 풀숲은 길을 막지 않고 밑동 주변(±15, -14~+5)에 있으면 숨음, 플레이어보다 앞에 그려 몸을 가림; 어두운 구역은 위에 어둠을 덮고 적 시야 감소 → Godot Area2D + CanvasModulate/조명
+- **잡몹** (`entities/Mob.js`, `data/monsters.json` `ai: "mob"`) — 상태 `idle(어슬렁) → investigate(소리·흔적 확인, 도착 후 2초 두리번) → chase → windup → active(물어뜯기 돌진) → recovery`, `hurt`(넉백), `return`; 발견 시 `packAlertRadius` 안 무리도 발견; 시야에서 `loseSightMs` 동안 놓치면 마지막 위치 수색; 집에서 `leashRadius` 넘으면 포기; 머리 위 ?/!, 경계 막대; 처치 시 드롭, `respawnMs` 후 부활 → Godot `Mob.tscn` CharacterBody2D + 상태 머신
+- **크기 등급 충돌(구현분)** — 잡몹은 플레이어와 같은 판정(나무·물·서로·플레이어와 충돌), 보스는 밀리지 않고 잡몹을 밀어냄, 중형 보스 돌진은 잡몹에게 `mobChargeDamage` 피해 + 크게 밀어내고 계속 돌진
 - **플레이어 피격** (`entities/Player.js` `receiveHit`) — 구르기 무적 중이면 '회피!'(데미지 없음), 아니면 체력 감소 + `hurt` 상태(밀려남 `knockbackSpeed`, `hurtMs`, 콤보·예약 취소, 밀려나는 중 누른 구르기·공격은 예약했다가 끝나자마자 실행) + `hitInvulnMs` 동안 무적(깜빡임); 결과 `hit/dodged/ignored` 반환 → Godot Hurtbox Area2D + 같은 규칙
 - **쓰러짐·부활** (`scenes/WorldScene.js` `onPlayerDeath`) — 체력 0이면 `dead`, `respawnDelayMs` 후 시작 지점에서 체력 가득 부활, 보스는 집으로 돌아가 체력 회복 → Godot 같은 흐름 (GameState 싱글톤에서 처리)
 - **보스 처치 보상** (`scenes/WorldScene.js` `onBossDefeated`) — `drops` 목록의 재료를 쓰러진 자리 주변에 떨굼(주워야 획득), '토벌!' 알림, `respawnMs` 후 보스 재등장(반복 사냥용) → Godot 같은 흐름, 드롭 테이블은 Resource
@@ -56,10 +62,10 @@
 - **디버그** — 주소에 `?debug=1`이면 충돌 박스와 공격 판정 원 표시 → Godot 에디터 *Debug → Visible Collision Shapes*
 - **입력 진단 화면** (`systems/InputDebugPanel.js`) — `` ` ``/F2 토글, `?debug=1`·`?input=1`이면 시작부터 표시; 눌린 키, 브라우저가 받은 키 이벤트 기록(한글 조합 여부), 이동 막힘 이유와 누적, 원인불명 정지 횟수, 프레임 끊김, 최근 150프레임 간격 그래프(초록 정상·노랑·빨강 끊김) → Godot 이식 대상 아님(에디터 디버거 사용)
 - **블랙박스 기록** (`systems/FrameRecorder.js`) — 최근 10초 매 프레임(프레임 간격, 눌린 키, 이동·버튼 입력, 상태, 막힘 이유, 위치·속도, 벽 닿음, 카메라, FPS) 보관, F8로 JSON 내려받기 → 이식 대상 아님
-- **테스트 모드** (`systems/DevTools.js`, `?dev=1`) — 왼쪽 아래 버튼: 보스 앞으로, 보스 체력 20%, 보스 즉시 부활, 재료 받기, 무적, 회복, 장비 초기화, 기록 저장; 화면 버튼 클릭은 공격으로 처리 안 함(registry `uiClickAt`) → 이식 대상 아님 (Godot은 디버그 콘솔/치트 씬)
+- **테스트 모드** (`systems/DevTools.js`, `?dev=1`) — 왼쪽 아래 버튼: 보스 앞으로, 들개 근처로, 적 경계 해제, 보스 체력 20%, 보스 즉시 부활, 재료 받기, 무적, 회복, 장비 초기화, 기록 저장; 화면 버튼 클릭은 공격으로 처리 안 함(registry `uiClickAt`) → 이식 대상 아님 (Godot은 디버그 콘솔/치트 씬)
 
 ## 결정된 방향 (아직 미구현)
 - **저장** — 클라우드 저장(Supabase 무료 플랜 + 구글 로그인) 주 사용, 브라우저 localStorage는 오프라인·비로그인 보조; 저장 데이터는 JSON 한 덩어리(플레이어·인벤토리·세계 변화) → Godot `user://` JSON 파일 + 같은 백엔드 HTTP API
 - **협동** — 2~4명 협동, 무료 방식(P2P 또는 Supabase Realtime), 싱글 재미 검증 후 착수 → Godot `MultiplayerAPI`(WebSocket/WebRTC)로 재구현
 - **협동 대비 원칙** — 게임 상태는 렌더링과 분리해 한곳에 모으고, 입력은 "명령"으로 변환해 처리 (지금부터 모든 기능에 적용)
-- **몬스터 크기 등급** — `data/monsters.json` `sizeClass`(small/medium/large) 표시만 있음, 충돌 규칙은 docs/CONCEPT.md 표 참고(미구현) → Godot 같은 enum, 충돌 레이어/마스크로 구분
+- **몬스터 크기 등급** — `data/monsters.json` `sizeClass`(small/medium/large); 소형·중형 규칙 구현됨, 대형(부술 수 있는 것 부수기·벽 충돌 비틀거림)은 미구현 → Godot 같은 enum, 충돌 레이어/마스크로 구분
