@@ -25,6 +25,7 @@ export class InputDebugPanel {
       fontFamily: 'monospace', fontSize: '12px', color: '#e8eef2', lineSpacing: 2,
     }).setDepth(51);
     this.spikes = 0;
+    this.dts = []; // 최근 프레임 간격 (그래프용)
     this.unexplainedStops = 0;
     this.stopTimer = 0;
     this.blockCounts = {};
@@ -39,6 +40,8 @@ export class InputDebugPanel {
     const input = this.scene.registry.get('inputSystem');
     const player = this.scene.registry.get('player');
     if (dt > 50) this.spikes += 1;
+    this.dts.push(dt);
+    if (this.dts.length > 150) this.dts.shift();
     if (!input || !player) return;
 
     // 원인불명 정지 감지: 이동 입력 O, 막힌 이유 없음, 그런데 속도가 거의 0인 상태가 150ms 이상
@@ -64,7 +67,15 @@ export class InputDebugPanel {
 
     const W = this.scene.scale.width;
     const x0 = W - 330, y0 = 50;
-    this.g.fillStyle(0x000000, 0.72).fillRect(x0 - 10, y0 - 8, 330, 372);
+    this.g.fillStyle(0x000000, 0.72).fillRect(x0 - 10, y0 - 8, 330, 430);
+
+    // 프레임 간격 그래프 (아래쪽): 초록 = 정상(≈16ms), 빨강 = 끊김(34ms 이상)
+    const gx = x0, gy = y0 + 414;
+    this.g.fillStyle(0x222222, 1).fillRect(gx, gy - 30, 300, 30);
+    this.dts.forEach((d, i) => {
+      const h = Math.min(30, d);
+      this.g.fillStyle(d >= 34 ? 0xd04030 : d >= 20 ? 0xd0b040 : 0x5ad06a, 1).fillRect(gx + i * 2, gy - h, 2, h);
+    });
 
     // 키 상자
     KEYS.forEach(([code, label], i) => {
@@ -98,7 +109,7 @@ export class InputDebugPanel {
       '[브라우저가 받은 키] (최근 8개)',
       ...log,
       '',
-      '` 또는 F2: 진단 화면 끄기',
+      '` 또는 F2: 진단 화면 끄기 · F8: 직전 10초 기록 저장',
     ].join('\n'));
   }
 }
