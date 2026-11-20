@@ -19,11 +19,12 @@ export class TouchControls {
       { action: 'attack', label: '공격', x: W - 110, y: H - 110, r: 62, color: 0x9a3a2a },
       { action: 'roll',   label: '구르기', x: W - 235, y: H - 70, r: 46, color: 0x3a5a7a },
       { action: 'switchWeapon', label: '무기', x: W - 70, y: H - 245, r: 36, color: 0x5a5040 },
+      { action: 'lockToggle', label: '고정', x: W - 215, y: H - 205, r: 38, color: 0x7a6a30 },
     ];
 
     this.stick = { pointerId: null, baseX: 0, baseY: 0, x: 0, y: 0 };
     this.move = { x: 0, y: 0 };
-    this.pressed = { attack: false, roll: false, switchWeapon: null };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false };
     this.held = new Map(); // pointerId → 버튼 (눌린 모양 표시용)
 
     this.g = scene.add.graphics().setDepth(10);
@@ -75,7 +76,7 @@ export class TouchControls {
   /** InputSystem이 매 프레임 호출. 버튼 누름은 한 번 가져가면 지워진다. */
   consume() {
     const out = { move: { ...this.move }, ...this.pressed };
-    this.pressed = { attack: false, roll: false, switchWeapon: null };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false };
     return out;
   }
 

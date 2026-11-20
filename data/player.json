@@ -21,5 +21,12 @@
   "hitInvulnMs": 650,
   "hurtMs": 300,
   "knockbackSpeed": 230,
-  "respawnDelayMs": 2500
+  "respawnDelayMs": 2500,
+  "accel": 1500,
+  "decel": 1700,
+  "turnSpeedDegPerSec": 720,
+  "attackSteerDegPerSec": 200,
+  "backpedalSpeedMultiplier": 0.7,
+  "autoAimRange": 110,
+  "lockOnRange": 260
 }

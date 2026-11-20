@@ -3,7 +3,9 @@
  * 엔티티는 입력 장치를 직접 보지 않고 명령만 받는다 → 나중에 협동 플레이에서 명령을 네트워크로 주고받기 쉽다.
  * Godot: Input Map(move_*, attack, roll, weapon_1/2) + Input.get_vector() — Godot은 물리 키(physical_keycode) 기준으로 매핑.
  *
- * 조작: WASD 또는 방향키 이동 / J 또는 마우스 왼쪽 = 공격 / Space 또는 K = 구르기 / 1·2 = 무기 선택, Q = 다음 무기
+ * 조작: WASD 또는 방향키 이동 / 마우스 커서 = 조준 / J 또는 마우스 왼쪽 = 공격 / Space 또는 K = 구르기
+ *       Tab·L·마우스 오른쪽 = 대상 고정(락온) / 1·2 = 무기 선택, Q = 다음 무기
+ * 조준: 마우스가 게임 화면 위에 있으면 커서 쪽, 아니면(키보드만·터치) 공격 때 가까운 적 자동 조준
  *
  * 키는 event.code(키보드의 "물리적 위치")로 읽는다.
  * → 한글 입력 상태(ㅁ, ㅈ …)에서도 똑같이 동작한다. Phaser 기본 키 처리는 한글 조합 중 신호(keyCode 229)를
@@ -19,10 +21,11 @@ const MOVE_CODES = {
 const BUTTON_CODES = {
   KeyJ: ['attack', true],
   Space: ['roll', true], KeyK: ['roll', true],
+  Tab: ['lockToggle', true], KeyL: ['lockToggle', true],
   Digit1: ['switchWeapon', 0], Digit2: ['switchWeapon', 1], KeyQ: ['switchWeapon', 'next'],
 };
 /** 브라우저 기본 동작(스크롤 등)을 막을 키 */
-const PREVENT = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+const PREVENT = new Set(['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
 export class InputSystem {
   /**
@@ -32,7 +35,9 @@ export class InputSystem {
   constructor(scene, getTouch) {
     this.getTouch = getTouch;
     this.held = new Set(); // 지금 누르고 있는 이동 방향
-    this.pressed = { attack: false, roll: false, switchWeapon: null };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false };
+    this.scene = scene;
+    this.mouseActive = false; // 마우스가 화면 위에서 움직였으면 조준 모드
 
     const onDown = (e) => {
       if (PREVENT.has(e.code)) e.preventDefault();
@@ -58,8 +63,16 @@ export class InputSystem {
       document.removeEventListener('visibilitychange', releaseAll);
     });
 
-    // 마우스 클릭만 공격 (터치는 TouchControls가 따로 처리)
-    scene.input.on('pointerdown', (p) => { if (!p.wasTouch && p.leftButtonDown()) this.pressed.attack = true; });
+    // 마우스: 움직이면 조준 모드, 왼쪽 = 공격, 오른쪽 = 락온 (터치는 TouchControls가 따로 처리)
+    scene.input.mouse?.disableContextMenu();
+    scene.input.on('pointermove', (p) => { if (!p.wasTouch) this.mouseActive = true; });
+    scene.input.on('gameout', () => { this.mouseActive = false; });
+    scene.input.on('pointerdown', (p) => {
+      if (p.wasTouch) { this.mouseActive = false; return; }
+      this.mouseActive = true;
+      if (p.rightButtonDown()) this.pressed.lockToggle = true;
+      else if (p.leftButtonDown()) this.pressed.attack = true;
+    });
   }
 
   isHeld(dir) {
@@ -67,7 +80,18 @@ export class InputSystem {
     return false;
   }
 
-  /** @returns {{move:{x:number,y:number}, attack:boolean, roll:boolean, switchWeapon:number|'next'|null}} */
+  /** 마우스 커서의 월드 좌표 (카메라가 움직이므로 매 프레임 계산) */
+  aimPoint() {
+    if (!this.mouseActive) return null;
+    const p = this.scene.input.activePointer;
+    const wp = this.scene.cameras.main.getWorldPoint(p.x, p.y);
+    return { x: wp.x, y: wp.y };
+  }
+
+  /**
+   * @returns {{move:{x:number,y:number}, aim:{x:number,y:number}|null, autoAim:boolean,
+   *            attack:boolean, roll:boolean, lockToggle:boolean, switchWeapon:number|'next'|null}}
+   */
   getCommand() {
     let x = (this.isHeld('right') ? 1 : 0) - (this.isHeld('left') ? 1 : 0);
     let y = (this.isHeld('down') ? 1 : 0) - (this.isHeld('up') ? 1 : 0);
@@ -83,8 +107,12 @@ export class InputSystem {
     const len = Math.hypot(x, y);
     if (len > 0) { x /= len; y /= len; }
 
+    const aim = this.aimPoint();
     const cmd = {
       move: { x, y },
+      aim,                 // 조준 지점(월드 좌표). 협동 시에도 그대로 전송 가능
+      autoAim: !aim,       // 조준 지점이 없으면 가까운 적 자동 조준
+      lockToggle: this.pressed.lockToggle || !!t?.lockToggle,
       attack: this.pressed.attack || !!t?.attack,
       roll: this.pressed.roll || !!t?.roll,
       switchWeapon: this.pressed.switchWeapon ?? t?.switchWeapon ?? null,
@@ -92,6 +120,7 @@ export class InputSystem {
     this.pressed.attack = false;
     this.pressed.roll = false;
     this.pressed.switchWeapon = null;
+    this.pressed.lockToggle = false;
     return cmd;
   }
 }
