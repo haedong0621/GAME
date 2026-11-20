@@ -12,8 +12,10 @@
 
 ## 시스템 목록
 - **부팅/로딩** (`scenes/BootScene.js`) — JSON·맵·타일셋을 미리 로드하고 임시 그래픽 생성 후 World+UI 씬 시작 → Godot 메인 씬 `_ready()`에서 Autoload 초기화 후 `World.tscn` 로드
-- **입력** (`systems/InputSystem.js`) — 매 프레임 "명령" `{move, attack, roll, switchWeapon}` 반환; 키는 `event.code`(물리 키 위치)로 읽음 — 한글 입력 상태에서도 동작, 창 이탈 시 눌린 키 해제; WASD/방향키, J/마우스 왼쪽, Space/K, 1·2·Q; 터치 조작판 결과를 합침; 버튼류는 다음 프레임까지 보관 → Godot Input Map을 `physical_keycode`로 등록 + `Input.get_vector()`
-- **플레이어 이동** (`entities/Player.js`) — 방향 × `data/player.json`의 `speed` 로 속도 설정, 충돌은 발밑 작은 박스(16×10), 마지막 이동 방향 = 바라보는 방향(`facing`) → Godot `CharacterBody2D` + `move_and_slide()`, CollisionShape2D(16×10)를 발밑에
+- **입력** (`systems/InputSystem.js`) — 매 프레임 "명령" `{move, aim, autoAim, attack, roll, lockToggle, switchWeapon}` 반환; 키는 `event.code`(물리 키 위치)로 읽음 — 한글 입력 상태에서도 동작, 창 이탈 시 눌린 키 해제; WASD/방향키 이동, 마우스 커서 = 조준 지점(월드 좌표, 마우스가 화면 위에 있을 때만), 왼쪽 클릭/J 공격, Space/K 구르기, 오른쪽 클릭/Tab/L 락온, 1·2·Q 무기; 조준이 없으면 `autoAim`; 터치 조작판 결과를 합침 → Godot Input Map을 `physical_keycode`로 등록 + `Input.get_vector()` + `get_global_mouse_position()`
+- **플레이어 이동** (`entities/Player.js` `updateFree`) — 목표 속도 = 방향 × `speed`, 현재 속도에서 `accel`/`decel`(px/s²)로 부드럽게 접근(8방향 꺾임 완화); 바라보는 반대쪽으로 움직이면 `backpedalSpeedMultiplier`까지 감속(뒷걸음질); 충돌은 발밑 박스(16×10) → Godot `CharacterBody2D`, `velocity = velocity.move_toward(target, accel * delta)` + `move_and_slide()`
+- **조준·회전** (`entities/Player.js` `desiredDir`/`attackDir`/`turnTo`) — 바라보는 방향은 360도 각도(`facingAngle`); 원하는 방향 우선순위: 락온 대상 > 마우스 조준 > 이동 방향; 평소 `turnSpeedDegPerSec`로 부드럽게 회전, 공격 시작 시 원하는 방향으로 즉시 돌고, 예비 동작 중엔 `attackSteerDegPerSec`로 미세 조정; 조준 없음(키보드만·터치)이면 공격 때 `autoAimRange` 안의 가장 가까운 적 자동 조준; 조준 중 구르기는 시선 유지(백스텝) → Godot `rotation`/각도 변수 + `rotate_toward()`
+- **락온(대상 고정)** (`entities/Player.js` `updateLock`) — 토글 시 `lockOnRange` 안 가장 가까운 적 고정, 죽거나 1.6배 거리 밖이면 해제; 고정 중 항상 대상을 바라봄(이동과 무관), 대상 발밑 노란 테두리 + 머리 위 화살표 → Godot 같은 규칙, 표시는 대상 자식 Sprite
 - **플레이어 상태 머신** (`entities/Player.js`) — `free → windup → active → recovery → (다음 타 windup | roll | free)`; windup/active/recovery 중 입력은 예약(버퍼), recovery 시작 후 `chainAfterMs`가 지나야 다음 타·구르기로 연결; 마지막 타 뒤 예약은 1타부터 → Godot `enum State` + `match state`
 - **무기·콤보** (`entities/Player.js`, `data/weapons.json`) — 무기마다 `combo` 배열(타마다 휘두르기 각도 from/to, windup/active/recovery/chainAfter ms, 데미지, 기력, 전진 속도, 판정 원, 화면 흔들림, 히트스톱, 몸 기울기·웅크림)과 이동속도 배율; 무기 슬롯은 `data/player.json` `weaponSlots`, free 상태에서만 교체 → Godot 무기 Resource(`WeaponData.tres`, `Array[AttackMove]`), 판정은 Area2D를 active 구간에만 켬
 - **히트스톱** (`entities/Player.js`) — 공격이 맞으면 `hitstopMs` 동안 플레이어 시간 정지(이동 0, 상태 타이머 멈춤, 입력은 예약) → Godot 플레이어 노드 `process_mode` 잠시 정지 또는 AnimationPlayer `speed_scale = 0`
@@ -38,7 +40,7 @@
 - **아이템 줍기** (`entities/ItemPickup.js`) — 맵의 `type=item`(속성 `itemId`, `amount`) 위치에 놓이고 닿으면 인벤토리에 추가 → Godot `Area2D` + `body_entered` 시그널
 - **인벤토리** (`systems/Inventory.js`) — id→개수 맵, 바뀌면 리스너 호출 → Godot Autoload `Inventory.gd` + `signal changed`
 - **HUD** (`scenes/UIScene.js`) — 월드 위에 겹친 별도 씬; 체력·기력 바, 무기 이름 + 콤보 단계(예: 2/3 되베기), 보스 체력 바(화면 아래 가운데, 발견했을 때만, 분노 단계 표시), 큰 알림 글씨(registry `banner` 변경 이벤트), 가방 목록, 조작 안내(키보드일 때) → Godot `CanvasLayer` + ProgressBar + Label
-- **터치 조작** (`systems/TouchControls.js`) — 터치 기기(또는 `?touch=1`)에서 표시; 화면 왼쪽 절반 누른 자리 중심의 가상 조이스틱(반경 70, 데드존 0.25), 오른쪽 아래 공격·구르기·무기 버튼, 멀티터치 3개 → Godot CanvasLayer + 가상 조이스틱 + TouchScreenButton(action 지정)
+- **터치 조작** (`systems/TouchControls.js`) — 터치 기기(또는 `?touch=1`)에서 표시; 화면 왼쪽 절반 누른 자리 중심의 가상 조이스틱(반경 70, 데드존 0.25, 360도), 오른쪽 아래 공격·구르기·무기·고정 버튼, 멀티터치 3개; 공격 방향은 자동 조준 → Godot CanvasLayer + 가상 조이스틱 + TouchScreenButton(action 지정)
 - **모바일 페이지** (`index.html`) — 확대 금지, 세로로 들면 "가로로 돌려 주세요" 안내, 터치 기기에 전체 화면 버튼(지원 브라우저는 가로 고정) → Godot 웹 내보내기 시 같은 HTML 셸 설정 / 모바일 앱은 프로젝트 설정 `orientation = landscape`
 - **임시 그래픽** (`systems/PlaceholderArt.js`) — 에셋이 없을 때 코드로 텍스처 생성 → Godot에서는 이식 대상 아님(진짜 에셋 사용)
 - **디버그** — 주소에 `?debug=1`이면 충돌 박스와 공격 판정 원 표시 → Godot 에디터 *Debug → Visible Collision Shapes*
