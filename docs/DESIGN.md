@@ -50,3 +50,4 @@
 - **저장** — 클라우드 저장(Supabase 무료 플랜 + 구글 로그인) 주 사용, 브라우저 localStorage는 오프라인·비로그인 보조; 저장 데이터는 JSON 한 덩어리(플레이어·인벤토리·세계 변화) → Godot `user://` JSON 파일 + 같은 백엔드 HTTP API
 - **협동** — 2~4명 협동, 무료 방식(P2P 또는 Supabase Realtime), 싱글 재미 검증 후 착수 → Godot `MultiplayerAPI`(WebSocket/WebRTC)로 재구현
 - **협동 대비 원칙** — 게임 상태는 렌더링과 분리해 한곳에 모으고, 입력은 "명령"으로 변환해 처리 (지금부터 모든 기능에 적용)
+- **몬스터 크기 등급** — `data/monsters.json` `sizeClass`(small/medium/large) 표시만 있음, 충돌 규칙은 docs/CONCEPT.md 표 참고(미구현) → Godot 같은 enum, 충돌 레이어/마스크로 구분

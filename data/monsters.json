@@ -2,6 +2,7 @@
   "training_dummy": {
     "name": "연습용 허수아비",
     "ai": "none",
+    "sizeClass": "small",
     "maxHp": 120,
     "respawnMs": 1500,
     "hurtbox": {
@@ -17,6 +18,7 @@
   "swamp_brute": {
     "name": "늪지 짐승",
     "ai": "boss",
+    "sizeClass": "medium",
     "texture": "boss_swamp",
     "maxHp": 420,
     "speed": 62,
