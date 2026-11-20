@@ -19,6 +19,14 @@ const State = {
 const CHEST_OFFSET = 12;
 const DEG = Math.PI / 180;
 
+/** 각도 a를 b 쪽으로 최대 step(라디안)만큼 돌린다 (짧은 쪽으로) */
+function turnToward(a, b, step) {
+  let d = Math.atan2(Math.sin(b - a), Math.cos(b - a));
+  if (Math.abs(d) <= step) return b;
+  return a + Math.sign(d) * step;
+}
+const unit = (x, y) => { const l = Math.hypot(x, y); return l > 0 ? { x: x / l, y: y / l } : null; };
+
 /**
  * 플레이어. 위치(x, y) = 발밑 좌표. 충돌은 발밑의 작은 박스만.
  * 매 프레임 "명령"을 받아 상태 머신으로 행동한다.
@@ -43,7 +51,9 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
     this.state = State.FREE;
     this.stateTime = 0;           // 현재 상태에서 남은 시간(ms)
-    this.facing = { x: 0, y: 1 }; // 바라보는 방향 (공격 방향)
+    this.facingAngle = Math.PI / 2; // 바라보는 방향(라디안, 0=오른쪽, 시계방향+) — 360도 자유
+    this.facing = { x: 0, y: 1 };   // 같은 방향의 단위 벡터 (공격 방향)
+    this.lockTarget = null;         // 락온(대상 고정) 중인 적
     this.rollDir = { x: 0, y: 1 };
     this.queued = null;           // 공격 중 예약된 다음 행동 ('attack' | 'roll')
     this.comboIndex = 0;          // 지금(또는 다음) 실행할 콤보 타 번호
@@ -147,6 +157,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   update(cmd, dt) {
     this.stats.update(dt, this.state === State.FREE);
     if (this.invulnMs > 0) this.invulnMs -= dt;
+    this.dt = dt;
+    this.updateLock(cmd);
 
     if (this.hitstopMs > 0) {
       // 멈칫: 시간이 흐르지 않는다. 입력만 예약해 둔다.
@@ -163,11 +175,15 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       case State.FREE:
         this.updateFree(cmd);
         break;
-      case State.WINDUP:
+      case State.WINDUP: {
         this.setVelocity(0, 0);
         this.bufferInput(cmd);
+        // 예비 동작 중에는 조준 방향으로 조금씩 틀 수 있다 (몬스터 헌터식 미세 조정)
+        const want = this.desiredDir(cmd);
+        if (want) this.turnTo(Math.atan2(want.y, want.x), this.data_.attackSteerDegPerSec);
         if (this.stateTime <= 0) this.enter(State.ACTIVE);
         break;
+      }
       case State.ACTIVE: {
         const m = this.currentMove;
         this.setVelocity(this.facing.x * m.lungeSpeed, this.facing.y * m.lungeSpeed);
@@ -211,10 +227,68 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (cmd.roll) this.queued = 'roll';
   }
 
+  // ---------- 조준·회전 ----------
+  setFacingAngle(a) {
+    this.facingAngle = Math.atan2(Math.sin(a), Math.cos(a));
+    this.facing = { x: Math.cos(this.facingAngle), y: Math.sin(this.facingAngle) };
+  }
+
+  /** 초당 degPerSec 속도로 목표 각도 쪽으로 회전 */
+  turnTo(angle, degPerSec) {
+    this.setFacingAngle(turnToward(this.facingAngle, angle, degPerSec * DEG * (this.dt / 1000)));
+  }
+
+  /**
+   * 지금 바라보고 싶은 방향: 락온 대상 > 마우스 조준 > 이동 방향
+   * @returns {{x:number,y:number}|null}
+   */
+  desiredDir(cmd) {
+    if (this.lockTarget) return unit(this.lockTarget.x - this.x, this.lockTarget.y - this.y);
+    if (cmd.aim) return unit(cmd.aim.x - this.x, cmd.aim.y - (this.y - CHEST_OFFSET));
+    const { move } = cmd;
+    if (move.x !== 0 || move.y !== 0) return move;
+    return null;
+  }
+
+  /** 공격을 시작할 때의 방향: 원하는 방향, 없으면(터치) 가까운 적 자동 조준, 그래도 없으면 지금 방향 */
+  attackDir(cmd) {
+    if (this.lockTarget) return this.desiredDir(cmd);
+    if (cmd.aim) return this.desiredDir(cmd);
+    if (cmd.autoAim) {
+      const t = this.nearestTarget(this.data_.autoAimRange);
+      if (t) return unit(t.x - this.x, t.y - this.y);
+    }
+    return this.desiredDir(cmd) ?? this.facing;
+  }
+
+  nearestTarget(range) {
+    let best = null, bestD = range;
+    for (const t of this.getTargets()) {
+      if (!t.isHittable) continue;
+      const d = Math.hypot(t.x - this.x, t.y - this.y);
+      if (d < bestD) { best = t; bestD = d; }
+    }
+    return best;
+  }
+
+  /** 락온 켜기/끄기, 대상이 죽거나 멀어지면 해제 */
+  updateLock(cmd) {
+    if (cmd.lockToggle) {
+      const was = this.lockTarget;
+      this.lockTarget = was ? null : this.nearestTarget(this.data_.lockOnRange);
+      if (!this.lockTarget) spawnFloatingLabel(this.scene, this.x, this.y - 34, was ? '고정 해제' : '대상 없음');
+    }
+    const t = this.lockTarget;
+    if (t && (!t.isHittable || this.isDead || Math.hypot(t.x - this.x, t.y - this.y) > this.data_.lockOnRange * 1.6)) {
+      this.lockTarget = null;
+    }
+  }
+
   updateFree(cmd) {
     const { move } = cmd;
     const moving = move.x !== 0 || move.y !== 0;
-    if (moving) this.facing = { x: move.x, y: move.y };
+    const want = this.desiredDir(cmd);
+    if (want) this.turnTo(Math.atan2(want.y, want.x), this.data_.turnSpeedDegPerSec);
 
     if (cmd.switchWeapon !== null && cmd.switchWeapon !== undefined) {
       const slot = cmd.switchWeapon === 'next'
@@ -223,11 +297,22 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       if (slot !== this.weaponSlot) this.equip(slot);
     }
 
-    if (cmd.roll && this.tryRoll(move)) return;
-    if (cmd.attack && this.tryAttack(0)) return;
+    if (cmd.roll && this.tryRoll(cmd)) return;
+    if (cmd.attack && this.tryAttack(0, cmd)) return;
 
-    const speed = this.data_.speed * (this.weapon.moveSpeedMultiplier ?? 1);
-    this.setVelocity(move.x * speed, move.y * speed);
+    // 목표 속도: 바라보는 반대쪽으로 움직이면(뒷걸음질) 느려짐
+    let speed = this.data_.speed * (this.weapon.moveSpeedMultiplier ?? 1);
+    if (moving) {
+      const dot = move.x * this.facing.x + move.y * this.facing.y; // 1=앞, -1=뒤
+      if (dot < 0) speed *= 1 + (this.data_.backpedalSpeedMultiplier - 1) * -dot;
+    }
+    // 가속·감속: 지금 속도에서 목표 속도로 부드럽게 (8방향 꺾임 완화)
+    const v = this.body.velocity;
+    const tx = move.x * speed, ty = move.y * speed;
+    const rate = (moving ? this.data_.accel : this.data_.decel) * (this.dt / 1000);
+    const dx = tx - v.x, dy = ty - v.y, d = Math.hypot(dx, dy);
+    if (d <= rate) this.setVelocity(tx, ty);
+    else this.setVelocity(v.x + (dx / d) * rate, v.y + (dy / d) * rate);
   }
 
   updateRecovery(cmd) {
@@ -238,36 +323,40 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
     if (canChain && this.queued === 'roll') {
       // 구르기로 후딜 끊기 (기력이 없으면 예약 유지)
-      if (this.tryRoll(cmd.move)) { this.queued = null; return; }
+      if (this.tryRoll(cmd)) { this.queued = null; return; }
     }
     if (canChain && this.queued === 'attack' && hasNext) {
-      if (this.tryAttack(this.comboIndex + 1)) { this.queued = null; return; }
+      if (this.tryAttack(this.comboIndex + 1, cmd)) { this.queued = null; return; }
     }
     if (this.stateTime <= 0) {
       // 콤보 끝 (또는 입력 없음) → 자유 상태. 마지막 타 뒤의 공격 예약은 1타부터 다시.
       const next = this.queued;
       this.queued = null;
       this.enter(State.FREE);
-      if (next === 'roll') this.tryRoll(cmd.move);
-      else if (next === 'attack') this.tryAttack(0);
+      if (next === 'roll') this.tryRoll(cmd);
+      else if (next === 'attack') this.tryAttack(0, cmd);
     }
   }
 
   /** @param {number} index 실행할 콤보 타 번호 */
-  tryAttack(index) {
+  tryAttack(index, cmd) {
     const move = this.weapon.combo[index];
     if (!move || !this.stats.spendStamina(move.staminaCost)) return false;
+    const dir = this.attackDir(cmd);
+    this.setFacingAngle(Math.atan2(dir.y, dir.x)); // 공격은 조준한 쪽으로 즉시 돌아서 시작
     this.comboIndex = index;
     this.weaponView.beginWindup();
     this.enter(State.WINDUP);
     return true;
   }
 
-  tryRoll(move) {
+  tryRoll(cmd) {
     if (!this.stats.spendStamina(this.data_.roll.staminaCost)) return false;
+    const { move } = cmd;
     const moving = move.x !== 0 || move.y !== 0;
     this.rollDir = moving ? { ...move } : { ...this.facing };
-    this.facing = { ...this.rollDir };
+    // 조준(마우스·락온) 중이면 시선 유지 → 뒤로 구르기(백스텝) 가능. 아니면 구르는 쪽을 봄
+    if (!this.lockTarget && !cmd.aim) this.setFacingAngle(Math.atan2(this.rollDir.y, this.rollDir.x));
     this.comboIndex = 0;
     this.enter(State.ROLL);
     return true;
@@ -327,8 +416,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   updatePose() {
     const v = this.visual;
     v.setPosition(this.x, this.y).setDepth(this.depth);
-    if (this.facing.x !== 0) v.setFlipX(this.facing.x < 0);
-    const dir = Math.sign(this.facing.x) || 0;
+    if (Math.abs(this.facing.x) > 0.25) v.setFlipX(this.facing.x < 0); // 위/아래를 볼 땐 좌우 뒤집기 유지
+    const dir = this.facing.x; // 옆을 볼수록 크게 기울고, 위/아래를 볼 땐 거의 안 기움
     const m = this.currentMove;
     let lean = 0, squash = 1;
 
@@ -380,6 +469,15 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const px = -fy, py = fx; // 수직 방향
     g.fillStyle(0xe8dcc0, 0.6);
     g.fillTriangle(tipX, tipY, tipX - fx * 5 + px * 4, tipY - fy * 4 + py * 3, tipX - fx * 5 - px * 4, tipY - fy * 4 - py * 3);
+
+    // 락온 표시: 대상 발밑에 테두리 + 머리 위 화살표
+    const t = this.lockTarget;
+    if (t) {
+      const hb = t.getHurtbox();
+      g.lineStyle(2, 0xf2d27a, 0.9).strokeEllipse(t.x, t.y - 2, hb.width + 10, 12);
+      g.fillStyle(0xf2d27a, 0.95).fillTriangle(t.x - 5, hb.y - 14, t.x + 5, hb.y - 14, t.x, hb.y - 7);
+      g.setDepth(100000);
+    }
 
     // 공격 판정 범위 (디버그 모드에서만)
     if (this.scene.physics.world.drawDebug && this.state === State.ACTIVE) {
