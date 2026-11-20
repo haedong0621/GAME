@@ -36,16 +36,20 @@ const unit = (x, y) => { const l = Math.hypot(x, y); return l > 0 ? { x: x / l, 
 export class Player extends window.Phaser.Physics.Arcade.Sprite {
   /**
    * @param {object} data data/player.json
-   * @param {Record<string, object>} weapons data/weapons.json
+   * @param {{weapons:object, armors:object, skills:object}} db data/weapons.json, armors.json, skills.json
    * @param {() => Array} getTargets 공격 가능한 대상 목록
    */
-  constructor(scene, x, y, data, weapons, getTargets) {
+  constructor(scene, x, y, data, db, getTargets) {
     super(scene, x, y, 'player');
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
     this.data_ = data;
-    this.weapons = weapons;
+    this.weapons = db.weapons;
+    this.armors = db.armors;
+    this.skillDb = db.skills;
+    this.ownedWeapons = [...data.weaponSlots]; // 가진 무기 (제작하면 늘어남)
+    this.ownedArmors = [data.startArmor];
     this.getTargets = getTargets;
     this.stats = new Stats(data);
 
@@ -77,6 +81,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     this.weaponView = new WeaponView(scene);
     this.fx = scene.add.graphics(); // 바라보는 방향 표시 등
     this.equip(0, false);
+    this.equipArmor(data.startArmor, false);
 
     applyYSort(this);
   }
@@ -140,9 +145,9 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   // ---------- 무기 ----------
-  /** @param {number} slot data/player.json weaponSlots 의 번호 */
+  /** @param {number} slot 가진 무기 목록(ownedWeapons)의 번호 */
   equip(slot, announce = true) {
-    const id = this.data_.weaponSlots[slot];
+    const id = this.ownedWeapons[slot];
     if (!id || !this.weapons[id]) return;
     this.weaponSlot = slot;
     this.weaponId = id;
@@ -150,6 +155,41 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     this.comboIndex = 0;
     this.weaponView.setWeapon(id);
     if (announce) spawnFloatingLabel(this.scene, this.x, this.y - 34, this.weapon.name);
+  }
+
+  /** 새 무기를 얻는다 (제작 등). equipNow면 바로 든다. */
+  learnWeapon(id, equipNow) {
+    if (!this.ownedWeapons.includes(id)) this.ownedWeapons.push(id);
+    if (equipNow) this.equip(this.ownedWeapons.indexOf(id));
+  }
+
+  learnArmor(id, equipNow) {
+    if (!this.ownedArmors.includes(id)) this.ownedArmors.push(id);
+    if (equipNow) this.equipArmor(id);
+  }
+
+  /** 갑옷 착용: 겉모습(텍스처)과 최대 체력이 바뀐다 */
+  equipArmor(id, announce = true) {
+    const armor = this.armors[id];
+    if (!armor) return;
+    const oldMax = this.stats.maxHp;
+    this.armorId = id;
+    this.armor = armor;
+    this.visual.setTexture(armor.texture);
+    this.stats.maxHp = this.data_.maxHp + (armor.maxHpBonus ?? 0);
+    this.stats.hp = Math.max(1, Math.min(this.stats.maxHp, this.stats.hp + (this.stats.maxHp - oldMax)));
+    if (announce) spawnFloatingLabel(this.scene, this.x, this.y - 34, armor.name);
+  }
+
+  /** 지금 장비(무기+갑옷)가 주는 스킬 목록 */
+  get skills() {
+    const ids = [...(this.weapon?.skills ?? []), ...(this.armor?.skills ?? [])];
+    return ids.map((id) => ({ id, ...this.skillDb[id] })).filter((s) => s.name);
+  }
+
+  /** 패시브 스킬 배율의 곱 (예: knockbackMultiplier) */
+  modifier(key) {
+    return this.skills.reduce((acc, s) => acc * (s[key] ?? 1), 1);
   }
 
   // ---------- 매 프레임 ----------
@@ -207,7 +247,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         if (this.stateTime <= 0) this.enter(State.FREE);
         break;
       case State.HURT: {
-        const k = Math.max(0, this.stateTime / this.data_.hurtMs) * this.data_.knockbackSpeed;
+        const k = Math.max(0, this.stateTime / this.data_.hurtMs) * this.data_.knockbackSpeed * this.modifier('knockbackMultiplier');
         this.setVelocity(this.knock.x * k, this.knock.y * k);
         if (this.stateTime <= 0) this.enter(State.FREE);
         break;
@@ -297,7 +337,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
     if (cmd.switchWeapon !== null && cmd.switchWeapon !== undefined) {
       const slot = cmd.switchWeapon === 'next'
-        ? (this.weaponSlot + 1) % this.data_.weaponSlots.length
+        ? (this.weaponSlot + 1) % this.ownedWeapons.length
         : cmd.switchWeapon;
       if (slot !== this.weaponSlot) this.equip(slot);
     }
@@ -366,7 +406,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   tryRoll(cmd) {
-    if (!this.stats.spendStamina(this.data_.roll.staminaCost)) return false;
+    if (!this.stats.spendStamina(this.data_.roll.staminaCost * this.modifier('rollStaminaMultiplier'))) return false;
     const { move } = cmd;
     const moving = move.x !== 0 || move.y !== 0;
     this.rollDir = moving ? { ...move } : { ...this.facing };
@@ -418,6 +458,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       this.hitThisSwing.add(target);
       const dealt = target.takeDamage(m.damage);
       spawnDamageNumber(this.scene, target.x, target.getHurtbox().y - 10, dealt);
+      // 적중 시 발동 스킬 (예: 독니 → 독)
+      for (const s of this.skills) {
+        if (s.type === 'onHitPoison' && target.status && target.isHittable) target.status.applyPoison(s);
+      }
       landed = true;
     }
     if (landed) {

@@ -6,7 +6,8 @@
 export function createPlaceholderArt(scene, items, weapons) {
   const g = scene.make.graphics({ x: 0, y: 0 }, false);
 
-  // ---- 플레이어 32×32, 발은 맨 아래 가운데
+  // ---- 플레이어 32×32, 발은 맨 아래 가운데. 갑옷마다 텍스처가 따로 있다 (armors.json의 texture)
+  // 기본: 누더기 옷
   g.clear();
   g.fillStyle(0x000000, 0.25).fillEllipse(16, 30, 18, 6);   // 그림자
   g.fillStyle(0x3b4a6b).fillRect(11, 22, 4, 8).fillRect(17, 22, 4, 8); // 다리
@@ -15,6 +16,30 @@ export function createPlaceholderArt(scene, items, weapons) {
   g.fillStyle(0x5a3a22).fillRect(10, 3, 12, 4);             // 머리
   g.fillStyle(0x1b1f24).fillRect(17, 8, 2, 2);              // 눈(오른쪽을 봄)
   g.generateTexture('player', 32, 32);
+
+  // 늪짐승 가죽 갑옷: 보스의 이끼색 가죽 + 등뼈 판(어깨·두건) + 노란 눈빛이 녹아 있음
+  g.clear();
+  g.fillStyle(0x000000, 0.25).fillEllipse(16, 30, 18, 6);
+  g.fillStyle(0x2a3020).fillRect(11, 22, 4, 8).fillRect(17, 22, 4, 8);       // 가죽 다리
+  g.fillStyle(0x1e2416).fillRect(10, 28, 6, 2).fillRect(16, 28, 6, 2);       // 발톱 장화
+  g.fillStyle(0x3a4529).fillRoundedRect(8, 12, 16, 13, 3);                   // 가죽 몸통
+  g.fillStyle(0x2b3320).fillRect(8, 19, 16, 2);                              // 허리띠
+  g.fillStyle(0xc9bd98).fillTriangle(6, 15, 9, 9, 12, 14).fillTriangle(20, 14, 23, 9, 26, 15); // 어깨 뼈판
+  g.fillStyle(0xf1c9a5).fillCircle(17, 10, 5);                               // 얼굴(두건 아래)
+  g.fillStyle(0x45512f).fillRoundedRect(9, 2, 14, 7, 3).fillRect(9, 6, 4, 7); // 가죽 두건
+  g.fillStyle(0xc9bd98).fillTriangle(11, 3, 13, -2, 15, 3).fillTriangle(16, 3, 18, -1, 20, 3); // 두건 뼈 돌기
+  g.fillStyle(0xd8e36a).fillRect(18, 9, 2, 2);                               // 노란 눈빛
+  g.generateTexture('player-swamp', 32, 32);
+
+  // ---- 제작대 40×30, 발은 맨 아래 가운데
+  g.clear();
+  g.fillStyle(0x000000, 0.28).fillEllipse(20, 28, 36, 6);
+  g.fillStyle(0x3e2c1c).fillRect(5, 16, 4, 12).fillRect(31, 16, 4, 12);    // 다리
+  g.fillStyle(0x6b4a2b).fillRect(2, 12, 36, 6);                             // 상판
+  g.fillStyle(0x8a6238).fillRect(2, 12, 36, 2);
+  g.fillStyle(0x5a5f66).fillRect(22, 6, 12, 6).fillRect(25, 4, 6, 2);       // 모루
+  g.fillStyle(0x9aa0a6).fillRect(7, 8, 2, 5).fillRect(5, 7, 6, 2);          // 망치
+  g.generateTexture('workbench', 40, 30);
 
   // ---- 나무 48×72, 밑동은 맨 아래 가운데
   g.clear();
@@ -64,6 +89,12 @@ export function createPlaceholderArt(scene, items, weapons) {
     g.fillStyle(hex(bladeColor)).fillRect(hilt + 1, cy - W / 2, L - 3, W);   // 칼날
     g.fillTriangle(hilt + L - 2, cy - W / 2, hilt + L + 2, cy, hilt + L - 2, cy + W / 2); // 칼끝
     g.fillStyle(0xffffff, 0.35).fillRect(hilt + 1, cy - W / 2, L - 3, 1);    // 날 하이라이트
+    if (w.view.style === 'fang') {
+      // 송곳니 톱날: 아래쪽 날에 이빨, 위쪽 날에 독 빛
+      g.fillStyle(hex(bladeColor));
+      for (let tx = hilt + 3; tx < hilt + L - 4; tx += 4) g.fillTriangle(tx, cy + W / 2, tx + 3, cy + W / 2, tx + 1, cy + W / 2 + 2);
+      g.fillStyle(hex(w.view.glowColor ?? '#9adf5a'), 0.9).fillRect(hilt + 2, cy - W / 2, L - 5, 1);
+    }
     g.generateTexture(`blade-${id}`, width, height);
   }
 
