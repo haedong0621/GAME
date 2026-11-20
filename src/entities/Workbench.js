@@ -9,8 +9,10 @@ export class Workbench {
   constructor(scene, x, y) {
     this.x = x;
     this.y = y;
-    this.label = '제작대 열기';
+    this.label = '제작대 (저장 · 제작)';
     this.action = 'crafting';
+    /** 거점: 들르면 저장된다. 마을 등 다른 거점도 이 표시만 있으면 같은 규칙 */
+    this.isSavePoint = true;
     this.interactRadius = 44;
     this.sprite = scene.add.image(x, y, 'workbench').setOrigin(0.5, 1);
     applyYSort(this.sprite);

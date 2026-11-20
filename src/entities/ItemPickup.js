@@ -5,9 +5,11 @@ import { applyYSort } from '../systems/YSort.js';
  * Godot: Area2D + Sprite2D, body_entered 시그널에서 Inventory.add().
  */
 export class ItemPickup extends window.Phaser.Physics.Arcade.Image {
-  constructor(scene, x, y, itemId, amount = 1) {
+  /** @param {number|null} mapId 맵(Tiled) 오브젝트 id — 저장 시 "주웠음" 기록용. 몬스터 드롭은 null */
+  constructor(scene, x, y, itemId, amount = 1, mapId = null) {
     super(scene, x, y, `item-${itemId}`);
     scene.add.existing(this);
+    this.mapId = mapId;
     this.itemId = itemId;
     this.amount = amount;
     this.setOrigin(0.5, 1);
