@@ -4,7 +4,7 @@
  * Godot: Input Map(move_*, attack, roll, weapon_1/2) + Input.get_vector() — Godot은 물리 키(physical_keycode) 기준으로 매핑.
  *
  * 조작: WASD 또는 방향키 이동 / 마우스 커서 = 조준 / J 또는 마우스 왼쪽 = 공격 / Space 또는 K = 구르기
- *       Tab·L·마우스 오른쪽 = 대상 고정(락온) / 1·2 = 무기 선택, Q = 다음 무기
+ *       Tab·L·마우스 오른쪽 = 대상 고정(락온) / E·F = 상호작용(제작대 등) / 1·2·3 = 무기 선택, Q = 다음 무기
  * 조준: 마우스가 게임 화면 위에 있으면 커서 쪽, 아니면(키보드만·터치) 공격 때 가까운 적 자동 조준
  *
  * 키는 event.code(키보드의 "물리적 위치")로 읽는다.
@@ -22,7 +22,8 @@ const BUTTON_CODES = {
   KeyJ: ['attack', true],
   Space: ['roll', true], KeyK: ['roll', true],
   Tab: ['lockToggle', true], KeyL: ['lockToggle', true],
-  Digit1: ['switchWeapon', 0], Digit2: ['switchWeapon', 1], KeyQ: ['switchWeapon', 'next'],
+  KeyE: ['interact', true], KeyF: ['interact', true],
+  Digit1: ['switchWeapon', 0], Digit2: ['switchWeapon', 1], Digit3: ['switchWeapon', 2], KeyQ: ['switchWeapon', 'next'],
 };
 /** 브라우저 기본 동작(스크롤 등)을 막을 키 */
 const PREVENT = new Set(['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
@@ -35,7 +36,7 @@ export class InputSystem {
   constructor(scene, getTouch) {
     this.getTouch = getTouch;
     this.held = new Set(); // 지금 누르고 있는 이동 방향
-    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false };
     this.scene = scene;
     this.mouseActive = false; // 마우스가 화면 위에서 움직였으면 조준 모드
 
@@ -127,6 +128,7 @@ export class InputSystem {
       aim,                 // 조준 지점(월드 좌표). 협동 시에도 그대로 전송 가능
       autoAim: !aim,       // 조준 지점이 없으면 가까운 적 자동 조준
       lockToggle: this.pressed.lockToggle || !!t?.lockToggle,
+      interact: this.pressed.interact || !!t?.interact,
       attack: this.pressed.attack || !!t?.attack,
       roll: this.pressed.roll || !!t?.roll,
       switchWeapon: this.pressed.switchWeapon ?? t?.switchWeapon ?? null,
@@ -135,6 +137,7 @@ export class InputSystem {
     this.pressed.roll = false;
     this.pressed.switchWeapon = null;
     this.pressed.lockToggle = false;
+    this.pressed.interact = false;
     return cmd;
   }
 }

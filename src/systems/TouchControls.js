@@ -20,11 +20,12 @@ export class TouchControls {
       { action: 'roll',   label: '구르기', x: W - 235, y: H - 70, r: 46, color: 0x3a5a7a },
       { action: 'switchWeapon', label: '무기', x: W - 70, y: H - 245, r: 36, color: 0x5a5040 },
       { action: 'lockToggle', label: '고정', x: W - 215, y: H - 205, r: 38, color: 0x7a6a30 },
+      { action: 'interact', label: '열기', x: W - 345, y: H - 150, r: 40, color: 0x4a7a4a, onlyWhen: 'interactPrompt' },
     ];
 
     this.stick = { pointerId: null, baseX: 0, baseY: 0, x: 0, y: 0 };
     this.move = { x: 0, y: 0 };
-    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false };
     this.held = new Map(); // pointerId → 버튼 (눌린 모양 표시용)
 
     this.g = scene.add.graphics().setDepth(10);
@@ -41,7 +42,8 @@ export class TouchControls {
   }
 
   onDown(p) {
-    const btn = this.buttons.find((b) => Math.hypot(p.x - b.x, p.y - b.y) <= b.r + 10);
+    if (this.scene.registry.get('panelOpen')) return; // 제작 화면 등이 열려 있으면 조작판은 쉼
+    const btn = this.buttons.find((b) => this.isShown(b) && Math.hypot(p.x - b.x, p.y - b.y) <= b.r + 10);
     if (btn) {
       this.pressed[btn.action] = btn.action === 'switchWeapon' ? 'next' : true;
       this.held.set(p.id, btn);
@@ -76,8 +78,19 @@ export class TouchControls {
   /** InputSystem이 매 프레임 호출. 버튼 누름은 한 번 가져가면 지워진다. */
   consume() {
     const out = { move: { ...this.move }, ...this.pressed };
-    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false };
     return out;
+  }
+
+  /** 조건부 버튼(예: 상호작용)은 해당 상황일 때만 보이고 눌린다 */
+  isShown(b) {
+    return !b.onlyWhen || !!this.scene.registry.get(b.onlyWhen);
+  }
+
+  /** UI 씬 update에서 매 프레임 호출 (조건부 버튼 표시 갱신) */
+  refresh() {
+    const sig = this.buttons.map((b) => this.isShown(b)).join();
+    if (sig !== this.lastSig) { this.lastSig = sig; this.draw(); }
   }
 
   draw() {
@@ -92,7 +105,9 @@ export class TouchControls {
     }
     // 버튼
     const heldButtons = new Set(this.held.values());
+    this.buttons.forEach((b, i) => this.labels[i].setVisible(this.isShown(b)));
     for (const b of this.buttons) {
+      if (!this.isShown(b)) continue;
       const down = heldButtons.has(b);
       g.fillStyle(b.color, down ? 0.75 : 0.4).fillCircle(b.x, b.y, b.r);
       g.lineStyle(3, 0xf2e6c8, down ? 0.8 : 0.35).strokeCircle(b.x, b.y, b.r);

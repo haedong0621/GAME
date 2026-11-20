@@ -3,6 +3,7 @@ import { Tree } from '../entities/Tree.js';
 import { ItemPickup } from '../entities/ItemPickup.js';
 import { Monster } from '../entities/Monster.js';
 import { Boss } from '../entities/Boss.js';
+import { Workbench } from '../entities/Workbench.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH } from '../systems/YSort.js';
@@ -36,6 +37,7 @@ export class WorldScene extends window.Phaser.Scene {
     const monsterData = this.registry.get('monsters');
     this.monsters = [];
     this.bosses = [];
+    this.interactables = []; // 제작대 등 상호작용 가능한 것
     let spawn = { x: map.widthInPixels / 2, y: map.heightInPixels / 2 };
 
     for (const obj of objects) {
@@ -43,6 +45,12 @@ export class WorldScene extends window.Phaser.Scene {
         case 'spawn':
           spawn = { x: obj.x, y: obj.y };
           break;
+        case 'workbench': {
+          const wb = new Workbench(this, obj.x, obj.y);
+          blockers.add(wb.blocker);
+          this.interactables.push(wb);
+          break;
+        }
         case 'tree':
           blockers.add(new Tree(this, obj.x, obj.y).trunk);
           break;
@@ -82,7 +90,8 @@ export class WorldScene extends window.Phaser.Scene {
     const playerData = this.registry.get('playerData');
     this.inputSystem = new InputSystem(this, () => this.registry.get('touch'));
     this.registry.set('inputSystem', this.inputSystem); // 입력 진단 화면용
-    this.player = new Player(this, spawn.x, spawn.y, playerData, this.registry.get('weapons'), () => this.monsters);
+    const db = { weapons: this.registry.get('weapons'), armors: this.registry.get('armors'), skills: this.registry.get('skills') };
+    this.player = new Player(this, spawn.x, spawn.y, playerData, db, () => this.monsters);
     this.registry.set('player', this.player); // HUD가 체력·스태미나를 읽음
 
     this.spawnPoint = spawn;
@@ -108,10 +117,36 @@ export class WorldScene extends window.Phaser.Scene {
   }
 
   update(_time, delta) {
-    this.player.update(this.inputSystem.getCommand(), delta);
-    for (const b of this.bosses) b.update(delta);
+    const cmd = this.inputSystem.getCommand();
+
+    // 상호작용: 가장 가까운 대상이 범위 안이면 안내 표시, 누르면 열기
+    const near = this.nearestInteractable();
+    this.registry.set('interactPrompt', near && !this.player.isDead ? near.label : null);
+    if (cmd.interact && near && this.player.stateName === 'free') {
+      this.openPanel(near.action);
+      return;
+    }
+
+    this.player.update(cmd, delta);
+    for (const m of this.monsters) m.update?.(delta); // 보스 AI, 상태 이상(독) 등
     // HUD에 보여 줄 보스: 플레이어를 발견한 보스
     this.registry.set('activeBoss', this.bosses.find((b) => b.isAlert) ?? null);
+  }
+
+  nearestInteractable() {
+    let best = null, bestD = Infinity;
+    for (const it of this.interactables) {
+      const d = Math.hypot(it.x - this.player.x, it.y - this.player.y);
+      if (d <= it.interactRadius && d < bestD) { best = it; bestD = d; }
+    }
+    return best;
+  }
+
+  /** 제작 화면 등 열기: 월드를 멈추고 UI 씬에 알린다 (닫히면 UI 씬이 월드를 다시 움직임) */
+  openPanel(type) {
+    this.player.setVelocity(0, 0);
+    this.registry.set('openPanel', { type, at: this.time.now });
+    this.scene.pause();
   }
 
   /** HUD 가운데 큰 글씨 알림 (Godot: signal banner(text)) */

@@ -2,6 +2,7 @@ import { PATHS } from '../config.js';
 import { createPlaceholderArt } from '../systems/PlaceholderArt.js';
 import { ItemDatabase } from '../systems/ItemDatabase.js';
 import { Inventory } from '../systems/Inventory.js';
+import { Crafting } from '../systems/Crafting.js';
 
 /**
  * 부팅 씬: 데이터·맵·그림을 미리 읽고, 공용 시스템을 만든 뒤 월드를 시작한다.
@@ -17,6 +18,9 @@ export class BootScene extends window.Phaser.Scene {
     this.load.json('player', PATHS.player);
     this.load.json('weapons', PATHS.weapons);
     this.load.json('monsters', PATHS.monsters);
+    this.load.json('armors', PATHS.armors);
+    this.load.json('skills', PATHS.skills);
+    this.load.json('recipes', PATHS.recipes);
     this.load.tilemapTiledJSON('world', PATHS.worldMap);
     this.load.image('placeholder_tiles', PATHS.placeholderTiles);
   }
@@ -33,6 +37,15 @@ export class BootScene extends window.Phaser.Scene {
     this.registry.set('playerData', this.cache.json.get('player'));
     this.registry.set('weapons', this.cache.json.get('weapons'));
     this.registry.set('monsters', this.cache.json.get('monsters'));
+    this.registry.set('armors', this.cache.json.get('armors'));
+    this.registry.set('skills', this.cache.json.get('skills'));
+    this.registry.set('crafting', new Crafting(this.cache.json.get('recipes'), this.cache.json.get('weapons'), this.cache.json.get('armors')));
+
+    // 알림용 값은 미리 만들어 둔다: Phaser registry는 "처음" 저장할 때는 changedata 이벤트를 보내지 않음
+    this.registry.set('banner', null);
+    this.registry.set('openPanel', null);
+    this.registry.set('panelOpen', false);
+    this.registry.set('interactPrompt', null);
 
     this.scene.start('World');
     this.scene.launch('UI');

@@ -1,6 +1,7 @@
 import { DEBUG, FORCE_TOUCH } from '../config.js';
 import { TouchControls } from '../systems/TouchControls.js';
 import { InputDebugPanel } from '../systems/InputDebugPanel.js';
+import { CraftingPanel } from '../systems/CraftingPanel.js';
 
 const BAR_W = 160;
 const BAR_H = 10;
@@ -26,10 +27,12 @@ export class UIScene extends window.Phaser.Scene {
     this.add.text(12, 28, '기력', small).setShadow(1, 1, '#000', 0);
     this.bars = this.add.graphics();
 
-    // 들고 있는 무기 + 콤보 단계
+    // 장비(무기 + 콤보 단계, 갑옷)와 스킬
     this.weaponText = this.add.text(12, 48, '', small).setShadow(1, 1, '#000', 0);
+    this.armorText = this.add.text(12, 66, '', small).setShadow(1, 1, '#000', 0);
+    this.skillText = this.add.text(12, 84, '', { ...small, color: '#b8e08a' }).setShadow(1, 1, '#000', 0);
 
-    this.invText = this.add.text(12, 72, '', style).setShadow(2, 2, '#000', 0);
+    this.invText = this.add.text(12, 108, '', style).setShadow(2, 2, '#000', 0);
     const refresh = () => {
       const lines = inventory.entries().map(([id, n]) => `· ${items.get(id).name} ×${n}`);
       this.invText.setText(['가방', ...(lines.length ? lines : ['  (비어 있음)'])].join('\n'));
@@ -45,16 +48,32 @@ export class UIScene extends window.Phaser.Scene {
     // 큰 알림 글씨 ("토벌!", "쓰러졌다…")
     this.bannerText = this.add.text(this.scale.width / 2, this.scale.height * 0.38, '', {
       fontFamily: 'serif', fontSize: '40px', fontStyle: 'bold', color: '#e8c860',
-    }).setOrigin(0.5).setStroke('#140c08', 6).setAlpha(0);
-    this.registry.events.on('changedata-banner', (_parent, b) => {
-      this.bannerText.setText(b.text).setColor(b.color ?? '#e8c860').setAlpha(1).setScale(1.15);
-      this.tweens.killTweensOf(this.bannerText);
-      this.tweens.add({ targets: this.bannerText, scale: 1, duration: 250, ease: 'Back.out' });
-      this.tweens.add({ targets: this.bannerText, alpha: 0, delay: 1800, duration: 600 });
-    });
+    }).setOrigin(0.5).setStroke('#140c08', 6).setAlpha(0).setDepth(200);
+    this.registry.events.on('changedata-banner', (_parent, b) => { if (b) this.showBanner(b.text, b.color); });
 
     const params = new URLSearchParams(window.location.search);
     this.inputDebug = new InputDebugPanel(this, DEBUG || params.has('input'));
+
+    // 상호작용 안내 ("E  제작대 열기")
+    this.promptText = this.add.text(this.scale.width / 2, this.scale.height * 0.66, '', {
+      fontFamily: 'sans-serif', fontSize: '16px', color: '#f2e6c8', backgroundColor: '#000000aa', padding: { x: 10, y: 5 },
+    }).setOrigin(0.5);
+    this.isTouch = isTouch;
+
+    // 월드가 패널 열기를 요청하면 (월드는 이미 멈춘 상태)
+    this.registry.events.on('changedata-openPanel', (_p, req) => {
+      if (!req || req.type !== 'crafting' || this.panel) return;
+      this.registry.set('panelOpen', true);
+      this.panel = new CraftingPanel(this, {
+        crafting: this.registry.get('crafting'),
+        inventory,
+        player: this.registry.get('player'),
+        items,
+        skills: this.registry.get('skills'),
+        onCrafted: (info) => this.showBanner(`${info.name} 제작!`, '#e8c860'),
+        onClose: () => { this.panel = null; this.registry.set('panelOpen', false); this.scene.resume('World'); },
+      });
+    });
 
     if (isTouch) {
       this.registry.set('touch', new TouchControls(this));
@@ -81,6 +100,20 @@ export class UIScene extends window.Phaser.Scene {
     const attacking = player.stateName !== 'free' && player.stateName !== 'roll';
     const step = attacking ? `  ${player.comboIndex + 1}/${w.combo.length} ${player.currentMove.name}` : '';
     this.weaponText.setText(`무기: ${w.name}${step}`);
+    this.armorText.setText(`갑옷: ${player.armor.name}`);
+    const skills = player.skills.map((sk) => sk.name);
+    this.skillText.setText(skills.length ? `스킬: ${skills.join(', ')}` : '');
+
+    const prompt = this.panel ? null : this.registry.get('interactPrompt');
+    this.promptText.setText(prompt ? `${this.isTouch ? '[열기]' : '[E]'}  ${prompt}` : '').setVisible(!!prompt);
+    this.registry.get('touch')?.refresh();
+  }
+
+  showBanner(text, color) {
+    this.bannerText.setText(text).setColor(color ?? '#e8c860').setAlpha(1).setScale(1.15);
+    this.tweens.killTweensOf(this.bannerText);
+    this.tweens.add({ targets: this.bannerText, scale: 1, duration: 250, ease: 'Back.out' });
+    this.tweens.add({ targets: this.bannerText, alpha: 0, delay: 1800, duration: 600 });
   }
 
   drawBossBar(boss) {
