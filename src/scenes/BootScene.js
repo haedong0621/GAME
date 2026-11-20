@@ -49,7 +49,8 @@ export class BootScene extends window.Phaser.Scene {
     this.registry.set('uiClickAt', -1);
     this.registry.set('stealth', null);
 
-    this.scene.start('World');
-    this.scene.launch('UI');
+    this.registry.set('loadSlot', null);
+
+    this.scene.start('Title'); // 시작 화면 → 이어하기/불러오기/새로 시작 → World + UI
   }
 }

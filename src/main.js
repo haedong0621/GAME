@@ -1,5 +1,6 @@
 import { VIEW_WIDTH, VIEW_HEIGHT, DEBUG } from './config.js';
 import { BootScene } from './scenes/BootScene.js';
+import { TitleScene } from './scenes/TitleScene.js';
 import { WorldScene } from './scenes/WorldScene.js';
 import { UIScene } from './scenes/UIScene.js';
 
@@ -25,5 +26,5 @@ window.__game = new Phaser.Game({
     // (기본값 true는 1/60초 고정이라, 120Hz 모니터나 프레임 박자가 흔들릴 때 "안 움직이는 프레임"이 끼어 끊겨 보였다)
     arcade: { gravity: { x: 0, y: 0 }, debug: DEBUG, fixedStep: false },
   },
-  scene: [BootScene, WorldScene, UIScene],
+  scene: [BootScene, TitleScene, WorldScene, UIScene],
 });
