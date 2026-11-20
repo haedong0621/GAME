@@ -51,7 +51,7 @@ export class CraftingPanel {
       .setOrigin(1, 0).setInteractive({ useHandCursor: true });
     ng.on('pointerdown', () => { if (window.confirm('저장을 지우고 처음부터 시작할까요? 되돌릴 수 없어요.')) ctx.onNewGame?.(); });
     this.root.add(ng);
-    this.root.add(scene.add.text(this.x0 + 130, this.y0 + 22, '거점 — 여기서 저장됨 · 쓰러지면 이 시점으로 돌아옴', { fontFamily: 'sans-serif', fontSize: '12px', color: '#9adf5a' }));
+    this.root.add(scene.add.text(this.x0 + 130, this.y0 + 22, '거점 — 수동 저장됨 · 쓰러지면 최근 저장(수동·자동)으로 돌아옴', { fontFamily: 'sans-serif', fontSize: '12px', color: '#9adf5a' }));
     this.root.add(scene.add.text(this.x0 + 20, this.y0 + H - 34, '↑↓ 선택 · Enter 제작 · Esc 닫기', { fontFamily: 'sans-serif', fontSize: '12px', color: COL.dim }));
 
     this.onKey = (e) => {

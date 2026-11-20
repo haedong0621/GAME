@@ -3,6 +3,7 @@ import { TouchControls } from '../systems/TouchControls.js';
 import { InputDebugPanel } from '../systems/InputDebugPanel.js';
 import { CraftingPanel } from '../systems/CraftingPanel.js';
 import { DevTools } from '../systems/DevTools.js';
+import { PauseMenu } from '../systems/PauseMenu.js';
 
 const BAR_W = 160;
 const BAR_H = 10;
@@ -86,6 +87,15 @@ export class UIScene extends window.Phaser.Scene {
       });
     });
 
+    // 게임 중 메뉴: Esc 또는 오른쪽 위 [메뉴] 버튼 (제작 화면이 열려 있을 땐 Esc는 제작 화면 닫기)
+    const menuBtn = this.add.text(this.scale.width - 12, isTouch ? 56 : 12, '메뉴 (Esc)', {
+      fontFamily: 'sans-serif', fontSize: '13px', color: '#d8ccb0', backgroundColor: '#00000088', padding: { x: 8, y: 4 },
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    menuBtn.on('pointerdown', (p) => { this.registry.set('uiClickAt', p.downTime); this.openPauseMenu(); });
+    this.onEsc = (e) => { if (e.code === 'Escape' && !this.panel && !this.pauseMenu) this.openPauseMenu(); };
+    window.addEventListener('keydown', this.onEsc);
+    this.events.once('shutdown', () => window.removeEventListener('keydown', this.onEsc));
+
     if (isTouch) {
       this.registry.set('touch', new TouchControls(this));
     } else {
@@ -124,9 +134,20 @@ export class UIScene extends window.Phaser.Scene {
     else if (st?.sneaking) { stealthLabel = '웅크림'; stealthColor = '#c8d0e0'; }
     this.stealthText.setText(stealthLabel).setColor(stealthColor).setVisible(!!stealthLabel);
 
-    const prompt = this.panel ? null : this.registry.get('interactPrompt');
+    const prompt = this.panel || this.pauseMenu ? null : this.registry.get('interactPrompt');
     this.promptText.setText(prompt ? `${this.isTouch ? '[열기]' : '[E]'}  ${prompt}` : '').setVisible(!!prompt);
     this.registry.get('touch')?.refresh();
+  }
+
+  openPauseMenu() {
+    if (this.panel || this.pauseMenu) return;
+    this.registry.set('panelOpen', true);
+    this.scene.pause('World');
+    this.pauseMenu = new PauseMenu(this, () => {
+      this.pauseMenu = null;
+      this.registry.set('panelOpen', false);
+      this.scene.resume('World');
+    });
   }
 
   showBanner(text, color) {

@@ -44,7 +44,9 @@ export class WorldScene extends window.Phaser.Scene {
     this.bosses = [];
     this.interactables = []; // 제작대 등 상호작용 가능한 것
     // 저장 데이터 (없으면 새 게임)
-    const save = SaveSystem.load();
+    const slot = this.registry.get('loadSlot');
+    const save = slot ? SaveSystem.load(slot) : null;
+    this.autosaveZones = [];
     this.collectedPickups = new Set(save?.world?.collectedPickups ?? []);
     this.playTimeMs = save?.playTimeMs ?? 0;
     this.mobs = [];
@@ -59,11 +61,15 @@ export class WorldScene extends window.Phaser.Scene {
           spawn = { x: obj.x, y: obj.y };
           break;
         case 'workbench': {
-          const wb = new Workbench(this, obj.x, obj.y);
+          const wb = new Workbench(this, obj.x, obj.y, obj.name && obj.name !== 'workbench' ? obj.name : '거점');
           blockers.add(wb.blocker);
           this.interactables.push(wb);
           break;
         }
+        case 'autosave':
+          // 자동 저장 구역: 들어가면 자동 슬롯에 저장 (지역 경계: 보스 터 앞, 지역 입구 등)
+          this.autosaveZones.push({ x: obj.x, y: obj.y, width: obj.width, height: obj.height, name: obj.name || '어딘가', inside: false });
+          break;
         case 'bush':
           bushes.push(new Bush(this, obj.x, obj.y));
           break;
@@ -159,16 +165,31 @@ export class WorldScene extends window.Phaser.Scene {
   }
 
   // ---------- 저장 ----------
-  /** 지금 상태를 저장하고, 부활 지점을 이 자리로 */
-  saveGame() {
-    const ok = SaveSystem.save(SaveSystem.snapshot({
+  /**
+   * 지금 상태를 저장
+   * @param {'manual'|'auto'} slot @param {string} location 저장 화면에 보일 장소 이름
+   */
+  saveGame(slot = 'manual', location = this.lastBaseName ?? '거점') {
+    const ok = SaveSystem.save(slot, SaveSystem.snapshot({
       player: this.player,
       inventory: this.registry.get('inventory'),
       collectedPickups: this.collectedPickups,
       playTimeMs: this.playTimeMs,
+      location,
     }));
-    this.banner(ok ? '저장됨' : '저장 실패 (브라우저 저장소를 쓸 수 없음)', ok ? '#9adf5a' : '#d06050');
+    const label = slot === 'auto' ? `자동 저장 — ${location}` : '저장됨';
+    this.banner(ok ? label : '저장 실패 (브라우저 저장소를 쓸 수 없음)', ok ? '#9adf5a' : '#d06050');
     return ok;
+  }
+
+  /** 자동 저장 구역: 밖에서 안으로 들어온 순간에만 저장 (머무는 동안 반복 저장 안 함) */
+  checkAutosave() {
+    const { x, y } = this.player;
+    for (const z of this.autosaveZones) {
+      const inside = x >= z.x && x <= z.x + z.width && y >= z.y && y <= z.y + z.height;
+      if (inside && !z.inside && !this.player.isDead) this.saveGame('auto', z.name);
+      z.inside = inside;
+    }
   }
 
   /** 저장 데이터를 게임에 적용 (위치, 장비, 가방) */
@@ -188,14 +209,20 @@ export class WorldScene extends window.Phaser.Scene {
     const inv = this.registry.get('inventory');
     for (const [id, n] of save.inventory ?? []) if (this.registry.get('items').has(id)) inv.add(id, n);
     const when = save.savedAt ? new Date(save.savedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    if (save.slot === 'manual' && save.location) this.lastBaseName = save.location;
+    // 저장한 자리가 자동 저장 구역 안이면, 시작하자마자 또 저장되지 않게 "이미 안에 있음"으로 표시
+    for (const z of this.autosaveZones) {
+      z.inside = p.x >= z.x && p.x <= z.x + z.width && p.y >= z.y && p.y <= z.y + z.height;
+    }
     const notice = SaveSystem.takeNotice();
-    this.time.delayedCall(300, () => this.banner(notice ?? `이어하기${when ? ` (${when} 저장)` : ''}`, '#c8d8b0'));
+    const kind = save.slot === 'auto' ? '자동 저장' : '수동 저장';
+    this.time.delayedCall(300, () => this.banner(notice ?? `${kind} 불러옴 — ${save.location ?? ''}${when ? ` (${when})` : ''}`, '#c8d8b0'));
   }
 
-  /** 저장을 지우고 처음부터 */
+  /** 저장을 모두 지우고 처음부터 */
   newGame() {
-    SaveSystem.clear();
-    window.location.reload();
+    SaveSystem.clearAll();
+    SaveSystem.reloadInto('new', '처음부터 시작');
   }
 
   update(_time, delta) {
@@ -206,12 +233,13 @@ export class WorldScene extends window.Phaser.Scene {
     const near = this.nearestInteractable();
     this.registry.set('interactPrompt', near && !this.player.isDead ? near.label : null);
     if (cmd.interact && near && this.player.stateName === 'free') {
-      if (near.isSavePoint) this.saveGame(); // 거점에 들르면 저장
+      if (near.isSavePoint) { this.lastBaseName = near.locationName; this.saveGame('manual', near.locationName); } // 거점에 들르면 수동 저장
       this.openPanel(near.action);
       return;
     }
 
     this.player.update(cmd, delta);
+    this.checkAutosave();
 
     // 몬스터: 플레이어가 이번 프레임에 낸 소리와 환경을 보고 판단
     this.coneGfx.clear();
@@ -335,8 +363,10 @@ export class WorldScene extends window.Phaser.Scene {
     // 마지막 저장 시점으로 되돌아간다 (저장이 없으면 처음부터). 페이지를 새로 불러와 깨끗하게 시작.
     if (SaveSystem.available()) {
       this.time.delayedCall(this.player.data_.respawnDelayMs, () => {
-        SaveSystem.setNotice(SaveSystem.load() ? '마지막 저장 시점으로 돌아왔다' : '처음부터 다시 시작');
-        window.location.reload();
+        // 수동·자동 중 더 최근 저장을 불러온다
+        const latest = SaveSystem.latest();
+        if (latest) SaveSystem.reloadInto(latest.slot, `${latest.slot === 'auto' ? '자동' : '수동'} 저장 시점으로 돌아왔다 — ${latest.location ?? ''}`);
+        else SaveSystem.reloadInto('new', '저장이 없어 처음부터 다시 시작');
       });
       return;
     }
