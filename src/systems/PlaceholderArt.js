@@ -75,6 +75,28 @@ export function createPlaceholderArt(scene, items, weapons) {
   g.fillStyle(0x1e2416).fillTriangle(42, 46, 48, 52, 40, 52);                  // 앞발톱
   g.generateTexture('boss_swamp', 64, 56);
 
+  // ---- 굶주린 들개 28×20, 오른쪽을 봄, 발은 맨 아래 가운데
+  g.clear();
+  g.fillStyle(0x000000, 0.28).fillEllipse(14, 18, 22, 5);
+  g.fillStyle(0x4a3a2c).fillTriangle(1, 7, 6, 9, 3, 12);                       // 꼬리
+  g.fillStyle(0x5e4a36).fillEllipse(12, 11, 18, 9);                            // 몸통
+  g.fillStyle(0x4a3a2c).fillRect(6, 13, 3, 6).fillRect(15, 13, 3, 6);          // 다리
+  g.fillStyle(0x6a5440).fillEllipse(21, 8, 10, 8);                             // 머리
+  g.fillStyle(0x3a2c20).fillTriangle(19, 5, 21, 0, 23, 5);                     // 귀
+  g.fillStyle(0x6a5440).fillRect(24, 8, 4, 3);                                 // 주둥이
+  g.fillStyle(0xe0c050).fillRect(22, 6, 2, 1);                                 // 눈
+  g.fillStyle(0x8a7a6a).fillRect(9, 7, 6, 1);                                  // 갈비뼈 드러난 털
+  g.generateTexture('hound', 28, 20);
+
+  // ---- 풀숲 34×22, 밑동은 맨 아래 가운데
+  g.clear();
+  g.fillStyle(0x000000, 0.22).fillEllipse(17, 20, 30, 5);
+  g.fillStyle(0x24452a).fillEllipse(10, 14, 16, 12).fillEllipse(24, 14, 16, 12);
+  g.fillStyle(0x2f5a34).fillEllipse(17, 10, 20, 14);
+  g.fillStyle(0x3d6e40).fillEllipse(13, 8, 8, 6).fillEllipse(22, 9, 7, 5);
+  g.fillStyle(0x24452a).fillTriangle(4, 16, 6, 6, 9, 16).fillTriangle(26, 16, 29, 7, 31, 16);
+  g.generateTexture('bush', 34, 22);
+
   // ---- 무기: weapons.json의 view 값으로 칼 모양. 손잡이가 왼쪽, 칼끝이 오른쪽(0도 방향)
   const hex = (s) => window.Phaser.Display.Color.HexStringToColor(s).color;
   for (const [id, w] of Object.entries(weapons)) {

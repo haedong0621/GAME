@@ -3,6 +3,7 @@ import { Stats } from '../systems/Stats.js';
 import { findHits } from '../systems/Combat.js';
 import { spawnFloatingLabel } from '../systems/Effects.js';
 import { StatusEffects } from '../systems/StatusEffects.js';
+import { AwarenessMeter, Level } from '../systems/Stealth.js';
 
 /** 보스 행동 상태 (Godot: enum State) */
 const State = {
@@ -18,7 +19,7 @@ const State = {
 
 /**
  * 경계 단계 (스닉 시스템 대비). 지금은 거리만 보고 판단하지만,
- * M4에서 시야(부채꼴)·소리·풀숲/어둠 판정을 senses()에 넣으면 된다.
+ * 시야(부채꼴)·소리·풀숲/어둠 판정은 systems/Stealth.js의 AwarenessMeter가 한다 (updateSenses).
  */
 const Awareness = { UNAWARE: 'unaware', SUSPICIOUS: 'suspicious', ALERT: 'alert' };
 
@@ -46,6 +47,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.onDefeated = onDefeated;
     this.stats = new Stats(data);
     this.status = new StatusEffects(this);
+    this.meter = new AwarenessMeter(data.perception); // 시야·청각 (스닉 시스템)
     this.home = { x, y };
 
     const f = data.feetCollider;
@@ -102,7 +104,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   // ---------- 매 프레임 ----------
-  update(dt) {
+  /** @param {{player, env, noises, mobs, stealth}} ctx */
+  update(dt, ctx) {
     if (this.state === State.DEAD) { this.syncVisual(); return; }
     this.status.update(dt);
     if (this.state === State.DEAD) return; // 독으로 쓰러졌을 수 있음
@@ -118,7 +121,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     switch (this.state) {
       case State.IDLE:
         this.setVelocity(0, 0);
-        if (this.senses(p, dist)) this.becomeAlert(true);
+        this.updateSenses(dt, ctx);
         break;
 
       case State.ROAR:
@@ -155,6 +158,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
         if (a.type === 'charge') {
           this.setVelocity(this.attackDir.x * a.speed, this.attackDir.y * a.speed);
           this.checkHit({ x: this.x, y: this.y - CHEST, radius: a.width / 2 });
+          this.chaseThroughMobs(ctx, a);
           if (!this.body.blocked.none) this.stateTime = 0; // 나무 등에 부딪히면 멈춤
         } else {
           const lunge = this.stateTime > a.activeMs / 2 ? a.lunge : 0;
@@ -174,11 +178,12 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
         break;
 
       case State.RETURN: {
-        if (this.senses(p, dist)) { this.becomeAlert(true); break; }
+        if (this.updateSenses(dt, ctx)) break;
         const hx = this.home.x - this.x, hy = this.home.y - this.y;
         const hd = Math.hypot(hx, hy);
         if (hd < 6) {
           this.stats.reset();
+          this.meter.reset();
           this.awareness = Awareness.UNAWARE;
           this.enter(State.IDLE);
         } else {
@@ -192,13 +197,39 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.syncVisual();
   }
 
-  /** 플레이어를 알아챘는가? (M4 스닉: 시야각·소리·은신 판정을 여기에) */
-  senses(player, dist) {
-    return !player.isDead && dist < this.data_.detectRadius;
+  /**
+   * 시야·청각으로 경계 수치를 갱신. 발견하면 포효(true 반환), 의심이면 그쪽을 돌아본다.
+   */
+  updateSenses(dt, ctx) {
+    const { heard } = this.meter.update(dt, this, ctx.player, ctx.env, ctx.noises, ctx.stealth);
+    const level = this.meter.level;
+    if (level === Level.ALERT && !ctx.player.isDead) { this.becomeAlert(true); return true; }
+    if (level === Level.SUSPICIOUS) {
+      this.awareness = Awareness.SUSPICIOUS;
+      const spot = heard ?? (this.meter.seeing ? this.meter.lastSeen : null);
+      if (spot) {
+        const dx = spot.x - this.x, dy = spot.y - this.y, d = Math.hypot(dx, dy) || 1;
+        this.face({ x: dx / d, y: dy / d });
+      }
+    } else if (this.state === State.IDLE) {
+      this.awareness = Awareness.UNAWARE;
+    }
+    return false;
+  }
+
+  /** 중형 보스 규칙: 돌진 중 잡몹과 부딪히면 치면서 밀어내고 돌진 계속 */
+  chaseThroughMobs(ctx, a) {
+    const c = { x: this.x, y: this.y - CHEST, radius: a.width / 2 + 4 };
+    for (const m of findHits(c, ctx.mobs)) {
+      if (this.mobsHitThisCharge.has(m)) continue;
+      this.mobsHitThisCharge.add(m);
+      m.receiveHit(this.data_.mobChargeDamage ?? 20, this.x, this.y, 340);
+    }
   }
 
   becomeAlert(roar) {
     this.awareness = Awareness.ALERT;
+    this.meter.value = 1;
     if (roar) {
       this.enter(State.ROAR);
       this.scene.cameras.main.shake(400, 0.004);
@@ -209,6 +240,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
 
   loseTrack() {
     this.awareness = Awareness.SUSPICIOUS;
+    this.meter.value = 0.5;
     this.enter(State.RETURN);
   }
 
@@ -219,6 +251,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.body.reset(this.home.x, this.home.y);
     this.stats.reset();
     this.awareness = Awareness.UNAWARE;
+    this.meter.reset();
     this.cooldown = 0;
     this.enter(State.IDLE);
   }
@@ -243,6 +276,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.attack = atk;
     this.attackDir = { ...dir };
     this.hitPlayerThisAttack = false;
+    this.mobsHitThisCharge = new Set();
     this.enter(State.WINDUP);
   }
 
@@ -304,6 +338,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.visual.setAlpha(1).setAngle(0).clearTint();
     this.stats.reset();
     this.awareness = Awareness.UNAWARE;
+    this.meter.reset();
     this.enter(State.IDLE);
   }
 
