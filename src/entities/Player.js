@@ -67,6 +67,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     this.knock = { x: 0, y: 0 };
     /** 쓰러졌을 때 씬이 등록하는 콜백 */
     this.onDeath = null;
+    this.isSneaking = false;      // 웅크려 걷는 중 (조용하고 덜 보임)
+    this.walkNoiseMs = 0;
+    /** 소리를 내보낼 곳 (WorldScene이 연결) */
+    this.noiseBus = null;
 
     this.setOrigin(0.5, 1);
     this.body.setSize(16, 10, false);
@@ -200,6 +204,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (this.invulnMs > 0) this.invulnMs -= dt;
     this.dt = dt;
     this.updateLock(cmd);
+    this.isSneaking = !!cmd.sneak && this.state === State.FREE;
     // 진단용: 이동 입력이 있는데 못 움직이는 이유 (HUD 입력 진단 화면에 표시)
     const wantsMove = cmd.move.x !== 0 || cmd.move.y !== 0;
     this.moveBlockedBy = !wantsMove ? null
@@ -281,6 +286,11 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (cmd.roll) this.queued = 'roll';
   }
 
+  /** 소리 내기: 근처 몬스터가 듣는다 (data/player.json stealth.noise 반경) */
+  makeNoise(kind) {
+    this.noiseBus?.emit(this.x, this.y, this.data_.stealth.noise[kind], kind);
+  }
+
   // ---------- 조준·회전 ----------
   setFacingAngle(a) {
     this.facingAngle = Math.atan2(Math.sin(a), Math.cos(a));
@@ -354,8 +364,17 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (cmd.roll && this.tryRoll(cmd)) return;
     if (cmd.attack && this.tryAttack(0, cmd)) return;
 
-    // 목표 속도: 바라보는 반대쪽으로 움직이면(뒷걸음질) 느려짐
+    // 목표 속도: 바라보는 반대쪽으로 움직이면(뒷걸음질) 느려짐, 웅크리면 느려짐
     let speed = this.data_.speed * (this.weapon.moveSpeedMultiplier ?? 1);
+    if (this.isSneaking) speed *= this.data_.stealth.sneakSpeedMultiplier;
+    // 걷는 소리: 일정 간격으로 (웅크리면 아주 작게)
+    if (moving) {
+      this.walkNoiseMs -= this.dt;
+      if (this.walkNoiseMs <= 0) {
+        this.walkNoiseMs = this.data_.stealth.walkNoiseIntervalMs;
+        this.makeNoise(this.isSneaking ? 'sneak' : 'walk');
+      }
+    }
     if (moving) {
       const dot = move.x * this.facing.x + move.y * this.facing.y; // 1=앞, -1=뒤
       if (dot < 0) speed *= 1 + (this.data_.backpedalSpeedMultiplier - 1) * -dot;
@@ -423,6 +442,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (!this.lockTarget && !cmd.aim) this.setFacingAngle(Math.atan2(this.rollDir.y, this.rollDir.x));
     this.comboIndex = 0;
     this.enter(State.ROLL);
+    this.makeNoise('roll');
     return true;
   }
 
@@ -436,7 +456,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         this.hitThisSwing.clear();
         this.spawnSlashFx(m);
         break;
-      case State.RECOVERY: this.stateTime = m.recoveryMs; break;
+      case State.RECOVERY:
+        this.stateTime = m.recoveryMs;
+        this.makeNoise('attack'); // 휘두르는 소리는 칼이 지나간 뒤에 퍼진다 (기습 데미지가 먼저 들어가도록)
+        break;
       case State.ROLL: this.stateTime = this.data_.roll.durationMs; break;
       case State.HURT: this.stateTime = this.data_.hurtMs; this.comboIndex = 0; break;
       case State.DEAD: this.stateTime = 0; this.comboIndex = 0; break;
@@ -465,7 +488,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     for (const target of hits) {
       if (this.hitThisSwing.has(target)) continue; // 한 번 휘두를 때 같은 대상은 한 번만
       this.hitThisSwing.add(target);
-      const dealt = target.takeDamage(m.damage);
+      const dealt = target.takeDamage(m.damage, { fromX: this.x, fromY: this.y });
       spawnDamageNumber(this.scene, target.x, target.getHurtbox().y - 10, dealt);
       // 적중 시 발동 스킬 (예: 독니 → 독)
       for (const s of this.skills) {
@@ -474,6 +497,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       landed = true;
     }
     if (landed) {
+      this.makeNoise('hit');
       this.hitstopMs = m.hitstopMs;
       this.scene.cameras.main.shake(80 + m.hitstopMs, m.shake);
     }
@@ -504,6 +528,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       squash = 0.8;
     } else if (this.state === State.HURT) {
       lean = -dir * 12;
+    } else if (this.isSneaking) {
+      squash = 0.8; // 웅크림
     }
     if (this.state === State.DEAD) {
       v.setAngle(90).setAlpha(0.6).setScale(1);

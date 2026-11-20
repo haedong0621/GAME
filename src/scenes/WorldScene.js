@@ -5,6 +5,9 @@ import { Monster } from '../entities/Monster.js';
 import { Boss } from '../entities/Boss.js';
 import { Workbench } from '../entities/Workbench.js';
 import { FrameRecorder } from '../systems/FrameRecorder.js';
+import { Mob } from '../entities/Mob.js';
+import { Bush } from '../entities/Bush.js';
+import { NoiseBus, StealthEnv, Level } from '../systems/Stealth.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH } from '../systems/YSort.js';
@@ -39,6 +42,10 @@ export class WorldScene extends window.Phaser.Scene {
     this.monsters = [];
     this.bosses = [];
     this.interactables = []; // 제작대 등 상호작용 가능한 것
+    this.mobs = [];
+    const bushes = [];
+    const darkZones = [];
+    this.noiseBus = new NoiseBus();
     let spawn = { x: map.widthInPixels / 2, y: map.heightInPixels / 2 };
 
     for (const obj of objects) {
@@ -50,6 +57,16 @@ export class WorldScene extends window.Phaser.Scene {
           const wb = new Workbench(this, obj.x, obj.y);
           blockers.add(wb.blocker);
           this.interactables.push(wb);
+          break;
+        }
+        case 'bush':
+          bushes.push(new Bush(this, obj.x, obj.y));
+          break;
+        case 'dark': {
+          // 어두운 구역: 위에 어둠을 덮고, 적의 시야가 짧아진다
+          const z = { x: obj.x, y: obj.y, width: obj.width, height: obj.height };
+          darkZones.push(z);
+          this.add.rectangle(z.x, z.y, z.width, z.height, 0x05080a, 0.38).setOrigin(0, 0).setDepth(90000);
           break;
         }
         case 'tree':
@@ -71,7 +88,11 @@ export class WorldScene extends window.Phaser.Scene {
             console.warn(`[World] 맵에 알 수 없는 몬스터 id: ${monsterId}`);
             break;
           }
-          if (data.ai === 'boss') {
+          if (data.ai === 'mob') {
+            const mob = new Mob(this, obj.x, obj.y, monsterId, data, (m) => this.onMobDefeated(m));
+            this.mobs.push(mob);
+            this.monsters.push(mob);
+          } else if (data.ai === 'boss') {
             const b = new Boss(this, obj.x, obj.y, monsterId, data, () => this.player, (boss) => this.onBossDefeated(boss));
             this.bosses.push(b);
             this.monsters.push(b);
@@ -87,6 +108,10 @@ export class WorldScene extends window.Phaser.Scene {
       }
     }
 
+    this.bushes = bushes;
+    this.env = new StealthEnv(bushes.map((b) => ({ x: b.x, y: b.y })), darkZones);
+    this.coneGfx = this.add.graphics().setDepth(-0.4); // 웅크릴 때 보이는 적 시야 (바닥 위)
+
     // ---- 플레이어
     const playerData = this.registry.get('playerData');
     this.inputSystem = new InputSystem(this, () => this.registry.get('touch'));
@@ -98,6 +123,7 @@ export class WorldScene extends window.Phaser.Scene {
 
     this.spawnPoint = spawn;
     this.player.onDeath = () => this.onPlayerDeath();
+    this.player.noiseBus = this.noiseBus;
 
     this.physics.add.collider(this.player, blockers);
     this.physics.add.collider(this.player, ground);
@@ -105,7 +131,13 @@ export class WorldScene extends window.Phaser.Scene {
       this.physics.add.collider(this.player, b);
       this.physics.add.collider(b, blockers);
       this.physics.add.collider(b, ground);
+      this.physics.add.collider(b, this.mobs); // 보스는 밀리지 않고 잡몹을 밀어냄
     }
+    // 잡몹: 플레이어와 같은 판정 (막히고, 서로 밀어냄)
+    this.physics.add.collider(this.mobs, blockers);
+    this.physics.add.collider(this.mobs, ground);
+    this.physics.add.collider(this.mobs, this.mobs);
+    this.physics.add.collider(this.player, this.mobs);
     this.physics.add.overlap(this.player, pickups, (_player, pickup) => {
       this.registry.get('inventory').add(pickup.itemId, pickup.amount);
       pickup.collect();
@@ -130,7 +162,20 @@ export class WorldScene extends window.Phaser.Scene {
     }
 
     this.player.update(cmd, delta);
-    for (const m of this.monsters) m.update?.(delta); // 보스 AI, 상태 이상(독) 등
+
+    // 몬스터: 플레이어가 이번 프레임에 낸 소리와 환경을 보고 판단
+    this.coneGfx.clear();
+    const ctx = {
+      player: this.player, env: this.env, noises: this.noiseBus.list, mobs: this.mobs,
+      stealth: this.player.data_.stealth, showCones: this.player.isSneaking, coneGfx: this.coneGfx,
+    };
+    for (const m of this.monsters) m.update?.(delta, ctx); // 보스·잡몹 AI, 상태 이상(독) 등
+    this.noiseBus.clear();
+
+    // 풀숲 표시와 HUD용 은신 상태
+    const inBush = this.env.isInBush(this.player.x, this.player.y);
+    for (const b of this.bushes) b.setOccupied(inBush && Math.abs(b.x - this.player.x) < 15 && Math.abs(b.y - this.player.y) < 14);
+    this.registry.set('stealth', { level: this.nearestThreat(), sneaking: this.player.isSneaking, inBush });
     this.recorder.record(delta, cmd, this.player, this.inputSystem);
     // HUD에 보여 줄 보스: 플레이어를 발견한 보스
     this.registry.set('activeBoss', this.bosses.find((b) => b.isAlert) ?? null);
@@ -140,6 +185,17 @@ export class WorldScene extends window.Phaser.Scene {
   devTeleportToBoss() {
     const b = this.bosses[0];
     if (b) this.player.body.reset(b.x - 110, b.y + 10);
+  }
+
+  devTeleportToHounds() {
+    const m = this.mobs.find((x) => x.isHittable);
+    if (m) this.player.body.reset(m.home.x - 170, m.home.y + 10);
+  }
+
+  devCalmAll() {
+    for (const m of this.mobs) m.calmDown();
+    for (const b of this.bosses) b.resetToHome();
+    this.banner('적 경계 해제', '#9adf5a');
   }
 
   devBossHp(ratio) {
@@ -200,11 +256,32 @@ export class WorldScene extends window.Phaser.Scene {
     this.registry.set('banner', { text, color, at: this.time.now });
   }
 
+  /** HUD용: 근처(360px) 적 중 가장 높은 경계 단계 */
+  nearestThreat() {
+    let level = Level.UNAWARE;
+    for (const m of this.monsters) {
+      if (!m.meter || !m.isHittable) continue;
+      if (Math.hypot(m.x - this.player.x, m.y - this.player.y) > 360) continue;
+      const l = m.meter.level;
+      if (l === Level.ALERT) return Level.ALERT;
+      if (l === Level.SUSPICIOUS) level = Level.SUSPICIOUS;
+    }
+    return level;
+  }
+
+  onMobDefeated(mob) {
+    const items = this.registry.get('items');
+    for (const d of mob.data_.drops ?? []) {
+      if (items.has(d.itemId)) this.pickups.add(new ItemPickup(this, mob.x, mob.y + 2, d.itemId, d.amount));
+    }
+  }
+
   onPlayerDeath() {
     this.banner('쓰러졌다…', '#d06050');
     this.time.delayedCall(this.player.data_.respawnDelayMs, () => {
       this.player.respawn(this.spawnPoint.x, this.spawnPoint.y);
       for (const b of this.bosses) b.resetToHome();
+      for (const m of this.mobs) m.calmDown();
     });
   }
 

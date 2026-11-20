@@ -20,6 +20,7 @@ export class TouchControls {
       { action: 'roll',   label: '구르기', x: W - 235, y: H - 70, r: 46, color: 0x3a5a7a },
       { action: 'switchWeapon', label: '무기', x: W - 70, y: H - 245, r: 36, color: 0x5a5040 },
       { action: 'lockToggle', label: '고정', x: W - 215, y: H - 205, r: 38, color: 0x7a6a30 },
+      { action: 'sneakToggle', label: '웅크림', x: W - 360, y: H - 52, r: 34, color: 0x3a3a5a },
       { action: 'interact', label: '열기', x: W - 345, y: H - 150, r: 40, color: 0x4a7a4a, onlyWhen: 'interactPrompt' },
     ];
 
@@ -44,7 +45,10 @@ export class TouchControls {
   onDown(p) {
     if (this.scene.registry.get('panelOpen')) return; // 제작 화면 등이 열려 있으면 조작판은 쉼
     const btn = this.buttons.find((b) => this.isShown(b) && Math.hypot(p.x - b.x, p.y - b.y) <= b.r + 10);
-    if (btn) {
+    if (btn && btn.action === 'sneakToggle') {
+      this.sneakOn = !this.sneakOn; // 웅크림은 켜고 끄는 방식
+      this.held.set(p.id, btn);
+    } else if (btn) {
       this.pressed[btn.action] = btn.action === 'switchWeapon' ? 'next' : true;
       this.held.set(p.id, btn);
     } else if (p.x < this.scene.scale.width * 0.5 && this.stick.pointerId === null) {
@@ -77,7 +81,7 @@ export class TouchControls {
 
   /** InputSystem이 매 프레임 호출. 버튼 누름은 한 번 가져가면 지워진다. */
   consume() {
-    const out = { move: { ...this.move }, ...this.pressed };
+    const out = { move: { ...this.move }, ...this.pressed, sneak: !!this.sneakOn };
     this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false };
     return out;
   }
@@ -108,7 +112,7 @@ export class TouchControls {
     this.buttons.forEach((b, i) => this.labels[i].setVisible(this.isShown(b)));
     for (const b of this.buttons) {
       if (!this.isShown(b)) continue;
-      const down = heldButtons.has(b);
+      const down = heldButtons.has(b) || (b.action === 'sneakToggle' && this.sneakOn);
       g.fillStyle(b.color, down ? 0.75 : 0.4).fillCircle(b.x, b.y, b.r);
       g.lineStyle(3, 0xf2e6c8, down ? 0.8 : 0.35).strokeCircle(b.x, b.y, b.r);
     }

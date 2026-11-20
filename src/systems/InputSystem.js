@@ -4,7 +4,7 @@
  * Godot: Input Map(move_*, attack, roll, weapon_1/2) + Input.get_vector() — Godot은 물리 키(physical_keycode) 기준으로 매핑.
  *
  * 조작: WASD·TFGH(보조)·방향키 이동 / 마우스 커서 = 조준 / J 또는 마우스 왼쪽 = 공격 / Space 또는 K = 구르기
- *       Tab·L·마우스 오른쪽 = 대상 고정(락온) / E = 상호작용(제작대 등) / 1·2·3 = 무기 선택, Q = 다음 무기
+ *       Shift(누르는 동안) = 웅크려 걷기 / Tab·L·마우스 오른쪽 = 대상 고정(락온) / E = 상호작용(제작대 등) / 1·2·3 = 무기 선택, Q = 다음 무기
  * 조준: 마우스가 게임 화면 위에 있으면 커서 쪽, 아니면(키보드만·터치) 공격 때 가까운 적 자동 조준
  *
  * 키는 event.code(키보드의 "물리적 위치")로 읽는다.
@@ -126,6 +126,7 @@ export class InputSystem {
     const aim = this.aimPoint();
     const cmd = {
       move: { x, y },
+      sneak: this.rawHeld.has('ShiftLeft') || this.rawHeld.has('ShiftRight') || !!t?.sneak, // Shift 누르는 동안 웅크림
       aim,                 // 조준 지점(월드 좌표). 협동 시에도 그대로 전송 가능
       autoAim: !aim,       // 조준 지점이 없으면 가까운 적 자동 조준
       lockToggle: this.pressed.lockToggle || !!t?.lockToggle,

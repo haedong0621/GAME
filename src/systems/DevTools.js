@@ -9,6 +9,8 @@ export class DevTools {
     const world = () => ui.scene.get('World');
     const actions = [
       ['보스 앞으로', () => world().devTeleportToBoss()],
+      ['들개 근처로', () => world().devTeleportToHounds()],
+      ['적 경계 해제', () => world().devCalmAll()],
       ['보스 체력 20%', () => world().devBossHp(0.2)],
       ['보스 즉시 부활', () => world().devReviveBoss()],
       ['재료 받기', () => world().devGiveMaterials()],

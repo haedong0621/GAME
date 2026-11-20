@@ -56,6 +56,11 @@ export class UIScene extends window.Phaser.Scene {
     this.inputDebug = new InputDebugPanel(this, DEBUG || params.has('input'));
     if (params.has('dev')) this.devTools = new DevTools(this);
 
+    // 은신 상태 (화면 위 가운데): 발각! / 의심… / 숨는 중
+    this.stealthText = this.add.text(this.scale.width / 2, 12, '', {
+      fontFamily: 'sans-serif', fontSize: '16px', fontStyle: 'bold', color: '#ffffff', backgroundColor: '#00000088', padding: { x: 10, y: 4 },
+    }).setOrigin(0.5, 0);
+
     // 상호작용 안내 ("E  제작대 열기")
     this.promptText = this.add.text(this.scale.width / 2, this.scale.height * 0.66, '', {
       fontFamily: 'sans-serif', fontSize: '16px', color: '#f2e6c8', backgroundColor: '#000000aa', padding: { x: 10, y: 5 },
@@ -81,7 +86,7 @@ export class UIScene extends window.Phaser.Scene {
       this.registry.set('touch', new TouchControls(this));
     } else {
       this.add.text(12, this.scale.height - 8,
-        'WASD/TFGH 이동 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기 · ` 입력 진단' + (DEBUG ? '   [debug]' : ''),
+        'WASD/TFGH 이동 · Shift 웅크림 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기 · ` 입력 진단' + (DEBUG ? '   [debug]' : ''),
         { ...small, color: '#c9ced4' }).setOrigin(0, 1).setShadow(1, 1, '#000', 0);
     }
   }
@@ -105,6 +110,15 @@ export class UIScene extends window.Phaser.Scene {
     this.armorText.setText(`갑옷: ${player.armor.name}`);
     const skills = player.skills.map((sk) => sk.name);
     this.skillText.setText(skills.length ? `스킬: ${skills.join(', ')}` : '');
+
+    const st = this.registry.get('stealth');
+    let stealthLabel = '', stealthColor = '#ffffff';
+    if (st?.level === 'alert') { stealthLabel = '👁 발각!'; stealthColor = '#ff6a50'; }
+    else if (st?.level === 'suspicious') { stealthLabel = '? 의심받는 중'; stealthColor = '#ffe060'; }
+    else if (st?.inBush && st?.sneaking) { stealthLabel = '풀숲에 숨음 (웅크림)'; stealthColor = '#9adf5a'; }
+    else if (st?.inBush) { stealthLabel = '풀숲'; stealthColor = '#b8d8a0'; }
+    else if (st?.sneaking) { stealthLabel = '웅크림'; stealthColor = '#c8d0e0'; }
+    this.stealthText.setText(stealthLabel).setColor(stealthColor).setVisible(!!stealthLabel);
 
     const prompt = this.panel ? null : this.registry.get('interactPrompt');
     this.promptText.setText(prompt ? `${this.isTouch ? '[열기]' : '[E]'}  ${prompt}` : '').setVisible(!!prompt);

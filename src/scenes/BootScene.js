@@ -47,6 +47,7 @@ export class BootScene extends window.Phaser.Scene {
     this.registry.set('panelOpen', false);
     this.registry.set('interactPrompt', null);
     this.registry.set('uiClickAt', -1);
+    this.registry.set('stealth', null);
 
     this.scene.start('World');
     this.scene.launch('UI');
