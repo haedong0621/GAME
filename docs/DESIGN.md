@@ -37,14 +37,16 @@
 - **잡몹** (`entities/Mob.js`, `data/monsters.json` `ai: "mob"`) — 상태 `idle(어슬렁) → investigate(소리·흔적 확인, 도착 후 2초 두리번) → chase → windup → active(물어뜯기 돌진) → recovery`, `hurt`(넉백), `return`; 발견 시 `packAlertRadius` 안 무리도 발견; 시야에서 `loseSightMs` 동안 놓치면 마지막 위치 수색; 집에서 `leashRadius` 넘으면 포기; 머리 위 ?/!, 경계 막대; 처치 시 드롭, `respawnMs` 후 부활 → Godot `Mob.tscn` CharacterBody2D + 상태 머신
 - **크기 등급 충돌(구현분)** — 잡몹은 플레이어와 같은 판정(나무·물·서로·플레이어와 충돌), 보스는 밀리지 않고 잡몹을 밀어냄, 중형 보스 돌진은 잡몹에게 `mobChargeDamage` 피해 + 크게 밀어내고 계속 돌진
 - **플레이어 피격** (`entities/Player.js` `receiveHit`) — 구르기 무적 중이면 '회피!'(데미지 없음), 아니면 체력 감소 + `hurt` 상태(밀려남 `knockbackSpeed`, `hurtMs`, 콤보·예약 취소, 밀려나는 중 누른 구르기·공격은 예약했다가 끝나자마자 실행) + `hitInvulnMs` 동안 무적(깜빡임); 결과 `hit/dodged/ignored` 반환 → Godot Hurtbox Area2D + 같은 규칙
-- **쓰러짐·부활** (`scenes/WorldScene.js` `onPlayerDeath`) — 체력 0이면 `dead`, `respawnDelayMs` 후 시작 지점에서 체력 가득 부활, 보스는 집으로 돌아가 체력 회복 → Godot 같은 흐름 (GameState 싱글톤에서 처리)
+- **쓰러짐** (`scenes/WorldScene.js` `onPlayerDeath`) — 체력 0이면 `dead`, `respawnDelayMs` 후 **마지막 저장 시점을 다시 불러옴**(페이지 새로 불러오기, 저장 없으면 처음부터; 저장 이후 얻은 것은 사라짐), 안내 문구는 sessionStorage로 전달; 저장소를 못 쓰는 환경만 시작 지점 부활 → Godot `get_tree().reload_current_scene()` + SaveSystem.load()
 - **보스 처치 보상** (`scenes/WorldScene.js` `onBossDefeated`) — `drops` 목록의 재료를 쓰러진 자리 주변에 떨굼(주워야 획득), '토벌!' 알림, `respawnMs` 후 보스 재등장(반복 사냥용) → Godot 같은 흐름, 드롭 테이블은 Resource
 - **장비** (`entities/Player.js` `ownedWeapons`/`ownedArmors`/`equip`/`equipArmor`) — 무기는 가진 목록에서 1·2·3/Q로 교체, 갑옷 1칸; 갑옷은 `data/armors.json`(최대 체력 보너스, 겉모습 텍스처, 스킬) → Godot Equipment.gd + Resource
 - **장비 겉모습** (`systems/PlaceholderArt.js`) — 갑옷마다 플레이어 텍스처(`player`, `player-swamp`), 무기 `view.style: "fang"`이면 톱날·독 빛; 보스 소재 장비에는 그 보스의 색·뼈판·눈빛을 녹임 → Godot 갑옷별 SpriteFrames, 무기별 텍스처
 - **스킬** (`data/skills.json`, `entities/Player.js` `skills`/`modifier`) — 장비(무기+갑옷)가 가진 스킬 id 목록; `passive`는 배율 곱(`knockbackMultiplier`, `rollStaminaMultiplier`), `onHitPoison`은 적중 시 독 → Godot Skill Resource, 장비 변경 시 재계산
 - **상태 이상: 독** (`systems/StatusEffects.js`) — 몬스터·보스마다 보유, `tickMs`마다 `damagePerTick`(초록 숫자·초록 번쩍), `durationMs`, 다시 걸리면 시간만 초기화; 독 피해로는 기습·흔들림 없음 → Godot StatusEffects 노드 + Timer
 - **제작** (`systems/Crafting.js`, `data/recipes.json`) — 레시피(결과 kind/id, 재료 목록), 재료 확인→소모→지급→즉시 장착, 이미 가진 것은 제작 불가 → Godot Crafting.gd (Autoload)
-- **제작대·상호작용** (`entities/Workbench.js`, `scenes/WorldScene.js` `nearestInteractable`/`openPanel`) — 맵 `type=workbench`, 반경 안이면 "[E] 제작대 열기"(휴대폰은 "열기" 버튼), 열면 월드 일시정지 → Godot Area2D 범위 + `get_tree().paused`
+- **제작대·상호작용** (`entities/Workbench.js`, `scenes/WorldScene.js` `nearestInteractable`/`openPanel`) — 맵 `type=workbench`, 반경 안이면 "[E] 제작대 (저장 · 제작)"(휴대폰은 "열기" 버튼), 열면 거점 저장 후 월드 일시정지 → Godot Area2D 범위 + `get_tree().paused`
+- **저장** (`systems/SaveSystem.js`) — 브라우저 localStorage 1칸(`game.save`), JSON 한 덩어리 + `version`(형식 바뀌면 올리고 변환); 내용: 플레이 시간, 플레이어 위치·장착/보유 무기·갑옷, 가방, 주운 맵 아이템 id(Tiled 오브젝트 id — 지금은 다시 안 생김, 채집이 생기면 재생성으로 변경 예정); 체력·몬스터는 저장 안 함; 깨지거나 형식이 다르면 무시 → Godot `user://save.json` + FileAccess, 나중에 같은 JSON을 클라우드(Supabase)
+- **거점 저장** (`isSavePoint`) — 저장은 거점에서만: 거점 오브젝트(지금은 제작대, 나중에 마을 등)에 상호작용하면 저장, 제작하면 다시 저장; 시작하면 저장 시점 위치에서 이어하기; 새로 시작은 제작 화면 "처음부터 다시"(확인 창)·테스트 모드 버튼 → Godot SavePoint 그룹/컴포넌트
 - **제작 화면** (`systems/CraftingPanel.js`) — 목록(제작 가능/재료 부족/보유 중), 상세(설명, 데미지 비교, 스킬, 재료 보유/필요), 제작·닫기 버튼; ↑↓ Enter Esc, 마우스·터치 → Godot Control 씬
 - **타격 연출** (`systems/Effects.js`) — 베기 궤적(from→to 방향 호, 240ms 페이드, 굵기는 무기 크기에 따라), 데미지 숫자, 무기 이름 라벨, 맞힐 때 카메라 흔들림(타마다 세기 다름) → Godot Tween + `Camera2D` 오프셋 흔들기
 - **카메라** (`scenes/WorldScene.js`) — 캔버스 960×540, 월드만 2배 확대(`WORLD_ZOOM`), 플레이어를 부드럽게 따라감(lerp 0.12), 맵 경계에서 멈춤 → Godot `Camera2D`(`zoom = 2`)를 플레이어 자식으로, `position_smoothing_enabled`, `limit_*`를 맵 크기로; 뷰포트 960×540, stretch mode `canvas_items`
@@ -62,7 +64,7 @@
 - **디버그** — 주소에 `?debug=1`이면 충돌 박스와 공격 판정 원 표시 → Godot 에디터 *Debug → Visible Collision Shapes*
 - **입력 진단 화면** (`systems/InputDebugPanel.js`) — `` ` ``/F2 토글, `?debug=1`·`?input=1`이면 시작부터 표시; 눌린 키, 브라우저가 받은 키 이벤트 기록(한글 조합 여부), 이동 막힘 이유와 누적, 원인불명 정지 횟수, 프레임 끊김, 최근 150프레임 간격 그래프(초록 정상·노랑·빨강 끊김) → Godot 이식 대상 아님(에디터 디버거 사용)
 - **블랙박스 기록** (`systems/FrameRecorder.js`) — 최근 10초 매 프레임(프레임 간격, 눌린 키, 이동·버튼 입력, 상태, 막힘 이유, 위치·속도, 벽 닿음, 카메라, FPS) 보관, F8로 JSON 내려받기 → 이식 대상 아님
-- **테스트 모드** (`systems/DevTools.js`, `?dev=1`) — 왼쪽 아래 버튼: 보스 앞으로, 들개 근처로, 적 경계 해제, 보스 체력 20%, 보스 즉시 부활, 재료 받기, 무적, 회복, 장비 초기화, 기록 저장; 화면 버튼 클릭은 공격으로 처리 안 함(registry `uiClickAt`) → 이식 대상 아님 (Godot은 디버그 콘솔/치트 씬)
+- **테스트 모드** (`systems/DevTools.js`, `?dev=1`) — 왼쪽 아래 버튼: 보스 앞으로, 들개 근처로, 적 경계 해제, 보스 체력 20%, 보스 즉시 부활, 재료 받기, 무적, 회복, 장비 초기화, 새로 시작(저장 삭제), 기록 저장; 화면 버튼 클릭은 공격으로 처리 안 함(registry `uiClickAt`) → 이식 대상 아님 (Godot은 디버그 콘솔/치트 씬)
 
 ## 결정된 방향 (아직 미구현)
 - **저장** — 클라우드 저장(Supabase 무료 플랜 + 구글 로그인) 주 사용, 브라우저 localStorage는 오프라인·비로그인 보조; 저장 데이터는 JSON 한 덩어리(플레이어·인벤토리·세계 변화) → Godot `user://` JSON 파일 + 같은 백엔드 HTTP API
