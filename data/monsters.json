@@ -23,7 +23,6 @@
     "maxHp": 420,
     "speed": 62,
     "chaseStopDistance": 34,
-    "detectRadius": 170,
     "leashRadius": 480,
     "roarMs": 900,
     "sneakAttackMultiplier": 2.0,
@@ -99,6 +98,63 @@
       },
       {
         "itemId": "beast_fang",
+        "amount": 1
+      }
+    ],
+    "perception": {
+      "visionRange": 175,
+      "visionAngleDeg": 130,
+      "detectPerSec": 2.0,
+      "closeSenseRadius": 30,
+      "hearingMultiplier": 1.2
+    },
+    "mobChargeDamage": 20
+  },
+  "feral_hound": {
+    "name": "굶주린 들개",
+    "ai": "mob",
+    "sizeClass": "small",
+    "texture": "hound",
+    "maxHp": 40,
+    "speed": 120,
+    "wanderSpeed": 38,
+    "wanderRadius": 56,
+    "hurtbox": {
+      "width": 22,
+      "height": 16
+    },
+    "feetCollider": {
+      "width": 16,
+      "height": 8
+    },
+    "respawnMs": 30000,
+    "sneakAttackMultiplier": 2.5,
+    "packAlertRadius": 140,
+    "leashRadius": 420,
+    "loseSightMs": 2500,
+    "perception": {
+      "visionRange": 150,
+      "visionAngleDeg": 110,
+      "detectPerSec": 2.4,
+      "closeSenseRadius": 22,
+      "hearingMultiplier": 1.0
+    },
+    "attack": {
+      "name": "물어뜯기",
+      "range": 34,
+      "windupMs": 380,
+      "activeMs": 140,
+      "recoveryMs": 520,
+      "cooldownMs": 350,
+      "damage": 9,
+      "lungeSpeed": 220,
+      "radius": 14
+    },
+    "knockbackSpeed": 200,
+    "hurtMs": 260,
+    "drops": [
+      {
+        "itemId": "hound_pelt",
         "amount": 1
       }
     ]

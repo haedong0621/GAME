@@ -30,5 +30,20 @@
   "autoAimRange": 110,
   "lockOnRange": 260,
   "reverseAccelMultiplier": 1.8,
-  "startArmor": "rags"
+  "startArmor": "rags",
+  "stealth": {
+    "sneakSpeedMultiplier": 0.45,
+    "noise": {
+      "walk": 90,
+      "sneak": 18,
+      "roll": 140,
+      "attack": 110,
+      "hit": 170
+    },
+    "walkNoiseIntervalMs": 300,
+    "bushVisibility": 0.35,
+    "bushSneakVisibility": 0.12,
+    "sneakVisibility": 0.55,
+    "darkVisionMultiplier": 0.5
+  }
 }
