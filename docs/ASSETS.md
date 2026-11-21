@@ -73,3 +73,11 @@ Claude가 규격에 맞게 다듬고 `assets/LICENSES.md`에 기록합니다.
 - 추천 출처: [itch.io 무료 에셋](https://itch.io/game-assets/free), [OpenGameArt](https://opengameart.org/), [Kenney](https://kenney.nl/assets)
 - **라이선스 확인:** CC0(마음대로 사용 가능)가 제일 편합니다. CC-BY는 작가 이름 표기가 필요하고, "비상업적 사용만" 같은 조건도 꼭 기록합니다.
 - 받은 페이지 주소, 작가, 라이선스를 `assets/LICENSES.md`에 적습니다.
+
+## 4. 3D → 도트 방식 (검증 중)
+부드러운 모션 + 보스 장비 외형 교체 + 8방향을 한 번에 해결하기 위한 방식 (Dead Cells처럼).
+- 3D 캐릭터(지금은 무료 CC0 KayKit 모델로 시험) → Blender로 8방향 × 동작별 렌더 → 색 줄이기·외곽선 → 스프라이트 시트
+- 도구와 방법: `tools/art/README.md`
+- 게임에서 보기: 주소에 `?hero=s`(작게, 캐릭터 약 44px) 또는 `?hero=l`(크게, 약 64px)
+- 갑옷·무기를 바꾸면 3D 부품만 바꿔 다시 렌더하면 된다 (아직 미적용: 시험 캐릭터는 갑옷 겉모습이 안 바뀜)
+

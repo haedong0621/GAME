@@ -14,6 +14,14 @@ export const WORLD_ZOOM = 2;
 export const DEBUG = new URLSearchParams(window.location.search).has('debug');
 
 /** 터치 조작판 표시: 터치 화면이면 자동, 주소에 ?touch=1 이면 강제로 켬 */
+/**
+ * 3D → 도트 캐릭터 시험 (비주얼 방향 검증): 주소에 ?hero=s (작게, 프레임 64px) 또는 ?hero=l (크게, 96px).
+ * 없으면 기존 임시 그래픽.
+ */
+const heroParam = new URLSearchParams(window.location.search).get('hero');
+export const HERO_STYLE = heroParam === 's' || heroParam === 'l' ? heroParam : null;
+export const HERO_FRAME = { s: 64, l: 96 };
+
 export const FORCE_TOUCH = new URLSearchParams(window.location.search).has('touch');
 
 /** 미리 불러올 파일 경로 (index.html 기준 상대 경로 — GitHub Pages 호환). */

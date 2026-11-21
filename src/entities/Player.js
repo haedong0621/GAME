@@ -81,6 +81,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     // Godot: CharacterBody2D 아래 Sprite2D를 따로 두는 것과 같음
     this.setVisible(false);
     this.visual = scene.add.image(x, y, 'player').setOrigin(0.5, 1);
+    /** 3D → 도트 시트 사용 시 메타 (없으면 임시 그래픽) */
+    this.hero3d = scene.registry.get('hero3d');
+    this.animClock = 0; // 걷기·대기 프레임 진행용
+    if (this.hero3d) this.visual.setTexture('hero3d', 0).setOrigin(this.hero3d.origin.x, this.hero3d.origin.y);
 
     this.weaponView = new WeaponView(scene);
     this.fx = scene.add.graphics(); // 바라보는 방향 표시 등
@@ -180,7 +184,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const oldMax = this.stats.maxHp;
     this.armorId = id;
     this.armor = armor;
-    this.visual.setTexture(armor.texture);
+    if (!this.hero3d) this.visual.setTexture(armor.texture); // 3D 시험 캐릭터는 갑옷 겉모습 미적용
     this.stats.maxHp = this.data_.maxHp + (armor.maxHpBonus ?? 0);
     this.stats.hp = Math.max(1, Math.min(this.stats.maxHp, this.stats.hp + (this.stats.maxHp - oldMax)));
     if (announce) spawnFloatingLabel(this.scene, this.x, this.y - 34, armor.name);
@@ -289,7 +293,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   finishFrame() {
     applyYSort(this);
     this.updatePose();
-    this.weaponView.update(this);
+    if (this.hero3d) this.weaponView.image.setVisible(false); // 3D 캐릭터는 무기를 손에 든 채로 렌더됨
+    else this.weaponView.update(this);
     this.drawFx();
   }
 
@@ -517,7 +522,53 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
   // ---------- 겉모습 (임시 그래픽용 몸 움직임) ----------
   /** 상태에 따라 몸을 기울이고 웅크린다. 진짜 애니메이션이 들어오면 이 부분을 대체. */
+  /**
+   * 3D → 도트 시트에서 지금 보여 줄 프레임 고르기.
+   * 방향: 바라보는 각도에 가장 가까운 8방향. 동작: 상태에 맞춰, 공격은 예비동작/판정/후딜 진행도에 맞춰 프레임을 고른다.
+   * Godot: AnimatedSprite2D + SpriteFrames("동작_방향"), 공격은 AnimationPlayer로 상태 시간에 맞춤.
+   */
+  updateHero3d() {
+    const meta = this.hero3d;
+    const v = this.visual;
+    const deg = this.facingAngle * 180 / Math.PI;           // 0=오른쪽, 90=아래
+    const dir = (((Math.round((90 - deg) / 45)) % 8) + 8) % 8; // 0=아래, 1=오른쪽아래, 2=오른쪽 … (시트 순서)
+    const dt = this.inHitstop ? 0 : this.dt;
+    const prog = (total) => Math.min(0.999, Math.max(0, 1 - this.stateTime / total));
+    let anim = 'idle', t = 0;
+    switch (this.state) {
+      case State.FREE: {
+        const sp = Math.hypot(this.body.velocity.x, this.body.velocity.y);
+        anim = sp > 15 ? 'walk' : 'idle';
+        this.animClock += dt * (anim === 'walk' ? Math.max(0.6, sp / 140) : 0.6);
+        const a = meta.anims[anim];
+        t = ((this.animClock / 100) % a.frames) / a.frames; // 걷기 약 10프레임/초
+        break;
+      }
+      case State.WINDUP: case State.ACTIVE: case State.RECOVERY: {
+        const n = this.weapon.combo.length, i = this.comboIndex;
+        anim = i === n - 1 && n > 1 ? 'atk3' : `atk${(i % 2) + 1}`; // 마지막 타는 내려찍기
+        const m = this.currentMove;
+        if (this.state === State.WINDUP) t = prog(m.windupMs) * 0.4;
+        else if (this.state === State.ACTIVE) t = 0.4 + prog(m.activeMs) * 0.25;
+        else t = 0.65 + prog(m.recoveryMs) * 0.35;
+        break;
+      }
+      case State.ROLL: anim = 'roll'; t = prog(this.data_.roll.durationMs); break;
+      case State.HURT: anim = 'hurt'; t = prog(this.data_.hurtMs); break;
+      case State.DEAD: anim = 'death'; this.deathClock = (this.deathClock ?? 0) + dt; t = Math.min(0.999, this.deathClock / 600); break;
+    }
+    if (this.state !== State.DEAD) this.deathClock = 0;
+    const a = meta.anims[anim];
+    const frame = Math.min(a.frames - 1, Math.floor(t * a.frames));
+    v.setFrame((a.row + dir) * meta.columns + frame);
+    v.setPosition(this.x, this.y).setDepth(this.depth).setAngle(0).setScale(1).setFlipX(false);
+    if (this.state === State.WINDUP) v.setTint(0xffd9a0);
+    else if (this.state !== State.HURT) v.clearTint();
+    if (this.state !== State.ROLL && this.state !== State.DEAD) v.setAlpha(this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0 ? 0.45 : 1);
+  }
+
   updatePose() {
+    if (this.hero3d) { this.updateHero3d(); return; }
     const v = this.visual;
     v.setPosition(this.x, this.y).setDepth(this.depth);
     if (Math.abs(this.facing.x) > 0.25) v.setFlipX(this.facing.x < 0); // 위/아래를 볼 땐 좌우 뒤집기 유지
