@@ -1,41 +1,49 @@
 """
-2D 도트 주인공 생성기 (Core Keeper식: 3/4 탑뷰, 4방향(옆은 뒤집기), 부위별 그림을 겹쳐 그리기).
+2D 도트 주인공 생성기 v2 — 3/4 탑뷰, 8방향(그리는 건 5방향, 나머지는 좌우 뒤집기), 칼을 그림에 포함.
 
-- 부위(머리·몸통·팔·다리)마다 방향별 작은 도트 그림을 글자로 정의한다.
-- 갑옷(outfit)은 부위 그림을 갈아 끼운다 → 같은 자세(pose)로 모든 동작이 나온다.
-- 자세는 부위 위치를 픽셀 단위로 옮겨서 만든다 (걷기: 다리 교차·몸 들썩, 공격: 웅크림→내딛기 …).
-- 결과: assets/characters/hero_<outfit>.png (+ hero_px.json 메타, 모든 갑옷 공통 배치)
+구조 (Core Keeper식 겹치기 + 제노니아식 공격 모션):
+- 몸 부위(머리·몸통·팔·다리)를 방향별 작은 도트 그림으로 정의, 갑옷(outfit)은 부위 그림을 갈아 끼움.
+- 무기는 그림이 아니라 "규칙"으로 그린다: 손 위치 + 칼 방향(바라보는 방향 기준 각도 a, 위로 든 각도 e) + 길이.
+  → 어느 방향(8방향)에서도 같은 공격 자세 데이터로 칼이 그려진다.
+- 공격 키프레임: 예비동작(웅크리고 젖힘) → 잔상(휘두르는 궤적을 한 장에) → 타격(내딛고 길게 유지) → 마무리 → 제자리.
+- 결과: assets/characters/hero_<outfit>_<weapon>.png + hero_px.json (모든 시트 공통 메타)
 
 실행: python3 tools/art/pixel_hero.py
-Godot: 같은 시트를 SpriteFrames로. 부위 겹치기를 런타임에 하고 싶으면 부위별 시트로 나눠 Sprite2D 여러 장을 겹치면 된다.
+Godot: 같은 시트를 SpriteFrames로 ("동작_방향" + flip_h).
 """
 from PIL import Image
-import json, os
+import json, math, os
 
-FW, FH = 32, 40          # 한 프레임 크기
-FOOT_Y = 38              # 발밑 y (게임 origin)
+F = 64                     # 프레임 크기 (정사각형)
+CX = 32                    # 몸 중심 x
+FOOT_Y = 52                # 발밑 y
+SQUASH = 0.7               # 3/4 시점: 바닥 방향의 세로 길이는 70%로 보임
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(ROOT, '..', '..', 'assets', 'characters')
 
-# ---- 팔레트 (어두운 판타지: 탁하고 낮은 채도, 그림자는 살짝 푸른빛)
 PAL = {
-    'O': (26, 20, 24),     # 외곽선
-    'S': (224, 180, 140), 's': (176, 128, 100), 'E': (30, 22, 26),          # 피부, 피부 그림자, 눈
-    'H': (98, 70, 50), 'h': (62, 44, 34),                                   # 머리카락
-    'T': (110, 120, 82), 't': (80, 90, 62), 'u': (58, 66, 48),              # 누더기 튜닉
-    'C': (112, 86, 62), 'c': (78, 58, 46),                                  # 망토(갈색)
-    'L': (130, 102, 64), 'l': (190, 160, 100),                              # 허리띠, 버클
-    'P': (74, 68, 88), 'p': (52, 48, 64),                                   # 바지
-    'B': (66, 48, 38), 'b': (42, 30, 26),                                   # 장화
-    'W': (76, 90, 52), 'w': (58, 70, 40), 'v': (40, 48, 28),                # 늪짐승 가죽
-    'N': (214, 202, 166), 'n': (160, 148, 118),                             # 뼈판
-    'G': (216, 228, 106),                                                   # 노란 눈빛
+    'O': (26, 20, 24),
+    'S': (224, 180, 140), 's': (176, 128, 100), 'E': (30, 22, 26),
+    'H': (98, 70, 50), 'h': (62, 44, 34),
+    'T': (110, 120, 82), 't': (80, 90, 62),
+    'C': (112, 86, 62), 'c': (78, 58, 46),
+    'L': (130, 102, 64), 'l': (190, 160, 100),
+    'P': (74, 68, 88), 'p': (52, 48, 64),
+    'B': (66, 48, 38), 'b': (42, 30, 26),
+    'W': (76, 90, 52), 'w': (58, 70, 40), 'v': (40, 48, 28),
+    'N': (214, 202, 166), 'n': (160, 148, 118),
+    'G': (216, 228, 106),
 }
+SMEAR = (236, 228, 204)
+SMEAR_EDGE = (190, 182, 158)
 
-def bm(s):
-    return [row for row in s.strip('\n').split('\n')]
+def bm(s): return s.strip('\n').split('\n')
 
-# ---------------- 부위 그림: 기본 몸 ----------------
+VIEWS = ['down', 'downside', 'side', 'upside', 'up']
+# 각 화면 방향에서 캐릭터가 바라보는 바닥 방향 (오른쪽 계열; 왼쪽은 뒤집기)
+FACE = {'down': (0, 1), 'downside': (0.7071, 0.7071), 'side': (1, 0), 'upside': (0.7071, -0.7071), 'up': (0, -1)}
+
+# ---------------- 몸 부위 ----------------
 HEAD = {
  'down': bm("""
 ...hHHHHh...
@@ -49,16 +57,16 @@ HEAD = {
 ..sSSssSSs..
 ...sSSSSs...
 ....ssss...."""),
- 'up': bm("""
+ 'downside': bm("""
 ...hHHHHh...
 ..hHHHHHHh..
 .hHHHHHHHHh.
-.hHHHHHHHHh.
-.hHHHHHHHHh.
-.hHHHHHHHHh.
-.hhHHHHHHhh.
-.shhhhhhhhs.
-..shhhhhhs..
+.hHHHHHHHHH.
+.hHHHSSSHSS.
+.hHSSSSSSSS.
+.hHSSESSSES.
+.hsSSSSSSSs.
+..hsSSssSs..
 ...sSSSSs...
 ....ssss...."""),
  'side': bm("""
@@ -73,13 +81,36 @@ HEAD = {
 ...hhsSSSs..
 ....sSSSs...
 .....sss...."""),
+ 'upside': bm("""
+...hHHHHh...
+..hHHHHHHh..
+.hHHHHHHHHh.
+.hHHHHHHHHh.
+.hHHHHHHHHh.
+.hHHHHHHHHS.
+.hhHHHHHHHS.
+.shhhhhhhhs.
+..shhhhhhs..
+...sSSSSs...
+....ssss...."""),
+ 'up': bm("""
+...hHHHHh...
+..hHHHHHHh..
+.hHHHHHHHHh.
+.hHHHHHHHHh.
+.hHHHHHHHHh.
+.hHHHHHHHHh.
+.hhHHHHHHhh.
+.shhhhhhhhs.
+..shhhhhhs..
+...sSSSSs...
+....ssss...."""),
 }
 
-# ---------------- 갑옷(겉모습)별 부위 그림 ----------------
 OUTFITS = {
  'rags': {
-  'name': '누더기 옷',
-  'head': None,  # 머리 덮개 없음 (머리카락 그대로)
+  'name': '누더기 옷', 'sleeve': 'T', 'sleeveDark': 't',
+  'head': None,
   'torso': {
    'down': bm("""
 ..cTTTTTTc..
@@ -91,16 +122,16 @@ OUTFITS = {
 .cTTTTTTTTc.
 .cTtTTTTtTc.
 ..ct....tc.."""),
-   'up': bm("""
-..cCCCCCCc..
-.cCCCCCCCCc.
-.cCCCCCCCCc.
-.cCcCCCCcCc.
-.cCCCCCCCCc.
-.cLLLLLLLLc.
-.cCcCCCCcCc.
-.cCCCCCCCCc.
-..cc....cc.."""),
+   'downside': bm("""
+.cTTTTTTc.
+cCTTTTTTTc
+cCTtTTTtTc
+cCTTTTTTTc
+cCTTTTTTTc
+cCLLLLlLLc
+cCTTTTTTTc
+cCTtTTTtTc
+.cc....tc."""),
    'side': bm("""
 .cTTTTT.
 cCTTTTTT
@@ -111,6 +142,26 @@ cCLLLlLL
 cCTTTTTT
 cCTtTTTT
 .cc..tt."""),
+   'upside': bm("""
+.cCCCCCCc.
+cCCCCCCCCc
+cCCCCCCCCT
+cCcCCCCCCT
+cCCCCCCCCT
+cLLLLLLLLc
+cCcCCCCCCT
+cCCCCCCCCT
+.cc....cc."""),
+   'up': bm("""
+..cCCCCCCc..
+.cCCCCCCCCc.
+.cCCCCCCCCc.
+.cCcCCCCcCc.
+.cCCCCCCCCc.
+.cLLLLLLLLc.
+.cCcCCCCcCc.
+.cCCCCCCCCc.
+..cc....cc.."""),
   },
   'arm': bm("""
 cTc
@@ -132,8 +183,8 @@ BBBB
 bbbb"""),
  },
  'swamp': {
-  'name': '늪짐승 가죽 갑옷',
-  'head': {  # 두건이 머리를 덮음
+  'name': '늪짐승 가죽 갑옷', 'sleeve': 'W', 'sleeveDark': 'v',
+  'head': {
    'down': bm("""
 ....NnnN....
 ...NWWWWN...
@@ -146,16 +197,16 @@ bbbb"""),
 ..vwSssSwv..
 ...vwwwwv...
 ....vvvv...."""),
-   'up': bm("""
+   'downside': bm("""
 ....NnnN....
 ...NWWWWN...
 ..vWWWWWWv..
 .vWWWWWWWWv.
-.vWWWNNWWWv.
-.vWWWWWWWWv.
-.vWWWNNWWWv.
-.vWWWWWWWWv.
-..vWWWWWWv..
+.vWWWwwwwWW.
+.vWWwSSSSSw.
+.vWWSGSSSGS.
+.vWWsSSSSSs.
+..vwwSssSs..
 ...vwwwwv...
 ....vvvv...."""),
    'side': bm("""
@@ -170,6 +221,30 @@ bbbb"""),
 ...vWWWws...
 ....vwwws...
 .....vvv...."""),
+   'upside': bm("""
+....NnnN....
+...NWWWWN...
+..vWWWWWWv..
+.vWWWWWWWWv.
+.vWWWNNWWWv.
+.vWWWWWWWWW.
+.vWWWNNWWWw.
+.vWWWWWWWWs.
+..vWWWWWWv..
+...vwwwwv...
+....vvvv...."""),
+   'up': bm("""
+....NnnN....
+...NWWWWN...
+..vWWWWWWv..
+.vWWWWWWWWv.
+.vWWWNNWWWv.
+.vWWWWWWWWv.
+.vWWWNNWWWv.
+.vWWWWWWWWv.
+..vWWWWWWv..
+...vwwwwv...
+....vvvv...."""),
   },
   'torso': {
    'down': bm("""
@@ -182,16 +257,16 @@ nNWWWWWWWWNn
 .vWWWWWWWWv.
 .vWwWWWWwWv.
 ..vw....wv.."""),
-   'up': bm("""
-NNWWWWWWWWNN
-nNWWNNNNWWNn
-.vWWWNNWWWv.
-.vWWWWWWWWv.
-.vWWWNNWWWv.
-.vvvvvvvvvv.
-.vWWWNNWWWv.
-.vWWWWWWWWv.
-..vv....vv.."""),
+   'downside': bm("""
+NNWWWWWWNN
+nNWWWWWWWN
+vvWwWWWwWv
+vWWWWWWWWv
+vWWWWWWWWv
+vvvvvwvvvv
+vWWWWWWWWv
+vWWwWWWwWv
+.vv....wv."""),
    'side': bm("""
 .NNWWWW.
 NnWWWWWW
@@ -202,6 +277,26 @@ vvvvwvvv
 vWWWWWWW
 vWWwWWWW
 .vv..ww."""),
+   'upside': bm("""
+NNWWWWWWNN
+nNWNNNNWWN
+vWWWNNWWWv
+vWWWWWWWWv
+vWWWNNWWWv
+vvvvvvvvvv
+vWWWNNWWWv
+vWWWWWWWWv
+.vv....vv."""),
+   'up': bm("""
+NNWWWWWWWWNN
+nNWWNNNNWWNn
+.vWWWNNWWWv.
+.vWWWWWWWWv.
+.vWWWNNWWWv.
+.vvvvvvvvvv.
+.vWWWNNWWWv.
+.vWWWWWWWWv.
+..vv....vv.."""),
   },
   'arm': bm("""
 NNN
@@ -224,144 +319,255 @@ NbbN"""),
  },
 }
 
+# ---------------- 무기 (규칙으로 그림) ----------------
+WEAPONS = {
+ 'rusty_sword':    {'cls': 'sword',      'len': 13, 'w': 2, 'blade': (185, 179, 165), 'dark': (120, 116, 108), 'hilt': (90, 58, 34), 'guard': (42, 36, 32)},
+ 'fang_sword':     {'cls': 'sword',      'len': 14, 'w': 2, 'blade': (216, 204, 166), 'dark': (150, 140, 110), 'hilt': (58, 69, 41), 'guard': (42, 36, 32), 'fang': True, 'glow': (154, 223, 90)},
+ 'old_greatsword': {'cls': 'greatsword', 'len': 21, 'w': 3, 'blade': (143, 138, 128), 'dark': (96, 92, 86), 'hilt': (63, 42, 26), 'guard': (42, 36, 32)},
+}
+
 # ---------------- 자세 ----------------
 def P(**k):
-    base = dict(bob=0, lean=0, head=0, legL=(0, 0), legR=(0, 0), armB=(0, 0), armF=(0, 0), crouch=0, rot=0, tint=None)
+    base = dict(bob=0, head=0, lunge=0, crouch=0, legL=(0, 0), legR=(0, 0), off=(0, 0), rot=0,
+                w=dict(a=40, e=-55, r=2, z=0), smear=None, weapon=True)
     base.update(k)
     return base
 
-# 동작별 프레임 (방향 공통 자세 값; 옆 방향은 legL=뒷다리, legR=앞다리, armB=뒷팔, armF=앞팔)
-ANIMS = {
- 'idle':  [P(), P(bob=1, head=0)],
- 'walk':  [P(legL=(0, -1), legR=(0, 1), armB=(0, 1), armF=(0, -1), bob=0),
-           P(bob=-1),
-           P(legL=(0, 1), legR=(0, -1), armB=(0, -1), armF=(0, 1), bob=0),
-           P(bob=-1)],
- 'attack': [P(bob=1, lean=-1, armF=(0, -3), armB=(0, -1), crouch=1),            # 들어 올림 (웅크림)
-            P(bob=-1, lean=2, armF=(2, 1), armB=(1, 0), legR=(1, 0)),           # 내리침 (내딛기)
-            P(bob=0, lean=1, armF=(1, 0))],                                      # 회복
- 'roll':  [P(crouch=2, bob=2, head=2, armF=(0, 1), armB=(0, 1)),                 # 웅크림
-           P(crouch=4, bob=5, head=4, lean=1, armF=(-1, 0), armB=(1, 0)),        # 몸을 맒 (머리 숙임)
-           P(crouch=4, bob=6, head=5, lean=2, armF=(-1, -1), armB=(1, -1)),
-           P(crouch=2, bob=2, head=1, lean=1)],                                   # 일어나며
- 'hurt':  [P(lean=-2, head=1, armF=(0, -2), armB=(0, -2))],
- 'death': [P(crouch=1, bob=1, lean=-1), P(crouch=3, bob=3, lean=-2), P(rot=90, bob=0)],
-}
-DIRS = ['down', 'up', 'side']
+def W(a, e, r, z=0): return dict(a=a, e=e, r=r, z=z)
+REST = W(40, -55, 2)
 
-def stamp(img, grid, x, y, shade=1.0, flip=False):
+COMMON = {
+ 'idle': [P(), P(bob=1)],
+ 'walk': [P(legL=(0, -1), legR=(0, 1), off=(0, 1)), P(bob=-1), P(legL=(0, 1), legR=(0, -1), off=(0, -1)), P(bob=-1)],
+ 'roll': [P(crouch=2, bob=2, head=2, w=W(30, -70, 0)),
+          P(crouch=4, bob=5, head=4, lunge=1, w=W(20, -80, 0)),
+          P(crouch=4, bob=6, head=5, lunge=2, w=W(20, -80, 0)),
+          P(crouch=2, bob=2, head=1, lunge=1, w=W(30, -70, 0))],
+ 'hurt': [P(lunge=-2, head=1, off=(0, -2), w=W(70, -20, 3))],
+ 'death': [P(crouch=1, bob=1, lunge=-1, w=W(80, -40, 2)), P(crouch=3, bob=3, lunge=-2, w=W(100, -70, 1)), P(rot=90, weapon=False)],
+}
+# 한손검 3연타: 가로 베기(오른쪽→왼쪽) → 올려 베기(왼쪽→오른쪽) → 내려찍기
+SWORD = {
+ 'atk1': [P(crouch=1, lunge=-1, w=W(120, 10, 4, 2)),
+          P(lunge=2, w=W(-20, 5, 7), smear=(W(115, 10, 5, 2), W(-20, 5, 7))),
+          P(lunge=3, w=W(-60, 0, 8)),
+          P(lunge=2, w=W(-95, -10, 6)),
+          P(lunge=1, w=REST)],
+ 'atk2': [P(crouch=1, lunge=-1, w=W(-120, -20, 4)),
+          P(lunge=2, w=W(20, 20, 7), smear=(W(-115, -15, 5), W(20, 20, 7))),
+          P(lunge=3, w=W(70, 35, 7)),
+          P(lunge=2, w=W(100, 30, 5)),
+          P(lunge=1, w=REST)],
+ 'atk3': [P(crouch=2, lunge=-2, head=1, w=W(10, 110, 2, 9)),
+          P(lunge=3, w=W(0, 30, 6, 5), smear=(W(5, 100, 3, 9), W(0, 25, 6, 4))),
+          P(crouch=1, lunge=5, w=W(0, -25, 9)),
+          P(crouch=1, lunge=5, w=W(0, -30, 9)),
+          P(lunge=2, w=REST)],
+}
+# 대검 2연타: 크게 휘두르기 → 내려찍기 (예비동작 2장으로 더 무겁게)
+GREAT = {
+ 'gs1': [P(crouch=1, lunge=-2, w=W(140, 0, 3)),
+         P(crouch=2, lunge=-3, w=W(155, 5, 3, 1)),
+         P(lunge=3, w=W(-10, 0, 8), smear=(W(150, 5, 3, 1), W(-10, 0, 8))),
+         P(lunge=4, w=W(-70, -5, 9)),
+         P(lunge=3, w=W(-110, -15, 7)),
+         P(lunge=1, w=REST)],
+ 'gs2': [P(crouch=2, lunge=-2, head=1, w=W(0, 120, 2, 10)),
+         P(crouch=3, lunge=-3, head=2, w=W(0, 125, 1, 11)),
+         P(lunge=3, w=W(0, 20, 7, 4), smear=(W(0, 115, 2, 10), W(0, 15, 7, 3))),
+         P(crouch=2, lunge=6, w=W(0, -30, 11)),
+         P(crouch=2, lunge=6, w=W(0, -32, 11)),
+         P(lunge=2, w=REST)],
+}
+CLASS_ANIMS = {'sword': {**COMMON, **SWORD}, 'greatsword': {**COMMON, **GREAT}}
+
+# ---------------- 그리기 ----------------
+def stamp(img, grid, x, y, shade=1.0):
     px = img.load()
     for j, row in enumerate(grid):
-        for i, ch in enumerate(row if not flip else row[::-1]):
-            if ch == '.' or ch == ' ':
-                continue
+        for i, ch in enumerate(row):
+            if ch in '. ': continue
             r, g, b = PAL[ch]
-            if shade != 1.0:
-                r, g, b = int(r * shade), int(g * shade), int(b * shade)
-            X, Y = x + i, y + j
-            if 0 <= X < img.width and 0 <= Y < img.height:
-                px[X, Y] = (r, g, b, 255)
+            X, Y = int(x) + i, int(y) + j
+            if 0 <= X < F and 0 <= Y < F:
+                px[X, Y] = (int(r * shade), int(g * shade), int(b * shade), 255)
 
-def crop_rows(grid, n):
-    """다리를 위에서부터 n줄 줄여 웅크린 모양"""
-    return grid[n:] if n > 0 else grid
+def plot(img, x, y, c):
+    x, y = int(round(x)), int(round(y))
+    if 0 <= x < F and 0 <= y < F:
+        img.load()[x, y] = c + (255,) if len(c) == 3 else c
 
-def draw(outfit_key, d, pose):
-    o = OUTFITS[outfit_key]
-    img = Image.new('RGBA', (FW, FH), (0, 0, 0, 0))
-    b, lean, cr = pose['bob'], pose['lean'], pose['crouch']
+def line(img, x0, y0, x1, y1, c, w=1):
+    n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+    for i in range(n + 1):
+        t = i / max(1, n)
+        x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+        for k in range(w):
+            for dx, dy in ((0, 0), (k, 0), (0, k)):
+                plot(img, x + dx - (w - 1) / 2, y + dy - (w - 1) / 2, c)
+
+def rot(v, deg):
+    a = math.radians(deg); c, s = math.cos(a), math.sin(a)
+    return (v[0] * c - v[1] * s, v[0] * s + v[1] * c)
+
+def blade_vec(face, wp):
+    g = rot(face, wp['a'])
+    e = math.radians(wp['e'])
+    return (g[0] * math.cos(e), g[1] * math.cos(e) * SQUASH - math.sin(e))
+
+def hand_pos(face, shoulder, wp):
+    g = rot(face, wp['a'])
+    return (shoulder[0] + g[0] * wp['r'], shoulder[1] + g[1] * wp['r'] * SQUASH + 2 - wp['z'])
+
+def draw_blade(img, hand, vec, wd, smear=False, t=1.0):
+    L = wd['len']
+    tip = (hand[0] + vec[0] * L, hand[1] + vec[1] * L)
+    if smear:
+        # 잔상은 칼끝 쪽만 (초승달): 바깥 띠는 밝게, 안쪽 띠는 옅게. 궤적 끝(t→1)으로 갈수록 두껍게
+        mid = (hand[0] + vec[0] * L * 0.55, hand[1] + vec[1] * L * 0.55)
+        out = (hand[0] + vec[0] * L * 0.78, hand[1] + vec[1] * L * 0.78)
+        line(img, mid[0], mid[1], out[0], out[1], SMEAR_EDGE, 1)
+        line(img, out[0], out[1], tip[0], tip[1], SMEAR, 1 + (1 if t > 0.5 else 0))
+        return
+    # 손잡이(손 뒤로) → 코등이 → 칼날(어두운 아래쪽 + 밝은 날)
+    line(img, hand[0] - vec[0] * 3, hand[1] - vec[1] * 3, hand[0], hand[1], wd['hilt'], 1)
+    px, py = -vec[1], vec[0]
+    nrm = math.hypot(px, py) or 1
+    px, py = px / nrm, py / nrm
+    line(img, hand[0] - px * 2, hand[1] - py * 2, hand[0] + px * 2, hand[1] + py * 2, wd['guard'], 1)
+    base = (hand[0] + vec[0] * 1.5, hand[1] + vec[1] * 1.5)
+    line(img, base[0], base[1], tip[0], tip[1], wd['dark'], wd['w'])
+    line(img, base[0] - px * 0.5, base[1] - py * 0.5, tip[0] - px * 0.5, tip[1] - py * 0.5, wd['blade'], max(1, wd['w'] - 1))
+    if wd.get('fang'):
+        for i in range(3, L - 2, 3):
+            plot(img, base[0] + vec[0] * i + px * 1.6, base[1] + vec[1] * i + py * 1.6, wd['blade'])
+        line(img, base[0] - px, base[1] - py, tip[0] - px, tip[1] - py, wd['glow'], 1)
+
+def draw_smear(img, face, shoulder, wd, w0, w1):
+    """휘두른 궤적: 시작 자세→끝 자세 사이를 여러 칼 그림으로 채워 한 장의 잔상으로"""
+    steps = 48
+    for i in range(steps + 1):
+        t = i / steps
+        wp = {k: w0[k] + (w1[k] - w0[k]) * t for k in w0}
+        h = hand_pos(face, shoulder, wp)
+        draw_blade(img, h, blade_vec(face, wp), wd, smear=True, t=t)
+
+def draw(outfit_key, weapon_key, view, pose):
+    o, wd = OUTFITS[outfit_key], WEAPONS[weapon_key]
+    face = FACE[view]
+    img = Image.new('RGBA', (F, F), (0, 0, 0, 0))
     leg = o['leg']
-    legs = crop_rows(leg, min(cr, len(leg) - 3))
-    legH = len(legs)
-    legTop = FOOT_Y - legH + 1
-    torsoY = legTop - 9 + b if cr == 0 else legTop - 9 + b - 0
+    cr = min(pose['crouch'], len(leg) - 3)
+    legs = leg[cr:]
+    lx = round(face[0] * pose['lunge']); ly = round(face[1] * pose['lunge'] * SQUASH)
+    legTop = FOOT_Y - len(legs) + 1 + ly
+    torsoY = legTop - 9 + pose['bob']
     headY = torsoY - 10 + pose['head']
-    head = (o['head'] or HEAD)[d]
-    torso = o['torso'][d]
-    arm = o['arm']
+    head = (o['head'] or HEAD)[view]
+    torso = o['torso'][view]
+    tw = len(torso[0])
+    tx = CX - tw // 2 + lx
+    hx = CX - 6 + lx
+    # 오른손(무기 손) 어깨 위치: 몸 중심에서 캐릭터 오른쪽으로
+    right = (-face[1], face[0])
+    shoulder = (CX + lx + right[0] * 4, torsoY + 2 + right[1] * 4 * SQUASH)
+    wp = pose['w']
+    hand = hand_pos(face, shoulder, wp)
+    vec = blade_vec(face, wp)
+    behind = (hand[1] < shoulder[1] - 1) or (view in ('up', 'upside') and vec[1] < 0.2)
 
-    if d == 'side':
-        # 뒷다리 → 뒷팔 → 몸통 → 머리 → 앞다리 → 앞팔
-        stamp(img, legs, 13 + pose['legL'][0], legTop + pose['legL'][1], shade=0.72)
-        stamp(img, arm, 12 + lean + pose['armB'][0], torsoY + 1 + pose['armB'][1], shade=0.72)
-        stamp(img, torso, 12 + lean, torsoY)
-        stamp(img, head, 10 + lean, headY)
-        stamp(img, legs, 16 + pose['legR'][0], legTop + pose['legR'][1])
-        stamp(img, arm, 15 + lean + pose['armF'][0], torsoY + 1 + pose['armF'][1])
+    def weapon_layer():
+        if not pose['weapon']: return
+        if pose['smear']: draw_smear(img, face, shoulder, wd, *pose['smear'])
+        # 팔(어깨→손) + 손 + 칼
+        line(img, shoulder[0], shoulder[1], hand[0], hand[1], PAL[o['sleeve']], 2)
+        plot(img, hand[0], hand[1], PAL['S']); plot(img, hand[0] + 1, hand[1], PAL['s'])
+        draw_blade(img, hand, vec, wd)
+
+    # 반대손 팔 위치 (캐릭터 왼쪽)
+    offx = {'down': 38, 'downside': 36, 'side': 28, 'upside': 23, 'up': 23}[view] + lx + pose['off'][0]
+    offy = torsoY + 1 + pose['off'][1]
+    legx = (28, 32) if view != 'side' else (29, 32)
+
+    if behind: weapon_layer()
+    if view == 'side':
+        stamp(img, legs, legx[0] + lx + pose['legL'][0], legTop + pose['legL'][1], 0.72)
+        stamp(img, o['arm'], offx, offy, 0.72)
+        stamp(img, torso, tx, torsoY)
+        stamp(img, head, hx, headY)
+        stamp(img, legs, legx[1] + lx + pose['legR'][0], legTop + pose['legR'][1])
+    elif view in ('up', 'upside'):
+        stamp(img, legs, legx[0] + lx, legTop + pose['legL'][1])
+        stamp(img, legs, legx[1] + lx, legTop + pose['legR'][1])
+        stamp(img, o['arm'], offx, offy)
+        stamp(img, torso, tx, torsoY)
+        stamp(img, head, hx, headY)
     else:
-        up = d == 'up'
-        ly = lean if not up else -lean  # 앞뒤로 기울기 = 위아래로 1~2px
-        if up:  # 등을 보일 땐: 다리·팔 → 몸통 → 머리(뒤통수)
-            stamp(img, legs, 12, legTop + pose['legL'][1])
-            stamp(img, legs, 16, legTop + pose['legR'][1])
-            stamp(img, arm, 7, torsoY + 1 + pose['armB'][1] + ly)
-            stamp(img, arm, 22, torsoY + 1 + pose['armF'][1] + ly)
-            stamp(img, torso, 10, torsoY + ly)
-            stamp(img, head, 10, headY + ly)
-        else:   # 앞모습: 다리 → 머리 → 몸통(목 가림) → 팔
-            stamp(img, legs, 12, legTop + pose['legL'][1])
-            stamp(img, legs, 16, legTop + pose['legR'][1])
-            stamp(img, head, 10, headY + ly)
-            stamp(img, torso, 10, torsoY + ly)
-            stamp(img, arm, 7, torsoY + 1 + pose['armB'][1] + ly)
-            stamp(img, arm, 22, torsoY + 1 + pose['armF'][1] + ly)
+        stamp(img, legs, legx[0] + lx, legTop + pose['legL'][1])
+        stamp(img, legs, legx[1] + lx, legTop + pose['legR'][1])
+        stamp(img, head, hx, headY)
+        stamp(img, torso, tx, torsoY)
+        stamp(img, o['arm'], offx, offy)
+    if not behind: weapon_layer()
 
     if pose['rot']:
-        # 구르기·쓰러짐: 몸 전체를 발밑 근처를 중심으로 회전 (90° 단위라 픽셀이 깨지지 않음)
-        k = pose['rot'] // 90
-        body = img.crop((4, FOOT_Y - 30, 28, FOOT_Y + 2))
-        for _ in range(k):
+        body = img.crop((12, FOOT_Y - 34, 52, FOOT_Y + 2))
+        for _ in range(pose['rot'] // 90):
             body = body.transpose(Image.Transpose.ROTATE_270)
-        img = Image.new('RGBA', (FW, FH), (0, 0, 0, 0))
-        img.alpha_composite(body, ((FW - body.width) // 2, FOOT_Y + 1 - body.height))
-    if pose['tint']:
-        tr, tg, tb = pose['tint']
-        px = img.load()
-        for y in range(FH):
-            for x in range(FW):
-                r, g, bb, a = px[x, y]
-                if a: px[x, y] = ((r + tr) // 2, (g + tg) // 2, (bb + tb) // 2, a)
-    return outline(img)
+        img = Image.new('RGBA', (F, F), (0, 0, 0, 0))
+        img.alpha_composite(body, ((F - body.width) // 2, FOOT_Y + 1 - body.height))
+    return finish(img)
 
-def outline(img):
+def finish(img):
     px = img.load(); res = img.copy(); rp = res.load()
-    for y in range(FH):
-        for x in range(FW):
+    for y in range(F):
+        for x in range(F):
             if px[x, y][3] == 0:
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     X, Y = x + dx, y + dy
-                    if 0 <= X < FW and 0 <= Y < FH and px[X, Y][3]:
-                        rp[x, y] = PAL['O'] + (255,); break
-    # 발밑 그림자
-    sh = Image.new('RGBA', (FW, FH), (0, 0, 0, 0)); sp = sh.load()
-    for x in range(10, 22):
-        for y in (FOOT_Y, FOOT_Y + 1):
-            if not (y == FOOT_Y + 1 and (x < 12 or x > 19)):
-                sp[x, y] = (0, 0, 0, 70)
+                    if 0 <= X < F and 0 <= Y < F and px[X, Y][3]:
+                        c = px[X, Y]
+                        # 잔상에는 외곽선을 두르지 않음 (가볍게 보이도록)
+                        if c[:3] in (SMEAR, SMEAR_EDGE): continue
+                        rp[x, y] = PAL['O'] + (255,)
+                        break
+    sh = Image.new('RGBA', (F, F), (0, 0, 0, 0)); sp = sh.load()
+    for x in range(CX - 6, CX + 6):
+        sp[x, FOOT_Y] = (0, 0, 0, 70)
+        if CX - 4 <= x < CX + 4: sp[x, FOOT_Y + 1] = (0, 0, 0, 70)
     sh.alpha_composite(res)
     return sh
 
 def build():
-    cols = max(len(v) for v in ANIMS.values())
-    names = list(ANIMS.keys())
     meta = {
-        'frameWidth': FW, 'frameHeight': FH, 'columns': cols,
-        'origin': {'x': 0.5, 'y': round((FOOT_Y + 1) / FH, 4)},
-        'directions': DIRS, 'flipLeft': True,
-        'anims': {n: {'row': i * len(DIRS), 'frames': len(ANIMS[n])} for i, n in enumerate(names)},
-        'outfits': {k: {'name': v['name'], 'texture': f'hero_{k}'} for k, v in OUTFITS.items()},
-        'hand': {'down': [22, 30], 'up': [9, 30], 'side': [17, 31]},
+        'frameWidth': F, 'frameHeight': F,
+        'origin': {'x': CX / F, 'y': round((FOOT_Y + 1) / F, 4)},
+        'views': VIEWS,
+        # 게임 8방향 → (그린 방향, 뒤집기)
+        'dirs': {'down': ['down', False], 'downright': ['downside', False], 'right': ['side', False], 'upright': ['upside', False],
+                 'up': ['up', False], 'upleft': ['upside', True], 'left': ['side', True], 'downleft': ['downside', True]},
+        'classes': {}, 'sheets': {},
     }
     os.makedirs(OUT_DIR, exist_ok=True)
-    for key in OUTFITS:
-        sheet = Image.new('RGBA', (cols * FW, len(names) * len(DIRS) * FH), (0, 0, 0, 0))
-        for ai, n in enumerate(names):
-            for di, d in enumerate(DIRS):
-                for fi, pose in enumerate(ANIMS[n]):
-                    sheet.alpha_composite(draw(key, d, pose), (fi * FW, (ai * len(DIRS) + di) * FH))
-        sheet.save(os.path.join(OUT_DIR, f'hero_{key}.png'))
+    for cls, anims in CLASS_ANIMS.items():
+        cols = max(len(v) for v in anims.values())
+        meta['classes'][cls] = {'columns': cols,
+                                'anims': {n: {'row': i * len(VIEWS), 'frames': len(anims[n])} for i, n in enumerate(anims)}}
+    for ok in OUTFITS:
+        meta['sheets'][ok] = {}
+        for wk, wd in WEAPONS.items():
+            anims = CLASS_ANIMS[wd['cls']]
+            cols = meta['classes'][wd['cls']]['columns']
+            sheet = Image.new('RGBA', (cols * F, len(anims) * len(VIEWS) * F), (0, 0, 0, 0))
+            for ai, (n, frames) in enumerate(anims.items()):
+                for vi, v in enumerate(VIEWS):
+                    for fi, pose in enumerate(frames):
+                        sheet.alpha_composite(draw(ok, wk, v, pose), (fi * F, (ai * len(VIEWS) + vi) * F))
+            key = f'hero_{ok}_{wk}'
+            sheet.save(os.path.join(OUT_DIR, key + '.png'), optimize=True)
+            meta['sheets'][ok][wk] = {'key': key, 'class': wd['cls']}
     json.dump(meta, open(os.path.join(OUT_DIR, 'hero_px.json'), 'w'), indent=1, ensure_ascii=False)
-    print('ok', list(OUTFITS), cols, 'cols')
+    print('ok', {k: list(v) for k, v in meta['sheets'].items()})
 
 if __name__ == '__main__':
     build()

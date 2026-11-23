@@ -1,65 +1,151 @@
 {
- "frameWidth": 32,
- "frameHeight": 40,
- "columns": 4,
+ "frameWidth": 64,
+ "frameHeight": 64,
  "origin": {
   "x": 0.5,
-  "y": 0.975
+  "y": 0.8281
  },
- "directions": [
+ "views": [
   "down",
-  "up",
-  "side"
+  "downside",
+  "side",
+  "upside",
+  "up"
  ],
- "flipLeft": true,
- "anims": {
-  "idle": {
-   "row": 0,
-   "frames": 2
-  },
-  "walk": {
-   "row": 3,
-   "frames": 4
-  },
-  "attack": {
-   "row": 6,
-   "frames": 3
-  },
-  "roll": {
-   "row": 9,
-   "frames": 4
-  },
-  "hurt": {
-   "row": 12,
-   "frames": 1
-  },
-  "death": {
-   "row": 15,
-   "frames": 3
-  }
- },
- "outfits": {
-  "rags": {
-   "name": "누더기 옷",
-   "texture": "hero_rags"
-  },
-  "swamp": {
-   "name": "늪짐승 가죽 갑옷",
-   "texture": "hero_swamp"
-  }
- },
- "hand": {
+ "dirs": {
   "down": [
-   22,
-   30
+   "down",
+   false
+  ],
+  "downright": [
+   "downside",
+   false
+  ],
+  "right": [
+   "side",
+   false
+  ],
+  "upright": [
+   "upside",
+   false
   ],
   "up": [
-   9,
-   30
+   "up",
+   false
   ],
-  "side": [
-   17,
-   31
+  "upleft": [
+   "upside",
+   true
+  ],
+  "left": [
+   "side",
+   true
+  ],
+  "downleft": [
+   "downside",
+   true
   ]
+ },
+ "classes": {
+  "sword": {
+   "columns": 5,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 2
+    },
+    "walk": {
+     "row": 5,
+     "frames": 4
+    },
+    "roll": {
+     "row": 10,
+     "frames": 4
+    },
+    "hurt": {
+     "row": 15,
+     "frames": 1
+    },
+    "death": {
+     "row": 20,
+     "frames": 3
+    },
+    "atk1": {
+     "row": 25,
+     "frames": 5
+    },
+    "atk2": {
+     "row": 30,
+     "frames": 5
+    },
+    "atk3": {
+     "row": 35,
+     "frames": 5
+    }
+   }
+  },
+  "greatsword": {
+   "columns": 6,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 2
+    },
+    "walk": {
+     "row": 5,
+     "frames": 4
+    },
+    "roll": {
+     "row": 10,
+     "frames": 4
+    },
+    "hurt": {
+     "row": 15,
+     "frames": 1
+    },
+    "death": {
+     "row": 20,
+     "frames": 3
+    },
+    "gs1": {
+     "row": 25,
+     "frames": 6
+    },
+    "gs2": {
+     "row": 30,
+     "frames": 6
+    }
+   }
+  }
+ },
+ "sheets": {
+  "rags": {
+   "rusty_sword": {
+    "key": "hero_rags_rusty_sword",
+    "class": "sword"
+   },
+   "fang_sword": {
+    "key": "hero_rags_fang_sword",
+    "class": "sword"
+   },
+   "old_greatsword": {
+    "key": "hero_rags_old_greatsword",
+    "class": "greatsword"
+   }
+  },
+  "swamp": {
+   "rusty_sword": {
+    "key": "hero_swamp_rusty_sword",
+    "class": "sword"
+   },
+   "fang_sword": {
+    "key": "hero_swamp_fang_sword",
+    "class": "sword"
+   },
+   "old_greatsword": {
+    "key": "hero_swamp_old_greatsword",
+    "class": "greatsword"
+   }
+  }
  }
 }
