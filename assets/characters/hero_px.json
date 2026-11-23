@@ -152,6 +152,10 @@
     "key": "hero_rags_fang_sword",
     "class": "sword"
    },
+   "hunter_cleaver": {
+    "key": "hero_rags_hunter_cleaver",
+    "class": "sword"
+   },
    "old_greatsword": {
     "key": "hero_rags_old_greatsword",
     "class": "greatsword"
@@ -166,8 +170,30 @@
     "key": "hero_swamp_fang_sword",
     "class": "sword"
    },
+   "hunter_cleaver": {
+    "key": "hero_swamp_hunter_cleaver",
+    "class": "sword"
+   },
    "old_greatsword": {
     "key": "hero_swamp_old_greatsword",
+    "class": "greatsword"
+   }
+  },
+  "hunter": {
+   "rusty_sword": {
+    "key": "hero_hunter_rusty_sword",
+    "class": "sword"
+   },
+   "fang_sword": {
+    "key": "hero_hunter_fang_sword",
+    "class": "sword"
+   },
+   "hunter_cleaver": {
+    "key": "hero_hunter_hunter_cleaver",
+    "class": "sword"
+   },
+   "old_greatsword": {
+    "key": "hero_hunter_old_greatsword",
     "class": "greatsword"
    }
   }

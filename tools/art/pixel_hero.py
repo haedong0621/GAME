@@ -33,6 +33,10 @@ PAL = {
     'W': (76, 90, 52), 'w': (58, 70, 40), 'v': (40, 48, 28),
     'N': (214, 202, 166), 'n': (160, 148, 118),
     'G': (216, 228, 106),
+    # 사냥꾼 코트 (뒤엉킨 사냥꾼 소재): 들개 털 두건·망토 + 검붉은 코트 + 은 버클
+    'F': (138, 102, 68), 'f': (104, 74, 50), 'g': (70, 50, 34),
+    'K': (86, 66, 64), 'k': (58, 44, 46), 'j': (36, 28, 30),
+    'A': (206, 210, 220), 'a': (130, 136, 148),
 }
 SMEAR = (236, 228, 204)
 SMEAR_EDGE = (190, 182, 158)
@@ -317,6 +321,145 @@ vvvv
 bBBb
 NbbN"""),
  },
+ 'hunter': {
+  'name': '들개가죽 사냥꾼 코트', 'sleeve': 'K', 'sleeveDark': 'k',
+  'head': {
+   'down': bm("""
+..F......F..
+.fFf....fFf.
+.fFFFFFFFFf.
+fFFFFFFFFFFf
+fFFFFggFFFFf
+fFFFgFFgFFFf
+.gFFFFFFFFg.
+.gSSSSSSSSg.
+.fSESSSSESf.
+.fsSSSSSSsf.
+..fsSSssSf..
+...fsSSsf...
+....ffff...."""),
+   'downside': bm("""
+...F.....F..
+..fFf...fFf.
+.fFFFFFFFFf.
+fFFFFFFFFFFF
+fFFFFFFFFggF
+fFFFFFFFFFFg
+fgFFFFgggggg
+fgFFSSSSSSS.
+fgFSSESSSES.
+.fgsSSSSSSs.
+..fgsSSssSs.
+...fgsSSSs..
+....fffff..."""),
+   'side': bm("""
+....F.F.....
+...fFfFf....
+..fFFFFFFF..
+.fFFFFFFFFF.
+fFFFFFFFFFFF
+fFFFFFFFFggg
+fFFFFFgSSS..
+fgFFFFgSSES.
+.fgFFFgSSSS.
+..fgFFgSSs..
+...fgggSs...
+....fffs...."""),
+   'upside': bm("""
+..F.....F...
+.fFf...fFf..
+.fFFFFFFFFf.
+fFFFFFFFFFFf
+fFFFFFFFFFFf
+fFFFFFFFFFFS
+fFFFFFFFFFFS
+fgFFFFFFFFgs
+.fgFFFFFFgs.
+..fggggggs..
+...fssss...."""),
+   'up': bm("""
+..F......F..
+.fFf....fFf.
+.fFFFFFFFFf.
+fFFFFFFFFFFf
+fFFFFFFFFFFf
+fFFgFFFFgFFf
+fFFFFFFFFFFf
+fgFFFFFFFFgf
+.fgFFFFFFgf.
+..fggggggf.."""),
+  },
+  'torso': {
+   'down': bm("""
+FFFKKKKKKFFF
+fFKKKKKKKKFf
+.kKKAKKKKKk.
+.kKKKLKKKKk.
+.kKKKKLKKKk.
+.kLLLLALLLk.
+.kKKKKKKKKk.
+.kKkKKKKkKk.
+..kj....jk.."""),
+   'downside': bm("""
+FFKKKKKKFF
+fFKKKKKKKF
+kkKAKKKKKk
+kKKKLKKKKk
+kKKKKLKKKk
+kkLLLLALLk
+kKKKKKKKKk
+kKKkKKKkKk
+.kj....jk."""),
+   'side': bm("""
+.FFKKKK.
+FfKKKKKK
+kFKAKKKK
+kKKKKKKK
+kKKKKKKK
+kLLLLALL
+kKKKKKKK
+kKkKKkKK
+.kj..jj."""),
+   'upside': bm("""
+FFKKKKKKFF
+fFFFFFFFFF
+kKFFFFFFKk
+kKKFFFFKKk
+kKKKKKKKKk
+kkLLLLLLLk
+kKKKKKKKKk
+kKKKKKKKKk
+.kj....jk."""),
+   'up': bm("""
+FFKKKKKKKKFF
+fFFFFFFFFFFf
+.kKFFFFFFKk.
+.kKKFFFFKKk.
+.kKKKKKKKKk.
+.kLLLLLLLLk.
+.kKKKKKKKKk.
+.kKKKKKKKKk.
+..kj....jk.."""),
+  },
+  'arm': bm("""
+FFF
+fKf
+KkK
+KKK
+KKK
+kKk
+.S.
+SSS
+sSs"""),
+  'leg': bm("""
+kkkk
+kkkk
+kjkk
+kkkk
+bBBb
+BBBB
+bbbb"""),
+ },
 }
 
 # ---------------- 키 키우기: 몸통·팔·다리에 줄을 복제해 늘림 (도트가 뭉개지지 않음) ----------------
@@ -336,12 +479,14 @@ for _o in OUTFITS.values():
 LIMB = {
  'rags':  {'upper': 'T', 'fore': 't', 'hand': 'S', 'thigh': 'P', 'shin': 'p', 'boot': 'B', 'bootDark': 'b', 'plate': None, 'claw': None},
  'swamp': {'upper': 'W', 'fore': 'w', 'hand': 'S', 'thigh': 'W', 'shin': 'w', 'boot': 'b', 'bootDark': 'v', 'plate': 'N', 'claw': 'N'},
+ 'hunter': {'upper': 'K', 'fore': 'k', 'hand': 'S', 'thigh': 'k', 'shin': 'j', 'boot': 'B', 'bootDark': 'b', 'plate': 'F', 'claw': None},
 }
 
 # ---------------- 무기 (규칙으로 그림) ----------------
 WEAPONS = {
  'rusty_sword':    {'cls': 'sword',      'len': 13, 'w': 2, 'blade': (185, 179, 165), 'dark': (120, 116, 108), 'hilt': (90, 58, 34), 'guard': (42, 36, 32)},
  'fang_sword':     {'cls': 'sword',      'len': 14, 'w': 2, 'blade': (216, 204, 166), 'dark': (150, 140, 110), 'hilt': (58, 69, 41), 'guard': (42, 36, 32), 'fang': True, 'glow': (154, 223, 90)},
+ 'hunter_cleaver': {'cls': 'sword',      'len': 14, 'w': 3, 'blade': (200, 205, 216), 'dark': (118, 122, 134), 'hilt': (80, 56, 38), 'guard': (42, 36, 32), 'cleaver': True},
  'old_greatsword': {'cls': 'greatsword', 'len': 21, 'w': 3, 'blade': (143, 138, 128), 'dark': (96, 92, 86), 'hilt': (63, 42, 26), 'guard': (42, 36, 32)},
 }
 
@@ -553,6 +698,11 @@ def draw_blade(img, V, hand_s, bdir, wd, smear=False, t=1.0):
         for i in range(3, L - 2, 3):
             plot(img, base[0] + vec[0] * i + px * 1.6, base[1] + vec[1] * i + py * 1.6, wd['blade'])
         line(img, base[0] - px, base[1] - py, tip[0] - px, tip[1] - py, wd['glow'], 1)
+    if wd.get('cleaver'):
+        # 도축칼: 등쪽 톱니 + 말라붙은 핏자국
+        for i in range(3, L - 1, 2):
+            plot(img, base[0] + vec[0] * i + px * 1.8, base[1] + vec[1] * i + py * 1.8, wd['dark'])
+        plot(img, base[0] + vec[0] * (L * 0.6), base[1] + vec[1] * (L * 0.6), (120, 40, 40))
 
 def rig(pose):
     """자세 → 관절 위치 (몸 공간)"""
