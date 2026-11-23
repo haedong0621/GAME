@@ -319,6 +319,19 @@ NbbN"""),
  },
 }
 
+# ---------------- 키 키우기: 몸통·팔·다리에 줄을 복제해 늘림 (도트가 뭉개지지 않음) ----------------
+def grow(grid, rows):
+    out = []
+    for i, r in enumerate(grid):
+        out.append(r)
+        if i in rows: out.append(r)
+    return out
+
+for _o in OUTFITS.values():
+    _o['torso'] = {k: grow(v, (3, 6)) for k, v in _o['torso'].items()}   # 몸통 9 → 11줄
+    _o['arm'] = grow(_o['arm'], (2, 4))                                    # 팔 9 → 11줄
+    _o['leg'] = grow(_o['leg'], (1, 3))                                    # 다리 7 → 9줄
+
 # ---------------- 무기 (규칙으로 그림) ----------------
 WEAPONS = {
  'rusty_sword':    {'cls': 'sword',      'len': 13, 'w': 2, 'blade': (185, 179, 165), 'dark': (120, 116, 108), 'hilt': (90, 58, 34), 'guard': (42, 36, 32)},
@@ -336,15 +349,33 @@ def P(**k):
 def W(a, e, r, z=0): return dict(a=a, e=e, r=r, z=z)
 REST = W(40, -55, 2)
 
+TUCK = W(20, -80, 0)
 COMMON = {
  'idle': [P(), P(bob=1)],
  'walk': [P(legL=(0, -1), legR=(0, 1), off=(0, 1)), P(bob=-1), P(legL=(0, 1), legR=(0, -1), off=(0, -1)), P(bob=-1)],
+ # 웅크려 걷기(스닉): 몸을 낮추고 앞으로 숙임, 칼은 낮게, 보폭 작게
+ 'sneak_idle': [P(crouch=3, bob=2, head=1, lunge=1, w=W(60, -35, 2)), P(crouch=3, bob=3, head=1, lunge=1, w=W(60, -35, 2))],
+ 'sneak': [P(crouch=3, bob=2, head=1, lunge=1, legL=(0, -1), legR=(0, 1), off=(0, 1), w=W(60, -35, 2)),
+           P(crouch=3, bob=1, head=1, lunge=1, w=W(60, -35, 2)),
+           P(crouch=3, bob=2, head=1, lunge=1, legL=(0, 1), legR=(0, -1), off=(0, -1), w=W(60, -35, 2)),
+           P(crouch=3, bob=1, head=1, lunge=1, w=W(60, -35, 2))],
+ # 구르기: 몸 숙임 → 말아 넣음 → 공처럼 굴러감 → 펴며 일어남
  'roll': [P(crouch=2, bob=2, head=2, w=W(30, -70, 0)),
-          P(crouch=4, bob=5, head=4, lunge=1, w=W(20, -80, 0)),
-          P(crouch=4, bob=6, head=5, lunge=2, w=W(20, -80, 0)),
-          P(crouch=2, bob=2, head=1, lunge=1, w=W(30, -70, 0))],
- 'hurt': [P(lunge=-2, head=1, off=(0, -2), w=W(70, -20, 3))],
- 'death': [P(crouch=1, bob=1, lunge=-1, w=W(80, -40, 2)), P(crouch=3, bob=3, lunge=-2, w=W(100, -70, 1)), P(rot=90, weapon=False)],
+          P(crouch=4, bob=4, head=5, lunge=1, off=(0, 2), w=TUCK),
+          P(crouch=6, bob=6, head=8, lunge=2, off=(0, 3), w=TUCK),
+          P(crouch=6, bob=5, head=8, lunge=3, off=(0, 3), w=TUCK),
+          P(crouch=4, bob=3, head=4, lunge=3, off=(0, 1), w=W(30, -70, 1)),
+          P(crouch=1, bob=1, head=1, lunge=2, w=REST)],
+ # 피격: 움찔 → 밀려남(칼 젖혀짐) → 버팀
+ 'hurt': [P(lunge=-1, head=1, off=(0, -1), w=W(60, -10, 3)),
+          P(crouch=1, lunge=-3, head=2, off=(0, -2), w=W(105, 10, 3, 2)),
+          P(crouch=1, lunge=-2, head=1, w=W(70, -30, 2))],
+ # 쓰러짐: 휘청 → 무릎 꿇음 → 칼 떨굼 → 앞으로 쓰러짐 → 누움
+ 'death': [P(lunge=-1, head=1, w=W(70, -30, 3)),
+           P(crouch=3, bob=2, head=2, lunge=-1, w=W(90, -60, 2)),
+           P(crouch=5, bob=4, head=3, lunge=0, w=W(100, -85, 1)),
+           P(crouch=5, bob=4, head=4, rot=90, weapon=False),
+           P(rot=90, weapon=False)],
 }
 # 한손검 3연타: 가로 베기(오른쪽→왼쪽) → 올려 베기(왼쪽→오른쪽) → 내려찍기
 SWORD = {
@@ -461,7 +492,7 @@ def draw(outfit_key, weapon_key, view, pose):
     legs = leg[cr:]
     lx = round(face[0] * pose['lunge']); ly = round(face[1] * pose['lunge'] * SQUASH)
     legTop = FOOT_Y - len(legs) + 1 + ly
-    torsoY = legTop - 9 + pose['bob']
+    torsoY = legTop - len(o['torso'][view]) + pose['bob']
     headY = torsoY - 10 + pose['head']
     head = (o['head'] or HEAD)[view]
     torso = o['torso'][view]
@@ -511,7 +542,7 @@ def draw(outfit_key, weapon_key, view, pose):
     if not behind: weapon_layer()
 
     if pose['rot']:
-        body = img.crop((12, FOOT_Y - 34, 52, FOOT_Y + 2))
+        body = img.crop((12, FOOT_Y - 40, 52, FOOT_Y + 2))
         for _ in range(pose['rot'] // 90):
             body = body.transpose(Image.Transpose.ROTATE_270)
         img = Image.new('RGBA', (F, F), (0, 0, 0, 0))

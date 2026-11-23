@@ -48,7 +48,7 @@
  },
  "classes": {
   "sword": {
-   "columns": 5,
+   "columns": 6,
    "anims": {
     "idle": {
      "row": 0,
@@ -58,28 +58,36 @@
      "row": 5,
      "frames": 4
     },
-    "roll": {
+    "sneak_idle": {
      "row": 10,
+     "frames": 2
+    },
+    "sneak": {
+     "row": 15,
      "frames": 4
     },
-    "hurt": {
-     "row": 15,
-     "frames": 1
-    },
-    "death": {
+    "roll": {
      "row": 20,
+     "frames": 6
+    },
+    "hurt": {
+     "row": 25,
      "frames": 3
     },
-    "atk1": {
-     "row": 25,
-     "frames": 5
-    },
-    "atk2": {
+    "death": {
      "row": 30,
      "frames": 5
     },
-    "atk3": {
+    "atk1": {
      "row": 35,
+     "frames": 5
+    },
+    "atk2": {
+     "row": 40,
+     "frames": 5
+    },
+    "atk3": {
+     "row": 45,
      "frames": 5
     }
    }
@@ -95,24 +103,32 @@
      "row": 5,
      "frames": 4
     },
-    "roll": {
+    "sneak_idle": {
      "row": 10,
+     "frames": 2
+    },
+    "sneak": {
+     "row": 15,
      "frames": 4
     },
-    "hurt": {
-     "row": 15,
-     "frames": 1
-    },
-    "death": {
+    "roll": {
      "row": 20,
+     "frames": 6
+    },
+    "hurt": {
+     "row": 25,
      "frames": 3
     },
+    "death": {
+     "row": 30,
+     "frames": 5
+    },
     "gs1": {
-     "row": 25,
+     "row": 35,
      "frames": 6
     },
     "gs2": {
-     "row": 30,
+     "row": 40,
      "frames": 6
     }
    }
