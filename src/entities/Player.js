@@ -13,6 +13,7 @@ const State = {
   ROLL: 'roll',         // 구르기
   HURT: 'hurt',         // 맞고 밀려남 (행동 불가) — 약한 공격
   KNOCKDOWN: 'knockdown', // 날아가 넘어졌다 일어남 (무적, 행동 불가) — 강한 공격
+  GATHER: 'gather',     // 줍기·채집 모션 (쪼그려 집음). 구르기로 끊을 수 있음
   DEAD: 'dead',         // 쓰러짐 → 잠시 뒤 부활
 };
 
@@ -333,6 +334,14 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         }
         break;
       }
+      case State.GATHER: {
+        this.setVelocity(0, 0);
+        const g = this.data_.gather;
+        if (cmd.roll && this.tryRoll(cmd)) { this.gatherCb = null; break; } // 위험하면 구르기로 끊기
+        if (this.gatherCb && this.stateTime <= g.durationMs * (1 - g.collectAt)) { const cb = this.gatherCb; this.gatherCb = null; cb(); }
+        if (this.stateTime <= 0) this.enter(State.FREE);
+        break;
+      }
       case State.DEAD:
         this.setVelocity(0, 0);
         break;
@@ -524,6 +533,19 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     return true;
   }
 
+  /**
+   * 줍기·채집 모션 시작. 모션 중간(collectAt)에 onCollect 호출 (아이템이 손에 들어오는 순간).
+   * @param {{x:number,y:number}} at 바라볼 곳
+   */
+  startGather(at, onCollect) {
+    if (this.state !== State.FREE) return false;
+    const dx = at.x - this.x, dy = at.y - this.y;
+    if (Math.hypot(dx, dy) > 1) this.setFacingAngle(Math.atan2(dy, dx));
+    this.gatherCb = onCollect;
+    this.enter(State.GATHER);
+    return true;
+  }
+
   enter(state) {
     this.state = state;
     const m = this.currentMove;
@@ -548,6 +570,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       }
       case State.HURT: this.stateTime = this.data_.hurtMs; this.comboIndex = 0; break;
       case State.DEAD: this.stateTime = 0; this.comboIndex = 0; break;
+      case State.GATHER: this.stateTime = this.data_.gather.durationMs; this.comboIndex = 0; break;
       default:
         this.stateTime = 0;
         this.comboIndex = 0;
@@ -568,8 +591,16 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
   applyHits() {
     const m = this.currentMove;
-    const hits = findHits(this.getHitCircle(), this.getTargets());
+    const circle = this.getHitCircle();
     let landed = false;
+    // 채집 대상(나무·바위): 피해 숫자 대신 부스러기, 무기 gatherPower만큼 깎임. 칼이 한 번 지날 때 한 번만
+    for (const g of findHits(circle, this.getGatherTargets?.() ?? [])) {
+      if (this.hitThisSwing.has(g)) continue;
+      this.hitThisSwing.add(g);
+      g.gatherHit(this.weapon.gatherPower ?? 1, this.x);
+      landed = true;
+    }
+    const hits = findHits(circle, this.getTargets());
     for (const target of hits) {
       if (this.hitThisSwing.has(target)) continue; // 한 번 휘두를 때 같은 대상은 한 번만
       this.hitThisSwing.add(target);
@@ -686,6 +717,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         break;
       }
       case State.ROLL: anim = 'roll'; frame = Math.floor(prog(this.data_.roll.durationMs) * cls.anims.roll.frames); break;
+      case State.GATHER: anim = cls.anims.gather ? 'gather' : 'idle'; frame = Math.floor(prog(this.data_.gather.durationMs) * (cls.anims.gather?.frames ?? 1)); break;
       case State.HURT: anim = 'hurt'; frame = Math.floor(prog(this.data_.hurtMs) * cls.anims.hurt.frames); break;
       case State.KNOCKDOWN: {
         // 공중(0~1) → 떨어져 누움(2~3) → 일어남(4~5)

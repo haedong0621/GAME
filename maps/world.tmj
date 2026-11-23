@@ -11,7 +11,7 @@
  "infinite": false,
  "compressionlevel": -1,
  "nextlayerid": 3,
- "nextobjectid": 148,
+ "nextobjectid": 167,
  "tilesets": [
   {
    "firstgid": 1,
@@ -4465,6 +4465,234 @@
        "value": "mangled_hunter"
       }
      ]
+    },
+    {
+     "id": 148,
+     "name": "rock",
+     "type": "rock",
+     "x": 1168,
+     "y": 120,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 149,
+     "name": "rock",
+     "type": "rock",
+     "x": 1552,
+     "y": 120,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 150,
+     "name": "rock",
+     "type": "rock",
+     "x": 1840,
+     "y": 312,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 151,
+     "name": "rock",
+     "type": "rock",
+     "x": 1808,
+     "y": 568,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 152,
+     "name": "rock",
+     "type": "rock",
+     "x": 1040,
+     "y": 888,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 153,
+     "name": "rock",
+     "type": "rock",
+     "x": 1296,
+     "y": 1112,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 154,
+     "name": "rock",
+     "type": "rock",
+     "x": 1616,
+     "y": 1176,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 155,
+     "name": "rock",
+     "type": "rock",
+     "x": 304,
+     "y": 1272,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 156,
+     "name": "rock",
+     "type": "rock",
+     "x": 720,
+     "y": 504,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 157,
+     "name": "rock",
+     "type": "rock",
+     "x": 112,
+     "y": 536,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 158,
+     "name": "herb_patch",
+     "type": "herb_patch",
+     "x": 1232,
+     "y": 440,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 159,
+     "name": "herb_patch",
+     "type": "herb_patch",
+     "x": 1456,
+     "y": 472,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 160,
+     "name": "herb_patch",
+     "type": "herb_patch",
+     "x": 1680,
+     "y": 408,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 161,
+     "name": "herb_patch",
+     "type": "herb_patch",
+     "x": 1232,
+     "y": 216,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 162,
+     "name": "herb_patch",
+     "type": "herb_patch",
+     "x": 1424,
+     "y": 152,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 163,
+     "name": "herb_patch",
+     "type": "herb_patch",
+     "x": 848,
+     "y": 984,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 164,
+     "name": "herb_patch",
+     "type": "herb_patch",
+     "x": 80,
+     "y": 1080,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 165,
+     "name": "herb_patch",
+     "type": "herb_patch",
+     "x": 400,
+     "y": 1144,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
+    },
+    {
+     "id": 166,
+     "name": "herb_patch",
+     "type": "herb_patch",
+     "x": 1040,
+     "y": 1208,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true
     }
    ]
   }

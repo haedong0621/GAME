@@ -63,5 +63,10 @@
     "counterDamageMultiplier": 1.5,
     "settleMs": 150,
     "invulnMs": 300
+  },
+  "gather": {
+    "durationMs": 520,
+    "collectAt": 0.5,
+    "pickupRadius": 30
   }
 }

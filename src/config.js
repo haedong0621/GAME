@@ -37,6 +37,7 @@ export const PATHS = {
   armors: 'data/armors.json',
   skills: 'data/skills.json',
   recipes: 'data/recipes.json',
+  gatherables: 'data/gatherables.json',
   worldMap: 'maps/world.tmj',
   worldTiles: 'assets/tiles/world_tiles.png',
 };

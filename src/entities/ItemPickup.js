@@ -1,8 +1,8 @@
 import { applyYSort } from '../systems/YSort.js';
 
 /**
- * 바닥에 떨어진 아이템. 플레이어가 닿으면 주워진다.
- * Godot: Area2D + Sprite2D, body_entered 시그널에서 Inventory.add().
+ * 바닥에 떨어진 아이템. 가까이서 E(줍기)를 누르면 쪼그려 집는 모션과 함께 주워진다.
+ * Godot: Area2D + Sprite2D, 상호작용 시 Inventory.add().
  */
 export class ItemPickup extends window.Phaser.Physics.Arcade.Image {
   /** @param {number|null} mapId 맵(Tiled) 오브젝트 id — 저장 시 "주웠음" 기록용. 몬스터 드롭은 null */
@@ -12,6 +12,8 @@ export class ItemPickup extends window.Phaser.Physics.Arcade.Image {
     this.mapId = mapId;
     this.itemId = itemId;
     this.amount = amount;
+    this.isPickup = true;   // 상호작용(E) 대상: 줍기 모션으로 줍는다
+    this.homeY = y;         // 떠다니기 전 자리 (다시 생길 때)
     this.setOrigin(0.5, 1);
     applyYSort(this);
 

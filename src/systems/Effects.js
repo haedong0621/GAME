@@ -78,3 +78,18 @@ export function spawnBigLabel(scene, x, y, text, color = '#e8f6ff') {
   scene.tweens.add({ targets: t, scale: 1, duration: 140, ease: 'Back.out' });
   scene.tweens.add({ targets: t, y: y - 12, alpha: 0, delay: 600, duration: 400, onComplete: () => t.destroy() });
 }
+
+/** 채집 부스러기: 나무는 갈색 나뭇조각, 돌은 회색 돌가루 + 불똥. 위로 튀었다 떨어짐 */
+export function spawnChips(scene, x, y, kind = 'wood', count = 5) {
+  const colors = kind === 'stone' ? [0xb0aca4, 0x8a8680, 0xffe0a0] : [0xb08a5c, 0x8a6440, 0xd8b884];
+  for (let i = 0; i < count; i++) {
+    const g = scene.add.graphics().setDepth(y + 5);
+    const c = colors[i % colors.length];
+    g.fillStyle(c, 1).fillRect(-1, -1, i % 3 === 2 && kind === 'stone' ? 1 : 2, 2);
+    g.setPosition(x + (Math.random() - 0.5) * 6, y);
+    const vx = (Math.random() - 0.5) * 34, up = 10 + Math.random() * 10;
+    scene.tweens.add({ targets: g, x: g.x + vx, duration: 380, ease: 'Linear' });
+    scene.tweens.add({ targets: g, y: y - up, duration: 160, ease: 'Quad.out', yoyo: true,
+      onComplete: () => scene.tweens.add({ targets: g, alpha: 0, duration: 160, onComplete: () => g.destroy() }) });
+  }
+}

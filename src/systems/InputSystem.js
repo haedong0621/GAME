@@ -23,6 +23,7 @@ const BUTTON_CODES = {
   Space: ['roll', true], KeyK: ['roll', true],
   Tab: ['lockToggle', true], KeyL: ['lockToggle', true],
   KeyE: ['interact', true],
+  KeyR: ['useItem', true],
   Digit1: ['switchWeapon', 0], Digit2: ['switchWeapon', 1], Digit3: ['switchWeapon', 2], KeyQ: ['switchWeapon', 'next'],
 };
 /** 브라우저 기본 동작(스크롤 등)을 막을 키 */
@@ -36,7 +37,7 @@ export class InputSystem {
   constructor(scene, getTouch) {
     this.getTouch = getTouch;
     this.held = new Set(); // 지금 누르고 있는 이동 방향
-    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false, useItem: false };
     this.scene = scene;
     this.mouseActive = false; // 마우스가 화면 위에서 움직였으면 조준 모드
 
@@ -131,6 +132,7 @@ export class InputSystem {
       autoAim: !aim,       // 조준 지점이 없으면 가까운 적 자동 조준
       lockToggle: this.pressed.lockToggle || !!t?.lockToggle,
       interact: this.pressed.interact || !!t?.interact,
+      useItem: this.pressed.useItem || !!t?.useItem,
       attack: this.pressed.attack || !!t?.attack,
       roll: this.pressed.roll || !!t?.roll,
       switchWeapon: this.pressed.switchWeapon ?? t?.switchWeapon ?? null,
@@ -140,6 +142,7 @@ export class InputSystem {
     this.pressed.switchWeapon = null;
     this.pressed.lockToggle = false;
     this.pressed.interact = false;
+    this.pressed.useItem = false;
     return cmd;
   }
 }

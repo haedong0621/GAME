@@ -1,8 +1,8 @@
 {
   "wood": {"name": "나무 조각", "type": "material", "stack": 99, "description": "쓰러진 나무에서 얻은 조각. 제작 재료.", "placeholderColor": "#a0703c"},
   "stone": {"name": "돌멩이", "type": "material", "stack": 99, "description": "단단한 돌. 도구를 만들 때 쓴다.", "placeholderColor": "#9aa0a6"},
-  "apple": {"name": "사과", "type": "consumable", "stack": 20, "description": "먹으면 체력을 조금 회복한다.", "heal": 10, "placeholderColor": "#d83c3c"},
-  "herb": {"name": "약초", "type": "consumable", "stack": 20, "description": "물가에서 자라는 풀. 회복약의 재료.", "heal": 5, "placeholderColor": "#5fd06a"},
+  "apple": {"name": "사과", "type": "consumable", "stack": 20, "description": "먹으면 체력을 회복한다. (R)", "heal": 15, "placeholderColor": "#d83c3c"},
+  "herb": {"name": "약초", "type": "consumable", "stack": 20, "description": "물가에서 자라는 풀. 씹으면 체력이 조금 돌아온다. (R)", "heal": 10, "placeholderColor": "#5fd06a"},
   "beast_hide": {"name": "늪짐승 가죽", "type": "material", "stack": 99, "description": "질기고 축축한 가죽. 썩은 늪 냄새가 난다.", "placeholderColor": "#5d6b3a"},
   "beast_fang": {"name": "늪짐승 송곳니", "type": "material", "stack": 99, "description": "누렇게 바랜 송곳니. 무기 재료로 쓸 만하다.", "placeholderColor": "#e0d2a8"},
   "hound_pelt": {"name": "들개 가죽", "type": "material", "stack": 99, "description": "얇고 냄새나는 가죽. 언젠가 쓸모가 있을지도.", "placeholderColor": "#8a6a4a"},

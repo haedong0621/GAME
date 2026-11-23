@@ -53,6 +53,10 @@
         {
           "itemId": "wood",
           "amount": 1
+        },
+        {
+          "itemId": "stone",
+          "amount": 2
         }
       ]
     },

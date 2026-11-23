@@ -1,5 +1,5 @@
 import { Player } from '../entities/Player.js';
-import { Tree } from '../entities/Tree.js';
+import { Gatherable } from '../entities/Gatherable.js';
 import { ItemPickup } from '../entities/ItemPickup.js';
 import { Monster } from '../entities/Monster.js';
 import { Boss } from '../entities/Boss.js';
@@ -9,6 +9,7 @@ import { SaveSystem } from '../systems/SaveSystem.js';
 import { Mob } from '../entities/Mob.js';
 import { Bush } from '../entities/Bush.js';
 import { NoiseBus, StealthEnv, Level } from '../systems/Stealth.js';
+import { spawnFloatingLabel } from '../systems/Effects.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH } from '../systems/YSort.js';
@@ -43,11 +44,14 @@ export class WorldScene extends window.Phaser.Scene {
     this.monsters = [];
     this.bosses = [];
     this.interactables = []; // 제작대 등 상호작용 가능한 것
+    this.gatherables = [];   // 나무·바위·약초 (data/gatherables.json)
+    const gatherDefs = this.registry.get('gatherables');
     // 저장 데이터 (없으면 새 게임)
     const slot = this.registry.get('loadSlot');
     const save = slot ? SaveSystem.load(slot) : null;
     this.autosaveZones = [];
-    this.collectedPickups = new Set(save?.world?.collectedPickups ?? []);
+    // 맵 아이템은 이제 주운 뒤 시간이 지나면 다시 생긴다 (채집 단계 규칙) → 저장에 "주웠음"을 남기지 않음
+    this.collectedPickups = new Set();
     this.playTimeMs = save?.playTimeMs ?? 0;
     this.mobs = [];
     const bushes = [];
@@ -80,17 +84,22 @@ export class WorldScene extends window.Phaser.Scene {
           this.add.rectangle(z.x, z.y, z.width, z.height, 0x05080a, 0.38).setOrigin(0, 0).setDepth(90000);
           break;
         }
-        case 'tree':
-          blockers.add(new Tree(this, obj.x, obj.y).trunk);
+        case 'tree': case 'rock': case 'herb_patch': {
+          // 채집 대상: 나무·바위는 무기로, 약초는 E(줍기 모션)로
+          const g = new Gatherable(this, obj.x, obj.y, obj.type, gatherDefs[obj.type], (x, y, drops) => this.spawnDrops(x, y, drops));
+          if (g.blocker) blockers.add(g.blocker);
+          this.gatherables.push(g);
           break;
+        }
         case 'item': {
           const itemId = getProperty(obj, 'itemId');
           if (!items.has(itemId)) {
             console.warn(`[World] 맵에 알 수 없는 아이템 id: ${itemId}`);
             break;
           }
-          if (this.collectedPickups.has(obj.id)) break; // 이미 주운 것 (저장 기록)
-          pickups.add(new ItemPickup(this, obj.x, obj.y, itemId, getProperty(obj, 'amount', 1), obj.id));
+          const pk = new ItemPickup(this, obj.x, obj.y, itemId, getProperty(obj, 'amount', 1), obj.id);
+          pk.respawnMs = getProperty(obj, 'respawnMs', 180000); // 주운 뒤 다시 생기는 시간 (기본 3분)
+          pickups.add(pk);
           break;
         }
         case 'monster': {
@@ -131,6 +140,7 @@ export class WorldScene extends window.Phaser.Scene {
     this.recorder = new FrameRecorder(this); // F8: 직전 10초 기록 저장
     const db = { weapons: this.registry.get('weapons'), armors: this.registry.get('armors'), skills: this.registry.get('skills') };
     this.player = new Player(this, spawn.x, spawn.y, playerData, db, () => this.monsters);
+    this.player.getGatherTargets = () => this.gatherables; // 칼로 나무·바위를 칠 수 있음 (조준·락온 대상은 아님)
     this.registry.set('player', this.player); // HUD가 체력·스태미나를 읽음
 
     this.spawnPoint = spawn; // 저장소를 못 쓰는 환경에서만 쓰는 부활 지점
@@ -158,11 +168,7 @@ export class WorldScene extends window.Phaser.Scene {
     this.physics.add.collider(this.mobs, ground);
     this.physics.add.collider(this.mobs, this.mobs);
     this.physics.add.collider(this.player, this.mobs);
-    this.physics.add.overlap(this.player, pickups, (_player, pickup) => {
-      this.registry.get('inventory').add(pickup.itemId, pickup.amount);
-      if (pickup.mapId !== null) this.collectedPickups.add(pickup.mapId);
-      pickup.collect();
-    });
+    // 아이템은 닿기만 해서는 안 주워진다: E(줍기) → 쪼그려 집는 모션 (pickUpNear)
 
     // ---- 카메라: 부드럽게 따라가고 맵 밖은 안 보이게
     const cam = this.cameras.main;
@@ -257,7 +263,13 @@ export class WorldScene extends window.Phaser.Scene {
     // 상호작용: 가장 가까운 대상이 범위 안이면 안내 표시, 누르면 열기
     const near = this.nearestInteractable();
     this.registry.set('interactPrompt', near && !this.player.isDead ? near.label : null);
+    if (cmd.useItem) this.eatBestFood();
     if (cmd.interact && near && this.player.stateName === 'free') {
+      if (near.isPickup || near.isGatherable) {
+        // 줍기·채집: 쪼그려 집는 모션 중간에 손에 들어옴 (주변 아이템은 한 번에)
+        this.player.startGather(near, () => (near.isGatherable ? near.gatherInteract() : this.pickUpNear()));
+        return;
+      }
       if (near.isSavePoint) { this.lastBaseName = near.locationName; this.saveGame('manual', near.locationName); } // 거점에 들르면 수동 저장
       this.openPanel(near.action);
       return;
@@ -375,13 +387,75 @@ export class WorldScene extends window.Phaser.Scene {
     this.banner('장비 초기화', '#9adf5a');
   }
 
+  /** 가까운 상호작용 대상: 제작대, 캘 수 있는 약초, 바닥 아이템 중 가장 가까운 것 */
   nearestInteractable() {
     let best = null, bestD = Infinity;
-    for (const it of this.interactables) {
+    const R = this.player.data_.gather.pickupRadius;
+    const consider = (it, r) => {
       const d = Math.hypot(it.x - this.player.x, it.y - this.player.y);
-      if (d <= it.interactRadius && d < bestD) { best = it; bestD = d; }
+      if (d <= r && d < bestD) { best = it; bestD = d; }
+    };
+    for (const it of this.interactables) consider(it, it.interactRadius);
+    for (const g of this.gatherables) if (g.canInteract) consider(g, g.interactRadius);
+    for (const p of this.pickups.getChildren()) if (p.active && p.body?.enable) consider(p, R);
+    if (best?.isPickup) {
+      const n = this.pickupsNear().length;
+      best.label = `줍기: ${this.registry.get('items').get(best.itemId)?.name ?? best.itemId} ×${best.amount}${n > 1 ? ` 외 ${n - 1}개` : ''}`;
     }
     return best;
+  }
+
+  pickupsNear() {
+    const R = this.player.data_.gather.pickupRadius + 6;
+    return this.pickups.getChildren().filter((p) => p.active && p.body?.enable && Math.hypot(p.x - this.player.x, p.y - this.player.y) <= R);
+  }
+
+  /** 줍기 모션이 손에 닿는 순간: 주변 아이템을 한 번에 가방으로. 맵에 놓인 것은 시간이 지나면 다시 생김 */
+  pickUpNear() {
+    const inv = this.registry.get('inventory');
+    const items = this.registry.get('items');
+    let i = 0;
+    for (const p of this.pickupsNear()) {
+      inv.add(p.itemId, p.amount);
+      spawnFloatingLabel(this, this.player.x, this.player.y - 34 - i * 9, `+${items.get(p.itemId)?.name ?? p.itemId} ${p.amount}`);
+      i++;
+      if (p.mapId !== null) {
+        const { x, homeY, itemId, amount, mapId, respawnMs } = p;
+        this.time.delayedCall(respawnMs ?? 180000, () => {
+          const n = new ItemPickup(this, x, homeY, itemId, amount, mapId);
+          n.respawnMs = respawnMs;
+          this.pickups.add(n);
+        });
+      }
+      p.collect();
+    }
+  }
+
+  /** 떨어지는 재료들 (채집·몬스터): 조금씩 흩어 놓는다 */
+  spawnDrops(x, y, drops) {
+    const items = this.registry.get('items');
+    drops.forEach((d, i) => {
+      if (!items.has(d.itemId)) return;
+      const a = (i / Math.max(1, drops.length)) * Math.PI * 2 + Math.random() * 0.6;
+      const r = drops.length > 1 ? 9 : 0;
+      this.pickups.add(new ItemPickup(this, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.6, d.itemId, d.amount));
+    });
+  }
+
+  /** R: 회복 음식 먹기 (체력이 가득이면 안 먹음). 회복량이 작은 것부터 → 아까운 것은 아껴 둠 */
+  eatBestFood() {
+    const pl = this.player;
+    if (pl.isDead) return;
+    const s = pl.stats;
+    if (s.hp >= s.maxHp) { spawnFloatingLabel(this, pl.x, pl.y - 34, '배부름'); return; }
+    const items = this.registry.get('items');
+    const inv = this.registry.get('inventory');
+    const foods = items.ids().map((id) => ({ id, ...items.get(id) })).filter((it) => it.heal && inv.count(it.id) > 0).sort((a, b) => a.heal - b.heal);
+    if (!foods.length) { spawnFloatingLabel(this, pl.x, pl.y - 34, '먹을 게 없다'); return; }
+    const f = foods[0];
+    inv.remove(f.id, 1);
+    const healed = s.heal(f.heal);
+    spawnFloatingLabel(this, pl.x, pl.y - 34, `${f.name} +${healed}`);
   }
 
   /** 제작 화면 등 열기: 월드를 멈추고 UI 씬에 알린다 (닫히면 UI 씬이 월드를 다시 움직임) */

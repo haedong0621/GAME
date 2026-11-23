@@ -26,6 +26,13 @@ export class Stats {
     return true;
   }
 
+  /** 회복 (최대 체력까지). @returns 실제로 찬 양 */
+  heal(amount) {
+    const before = this.hp;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+    return this.hp - before;
+  }
+
   takeDamage(amount) {
     this.hp = Math.max(0, this.hp - amount);
   }

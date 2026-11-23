@@ -18,6 +18,7 @@
   "old_greatsword": {
     "name": "낡은 대검",
     "type": "greatsword",
+    "gatherPower": 2,
     "description": "혼자 들기도 버거운 쇳덩이. 맞으면 아프다.",
     "moveSpeedMultiplier": 0.85,
     "view": {"bladeLength": 30, "bladeWidth": 6, "bladeColor": "#8f8a80", "hiltColor": "#3f2a1a", "restAngle": 140},
