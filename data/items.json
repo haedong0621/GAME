@@ -1,11 +1,14 @@
 {
-  "wood": {"name": "나무 조각", "type": "material", "stack": 99, "description": "쓰러진 나무에서 얻은 조각. 제작 재료.", "placeholderColor": "#a0703c"},
-  "stone": {"name": "돌멩이", "type": "material", "stack": 99, "description": "단단한 돌. 도구를 만들 때 쓴다.", "placeholderColor": "#9aa0a6"},
+  "_설명": "type = material(소재) | consumable(음식). grade = common(일반 소재) | rare(특수 소재 — 잘 안 나옴, 보스 머리 장비·무기에 필요)",
+  "wood": {"name": "나무 조각", "type": "material", "stack": 99, "description": "쓰러진 나무에서 얻은 조각. 제작 재료.", "placeholderColor": "#a0703c", "grade": "common"},
+  "stone": {"name": "돌멩이", "type": "material", "stack": 99, "description": "단단한 돌. 도구를 만들 때 쓴다.", "placeholderColor": "#9aa0a6", "grade": "common"},
   "apple": {"name": "사과", "type": "consumable", "stack": 20, "description": "먹으면 체력을 회복한다. (R)", "heal": 15, "placeholderColor": "#d83c3c"},
   "herb": {"name": "약초", "type": "consumable", "stack": 20, "description": "물가에서 자라는 풀. 씹으면 체력이 조금 돌아온다. (R)", "heal": 10, "placeholderColor": "#5fd06a"},
-  "beast_hide": {"name": "늪짐승 가죽", "type": "material", "stack": 99, "description": "질기고 축축한 가죽. 썩은 늪 냄새가 난다.", "placeholderColor": "#5d6b3a"},
-  "beast_fang": {"name": "늪짐승 송곳니", "type": "material", "stack": 99, "description": "누렇게 바랜 송곳니. 무기 재료로 쓸 만하다.", "placeholderColor": "#e0d2a8"},
-  "hound_pelt": {"name": "들개 가죽", "type": "material", "stack": 99, "description": "얇고 냄새나는 가죽. 언젠가 쓸모가 있을지도.", "placeholderColor": "#8a6a4a"},
-  "tangled_pelt": {"name": "뒤엉킨 개가죽", "type": "material", "stack": 99, "description": "사람 털과 개 털이 한데 엉겨 붙은 가죽. 꿰매면 질기다.", "placeholderColor": "#7a6048"},
-  "hunter_silver": {"name": "사냥꾼의 은장식", "type": "material", "stack": 99, "description": "늑대인간 사냥꾼이 몸에 지니던 은 버클과 장식. 피가 말라붙어 있다.", "placeholderColor": "#c8ccd4"}
+  "beast_hide": {"name": "늪짐승 가죽", "type": "material", "stack": 99, "description": "질기고 축축한 가죽. 썩은 늪 냄새가 난다.", "placeholderColor": "#5d6b3a", "grade": "common"},
+  "beast_fang": {"name": "늪짐승 송곳니", "type": "material", "stack": 99, "description": "누렇게 바랜 송곳니. 무기 재료로 쓸 만하다.", "placeholderColor": "#e0d2a8", "grade": "common"},
+  "hound_pelt": {"name": "들개 가죽", "type": "material", "stack": 99, "description": "얇고 냄새나는 가죽. 언젠가 쓸모가 있을지도.", "placeholderColor": "#8a6a4a", "grade": "common"},
+  "tangled_pelt": {"name": "뒤엉킨 개가죽", "type": "material", "stack": 99, "description": "사람 털과 개 털이 한데 엉겨 붙은 가죽. 꿰매면 질기다.", "placeholderColor": "#7a6048", "grade": "common"},
+  "hunter_silver": {"name": "사냥꾼의 은장식", "type": "material", "stack": 99, "description": "늑대인간 사냥꾼이 몸에 지니던 은 버클과 장식. 피가 말라붙어 있다.", "placeholderColor": "#c8ccd4", "grade": "common"},
+  "swamp_spine_plate": {"name": "늪짐승 등뼈판", "type": "material", "grade": "rare", "stack": 99, "description": "늪지 짐승의 등에서 떼어 낸 단단한 뼈판. 좀처럼 온전히 남지 않는다. (특수 소재)", "placeholderColor": "#d8cfa8"},
+  "silver_wolf_fang": {"name": "은빛 늑대 송곳니", "type": "material", "grade": "rare", "stack": 99, "description": "사냥꾼의 늑대 머리에 박혀 있던 송곳니. 은빛으로 번들거린다. (특수 소재)", "placeholderColor": "#cfe4ff"}
 }

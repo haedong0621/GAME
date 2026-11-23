@@ -313,7 +313,9 @@ export class InventoryPanel {
       this.drawIcon(c.icon, it?.id ?? null);
       c.count.setText(it && !it.gear && it.count > 1 ? `${it.count}` : '');
       const q = it && this.isWeapon(it.id) ? e.quick.indexOf(it.id) : -1;
-      c.tag.setText(it?.equipped ? 'E' : q >= 0 ? `${q + 1}` : '').setColor(it?.equipped ? COL.ok : COL.blue);
+      const rare = it && items.get(it.id)?.grade === 'rare';
+      c.tag.setText(it?.equipped ? 'E' : q >= 0 ? `${q + 1}` : rare ? '특' : '').setColor(it?.equipped ? COL.ok : rare && q < 0 ? '#6ab4ff' : COL.blue);
+      if (rare) c.bg.setFillStyle(0x1e2a3a); else c.bg.setFillStyle(COL.panel);
       const selected = this.sel.kind === 'bag' && this.sel.index === this.scroll * COLS + i && it;
       c.bg.setStrokeStyle(selected ? 2 : 1, selected ? COL.sel : COL.line);
     });
@@ -332,7 +334,7 @@ export class InventoryPanel {
     const lines = [];
     if (!id) lines.push(this.sel.kind === 'slot' ? `${SLOT_NAMES[this.sel.slot]} 칸이 비어 있어요. 가방에서 장비를 골라 장착하세요.` : '');
     else if (d) {
-      const kind = this.isWeapon(id) ? (d.hands === 'two' ? '양손 무기' : '한손 무기') : e.gear[id] ? SLOT_NAMES[d.slot] : (items.get(id)?.heal ? '음식' : '재료');
+      const kind = this.isWeapon(id) ? (d.hands === 'two' ? '양손 무기' : '한손 무기') : e.gear[id] ? SLOT_NAMES[d.slot] : (items.get(id)?.heal ? '음식' : items.get(id)?.grade === 'rare' ? '특수 소재' : '일반 소재');
       lines.push(`${d.name}  ·  ${kind}`);
       if (d.description) lines.push(d.description);
       if (d.combo) lines.push(`콤보 데미지 ${d.combo.map((m) => m.damage).join(' / ')}`);

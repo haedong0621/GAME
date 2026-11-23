@@ -9,7 +9,7 @@
 import { SLOT_NAMES } from './Equipment.js';
 const W = 720, H = 430, VIS = 5, ROW_H = 54;
 const COL = { bg: 0x16130f, panel: 0x241e17, line: 0x5a4a32, sel: 0x3e3222, ok: '#9adf5a', no: '#d06050', text: '#efe4cc', dim: '#a89a80', gold: '#e8c860' };
-const TABS = [['all', '전체'], ['weapon', '무기'], ['armor', '방어구'], ['accessory', '장신구']];
+const TABS = [['all', '전체'], ['weapon', '무기'], ['armor', '방어구']]; // 장신구는 제작하지 않음 (몬스터가 완제품으로 떨굼)
 
 export class CraftingPanel {
   /**

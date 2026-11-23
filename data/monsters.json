@@ -100,11 +100,19 @@
     "drops": [
       {
         "itemId": "beast_hide",
-        "amount": 2
+        "amount": [
+          2,
+          3
+        ]
       },
       {
         "itemId": "beast_fang",
         "amount": 1
+      },
+      {
+        "itemId": "swamp_spine_plate",
+        "amount": 1,
+        "chance": 0.25
       }
     ],
     "perception": {
@@ -163,7 +171,13 @@
     "drops": [
       {
         "itemId": "hound_pelt",
-        "amount": 1
+        "amount": 1,
+        "chance": 0.85
+      },
+      {
+        "itemId": "hound_fang_necklace",
+        "amount": 1,
+        "chance": 0.04
       }
     ],
     "staggerMs": 700,
@@ -300,11 +314,27 @@
     "drops": [
       {
         "itemId": "tangled_pelt",
-        "amount": 3
+        "amount": [
+          2,
+          3
+        ]
       },
       {
         "itemId": "hunter_silver",
-        "amount": 2
+        "amount": [
+          1,
+          2
+        ]
+      },
+      {
+        "itemId": "silver_wolf_fang",
+        "amount": 1,
+        "chance": 0.25
+      },
+      {
+        "itemId": "silver_ring",
+        "amount": 1,
+        "chance": 0.15
       }
     ],
     "perception": {

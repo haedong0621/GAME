@@ -441,7 +441,8 @@ export class WorldScene extends window.Phaser.Scene {
     for (const p of this.pickups.getChildren()) if (p.active && p.body?.enable) consider(p, R);
     if (best?.isPickup) {
       const n = this.pickupsNear().length;
-      best.label = `줍기: ${this.registry.get('items').get(best.itemId)?.name ?? best.itemId} ×${best.amount}${n > 1 ? ` 외 ${n - 1}개` : ''}`;
+      const nm = this.player.equipment.def(best.itemId)?.name ?? this.registry.get('items').get(best.itemId)?.name ?? best.itemId;
+      best.label = `줍기: ${nm} ×${best.amount}${n > 1 ? ` 외 ${n - 1}개` : ''}`;
     }
     return best;
   }
@@ -456,9 +457,12 @@ export class WorldScene extends window.Phaser.Scene {
     const inv = this.registry.get('inventory');
     const items = this.registry.get('items');
     let i = 0;
+    const eq = this.player.equipment;
     for (const p of this.pickupsNear()) {
-      inv.add(p.itemId, p.amount);
-      spawnFloatingLabel(this, this.player.x, this.player.y - 34 - i * 9, `+${items.get(p.itemId)?.name ?? p.itemId} ${p.amount}`);
+      const gear = eq.def(p.itemId);
+      if (gear) { this.player.obtain(p.itemId, false); this.banner(`${gear.name} 획득! (I: 장착)`, '#ffd070'); }
+      else inv.add(p.itemId, p.amount);
+      spawnFloatingLabel(this, this.player.x, this.player.y - 34 - i * 9, `+${gear?.name ?? items.get(p.itemId)?.name ?? p.itemId}${gear ? '' : ` ${p.amount}`}`);
       i++;
       if (p.mapId !== null) {
         const { x, homeY, itemId, amount, mapId, respawnMs } = p;
@@ -472,13 +476,28 @@ export class WorldScene extends window.Phaser.Scene {
     }
   }
 
-  /** 떨어지는 재료들 (채집·몬스터): 조금씩 흩어 놓는다 */
-  spawnDrops(x, y, drops) {
+  /**
+   * 드랍 굴리기: chance(확률, 없으면 1)로 떨굴지 정하고, amount가 [최소, 최대]면 그 사이 개수.
+   * 장비(장신구 완제품 등)는 이미 가지고 있으면 안 떨굼.
+   */
+  rollDrops(drops) {
+    const out = [];
+    for (const d of drops ?? []) {
+      if (Math.random() >= (d.chance ?? 1)) continue;
+      const n = Array.isArray(d.amount) ? d.amount[0] + Math.floor(Math.random() * (d.amount[1] - d.amount[0] + 1)) : (d.amount ?? 1);
+      if (this.player.equipment.def(d.itemId) && this.player.equipment.has(d.itemId)) continue;
+      if (n > 0) out.push({ itemId: d.itemId, amount: n });
+    }
+    return out;
+  }
+
+  /** 떨어지는 것들 (채집·몬스터): 굴린 결과를 조금씩 흩어 놓는다 (재료·음식·장비) */
+  spawnDrops(x, y, drops, spread = 9) {
     const items = this.registry.get('items');
-    drops.forEach((d, i) => {
-      if (!items.has(d.itemId)) return;
-      const a = (i / Math.max(1, drops.length)) * Math.PI * 2 + Math.random() * 0.6;
-      const r = drops.length > 1 ? 9 : 0;
+    const list = this.rollDrops(drops).filter((d) => items.has(d.itemId) || this.player.equipment.def(d.itemId));
+    list.forEach((d, i) => {
+      const a = (i / Math.max(1, list.length)) * Math.PI * 2 + Math.random() * 0.6;
+      const r = list.length > 1 ? spread : 0;
       this.pickups.add(new ItemPickup(this, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.6, d.itemId, d.amount));
     });
   }
@@ -532,10 +551,7 @@ export class WorldScene extends window.Phaser.Scene {
   }
 
   onMobDefeated(mob) {
-    const items = this.registry.get('items');
-    for (const d of mob.data_.drops ?? []) {
-      if (items.has(d.itemId)) this.pickups.add(new ItemPickup(this, mob.x, mob.y + 2, d.itemId, d.amount));
-    }
+    this.spawnDrops(mob.x, mob.y + 2, mob.data_.drops);
   }
 
   onPlayerDeath() {
@@ -561,11 +577,6 @@ export class WorldScene extends window.Phaser.Scene {
   onBossDefeated(boss) {
     this.banner(`${boss.displayName} 토벌!`, '#e8c860');
     // 보상: 쓰러진 자리 주변에 재료를 떨군다 (data/monsters.json 의 drops)
-    const items = this.registry.get('items');
-    (boss.data_.drops ?? []).forEach((d, i, all) => {
-      if (!items.has(d.itemId)) return;
-      const a = (i / all.length) * Math.PI * 2;
-      this.pickups.add(new ItemPickup(this, boss.x + Math.cos(a) * 22, boss.y + Math.sin(a) * 14, d.itemId, d.amount));
-    });
+    this.spawnDrops(boss.x, boss.y, boss.data_.drops, 22);
   }
 }

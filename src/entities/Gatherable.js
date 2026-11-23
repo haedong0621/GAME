@@ -72,8 +72,7 @@ export class Gatherable {
       spawnChips(this.scene, this.x, this.y - 20, 'wood', 10);
       this.scene.cameras.main.shake(120, 0.003);
     }
-    const drops = [...this.def.drops];
-    for (const b of this.def.bonusDrops ?? []) if (Math.random() < b.chance) drops.push(b);
+    const drops = [...this.def.drops, ...(this.def.bonusDrops ?? [])]; // 확률(chance)은 월드가 굴림
     // 떨어지는 자리: 때린 반대쪽 (나무가 넘어간 쪽)
     const side = fromX < this.x ? 1 : -1;
     this.dropItems(this.x + side * 14, this.y + 6, drops);

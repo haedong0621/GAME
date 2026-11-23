@@ -92,5 +92,15 @@ export function createPlaceholderArt(scene, items, weapons) {
     g.generateTexture(`item-${id}`, 14, 16);
   }
 
+  // ---- 장신구·장비 아이콘 (가방·바닥 아이템용 임시 그림)
+  g.clear();
+  g.lineStyle(3, 0xd8dce4).strokeCircle(12, 14, 7); g.fillStyle(0x9adfff).fillCircle(12, 6, 3);
+  g.generateTexture('icon-ring', 24, 24); g.clear();
+  g.lineStyle(2, 0xb09070).beginPath(); g.arc(12, 6, 9, 0.2, Math.PI - 0.2); g.strokePath();
+  g.fillStyle(0xe8dcb8); for (const [x, y] of [[5, 12], [9, 15], [12, 17], [15, 15], [19, 12]]) g.fillTriangle(x - 2, y, x + 2, y, x, y + 5);
+  g.generateTexture('icon-necklace', 24, 24); g.clear();
+  g.fillStyle(0x8a6a48).fillRoundedRect(4, 4, 16, 16, 3); g.fillStyle(0xc8a870).fillRect(7, 7, 10, 3);
+  g.generateTexture('icon-gear', 24, 24);
+
   g.destroy();
 }
