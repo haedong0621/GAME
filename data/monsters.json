@@ -58,7 +58,8 @@
         "damage": 18,
         "offset": 30,
         "radius": 28,
-        "lunge": 60
+        "lunge": 60,
+        "knockdown": false
       },
       {
         "id": "slam",
@@ -73,7 +74,8 @@
         "damage": 28,
         "offset": 0,
         "radius": 62,
-        "lunge": 0
+        "lunge": 0,
+        "knockdown": true
       },
       {
         "id": "charge",
@@ -88,7 +90,8 @@
         "recoveryMs": 1000,
         "damage": 24,
         "speed": 310,
-        "width": 40
+        "width": 40,
+        "knockdown": true
       }
     ],
     "drops": [
@@ -108,7 +111,8 @@
       "closeSenseRadius": 30,
       "hearingMultiplier": 1.2
     },
-    "mobChargeDamage": 20
+    "mobChargeDamage": 20,
+    "staggerMs": 900
   },
   "feral_hound": {
     "name": "굶주린 들개",
@@ -157,6 +161,7 @@
         "itemId": "hound_pelt",
         "amount": 1
       }
-    ]
+    ],
+    "staggerMs": 700
   }
 }

@@ -8,7 +8,8 @@
     "speed": 300,
     "durationMs": 320,
     "invincibleMs": 220,
-    "staminaCost": 25
+    "staminaCost": 25,
+    "perfectWindowMs": 170
   },
   "weaponSlots": [
     "rusty_sword",
@@ -47,5 +48,15 @@
     "darkVisionMultiplier": 0.5,
     "sneakStaminaPerSec": 8
   },
-  "hurtFreezeMs": 80
+  "hurtFreezeMs": 80,
+  "knockdown": {
+    "airMs": 260,
+    "downMs": 650,
+    "getUpMs": 450,
+    "launchSpeed": 250
+  },
+  "perfectDodge": {
+    "slowFactor": 0.3,
+    "slowRealMs": 450
+  }
 }

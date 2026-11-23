@@ -74,20 +74,24 @@
      "row": 25,
      "frames": 5
     },
-    "death": {
+    "knockdown": {
      "row": 30,
-     "frames": 5
+     "frames": 6
     },
-    "atk1": {
+    "death": {
      "row": 35,
      "frames": 5
     },
-    "atk2": {
+    "atk1": {
      "row": 40,
      "frames": 5
     },
-    "atk3": {
+    "atk2": {
      "row": 45,
+     "frames": 5
+    },
+    "atk3": {
+     "row": 50,
      "frames": 5
     }
    }
@@ -119,16 +123,20 @@
      "row": 25,
      "frames": 5
     },
-    "death": {
+    "knockdown": {
      "row": 30,
+     "frames": 6
+    },
+    "death": {
+     "row": 35,
      "frames": 5
     },
     "gs1": {
-     "row": 35,
+     "row": 40,
      "frames": 6
     },
     "gs2": {
-     "row": 40,
+     "row": 45,
      "frames": 6
     }
    }

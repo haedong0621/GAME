@@ -384,10 +384,10 @@ COMMON = {
            P(crouch=3, lean=22, head=1, fl=(0, 0, 1), fr=(0, 0, 0), bob=-1, off=(0, 3, 1), w=W(55, -35, 4))],
  # 구르기: 숙임 → 공처럼 말아 넣고 실제로 한 바퀴 회전 → 펴며 일어남
  'roll': [P(crouch=3, lean=30, head=2, fl=(0, 2, 0), off=(0, 4, 2), w=W(30, -60, 2)),
-          P(tuck=True, rot=60, tumble=(False, 0.85), bounce=0, dust=1, weapon=False),
-          P(tuck=True, rot=150, tumble=(False, 0.45), bounce=1, dust=2, weapon=False),
-          P(tuck=True, rot=240, tumble=(True, 0.85), bounce=0, dust=3, weapon=False),
-          P(tuck=True, rot=320, tumble=(True, 0.45), bounce=1, dust=2, weapon=False),
+          P(tuck=True, rot=60, tumble=(False, 0.85), bounce=0, weapon=False),
+          P(tuck=True, rot=150, tumble=(False, 0.45), bounce=1, weapon=False),
+          P(tuck=True, rot=240, tumble=(True, 0.85), bounce=0, weapon=False),
+          P(tuck=True, rot=320, tumble=(True, 0.45), bounce=1, weapon=False),
           P(crouch=2, lean=15, head=1, fr=(0, 2, 0), off=(0, 2, 0), w=W(40, -55, 3))],
  # 피격: 머리·상체가 뒤로 확 젖혀지고 팔이 튕김 → 뒷걸음 → 버팀
  'hurt': [P(lean=-30, head=-2, lunge=-1, fr=(0, -2, 0), off=(-3, -2, 6), w=W(120, 30, 4, 3)),      # 충격: 고개·상체 확 젖힘, 팔 튕김
@@ -395,6 +395,13 @@ COMMON = {
           P(lean=-22, crouch=3, lunge=-4, fl=(0, -4, 0), fr=(0, -1, 0), off=(-2, -1, 2), w=W(100, 5, 4)), # 휘청 (무릎 꺾임)
           P(lean=-8, crouch=2, lunge=-3, fl=(0, -3, 0), off=(-1, 1, 0), w=W(70, -25, 3)),           # 버팀
           P(lean=-2, crouch=1, lunge=-2, w=W(50, -45, 3))],                                          # 자세 회복
+ # 강한 공격에 날아감: 튕겨 오름 → 공중에서 뒤로 넘어감 → 등으로 떨어짐 → 누움 → 무릎 짚고 → 일어남
+ 'knockdown': [P(lean=-40, head=-2, bob=-2, fl=(0, -2, 2), fr=(0, -1, 3), off=(-3, -2, 7), w=W(130, 40, 4, 4)),
+               P(rot=-50, lean=-30, bob=-5, fl=(0, -2, 2), fr=(0, 0, 3), off=(-3, -2, 6), w=W(130, 30, 3, 2)),
+               P(rot=-90, w=W(150, -10, 3)),
+               P(rot=-90, head=1, w=W(150, -10, 3)),
+               P(crouch=7, lean=25, head=2, fl=(0, -4, 0), fr=(0, 2, 0), off=(0, 3, -3), w=W(80, -70, 3)),
+               P(crouch=3, lean=10, w=W(60, -50, 3))],
  # 쓰러짐: 휘청 → 무릎 꿇음 → 칼 떨굼 → 앞으로 쓰러짐 → 누움
  'death': [P(lean=-15, head=-1, lunge=-1, w=W(70, -30, 3)),
            P(crouch=6, lean=10, head=1, fl=(0, -4, 0), fr=(0, 2, 0), w=W(90, -60, 3)),
@@ -695,7 +702,7 @@ def draw(outfit_key, weapon_key, view, pose):
                     if 0 <= X < F and 0 <= Y < F and img.getpixel((X, Y))[3] == 0: img.putpixel((X, Y), c)
     elif pose['rot']:
         img = rotsprite(img, pose['rot'] if view not in ('up', 'upside') else -pose['rot'], (CX, FOOT_Y - 2))
-        if pose['rot'] >= 90:
+        if abs(pose['rot']) >= 90:
             # 누운 몸은 바닥에 붙이기
             bb = img.getbbox()
             if bb:
