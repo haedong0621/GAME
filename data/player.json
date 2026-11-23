@@ -68,5 +68,14 @@
     "durationMs": 520,
     "collectAt": 0.5,
     "pickupRadius": 30
+  },
+  "terrain": {
+    "pushMs": 140,
+    "jumpMs": 360,
+    "jumpHeight": 10,
+    "climbSpeed": 42,
+    "climbStaminaPerSec": 16,
+    "climbMinStamina": 10,
+    "fallDamage": 6
   }
 }

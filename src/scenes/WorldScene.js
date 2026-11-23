@@ -10,6 +10,7 @@ import { Mob } from '../entities/Mob.js';
 import { Bush } from '../entities/Bush.js';
 import { NoiseBus, StealthEnv, Level } from '../systems/Stealth.js';
 import { spawnFloatingLabel } from '../systems/Effects.js';
+import { Terrain } from '../systems/Terrain.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH } from '../systems/YSort.js';
@@ -30,7 +31,9 @@ export class WorldScene extends window.Phaser.Scene {
     const tileset = map.addTilesetImage('world_tiles', 'world_tiles');
     const ground = map.createLayer('ground', tileset, 0, 0);
     ground.setDepth(GROUND_DEPTH);
-    ground.setCollisionByProperty({ collides: true }); // 물 등 막힌 타일
+    ground.setCollisionByProperty({ collides: true }); // 물·절벽 벽면 등 막힌 타일
+    // 고지대 가장자리 선·절벽 밑 그늘 (바닥 바로 위에 덧그림)
+    map.createLayer('cliff_rim', tileset, 0, 0)?.setDepth(GROUND_DEPTH + 0.05);
 
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
@@ -58,6 +61,7 @@ export class WorldScene extends window.Phaser.Scene {
     const darkZones = [];
     this.noiseBus = new NoiseBus();
     let spawn = { x: map.widthInPixels / 2, y: map.heightInPixels / 2 };
+    const climbRects = [];
 
     for (const obj of objects) {
       switch (obj.type) {
@@ -70,6 +74,11 @@ export class WorldScene extends window.Phaser.Scene {
           this.interactables.push(wb);
           break;
         }
+        case 'climb':
+          // 덩굴: 절벽 벽면에 덮인 그림 + 여기서만 기어오를 수 있음
+          climbRects.push({ x: obj.x, y: obj.y, width: obj.width, height: obj.height });
+          for (let vx = obj.x; vx < obj.x + obj.width; vx += 32) this.add.image(vx, obj.y, 'vines').setOrigin(0, 0).setDepth(GROUND_DEPTH + 0.1);
+          break;
         case 'autosave':
           // 자동 저장 구역: 들어가면 자동 슬롯에 저장 (지역 경계: 보스 터 앞, 지역 입구 등)
           this.autosaveZones.push({ x: obj.x, y: obj.y, width: obj.width, height: obj.height, name: obj.name || '어딘가', inside: false });
@@ -134,13 +143,18 @@ export class WorldScene extends window.Phaser.Scene {
     this.coneGfx = this.add.graphics().setDepth(-0.4); // 웅크릴 때 보이는 적 시야 (바닥 위)
 
     // ---- 플레이어
+    // 높낮이: 고지대 가장자리 얇은 벽 (벽면은 타일 충돌로 막힘)
+    this.terrain = new Terrain(map, climbRects);
+    for (const w of this.terrain.edgeWalls()) blockers.add(this.add.zone(w.x + w.width / 2, w.y + w.height / 2, w.width, w.height));
+
     const playerData = this.registry.get('playerData');
     this.inputSystem = new InputSystem(this, () => this.registry.get('touch'));
     this.registry.set('inputSystem', this.inputSystem); // 입력 진단 화면용
     this.recorder = new FrameRecorder(this); // F8: 직전 10초 기록 저장
     const db = { weapons: this.registry.get('weapons'), armors: this.registry.get('armors'), skills: this.registry.get('skills') };
     this.player = new Player(this, spawn.x, spawn.y, playerData, db, () => this.monsters);
-    this.player.getGatherTargets = () => this.gatherables; // 칼로 나무·바위를 칠 수 있음 (조준·락온 대상은 아님)
+    this.player.getGatherTargets = () => this.gatherables;
+    this.player.terrain = this.terrain; // 뛰어내리기·덩굴 오르기 판단용 // 칼로 나무·바위를 칠 수 있음 (조준·락온 대상은 아님)
     this.registry.set('player', this.player); // HUD가 체력·스태미나를 읽음
 
     this.spawnPoint = spawn; // 저장소를 못 쓰는 환경에서만 쓰는 부활 지점

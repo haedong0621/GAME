@@ -14,6 +14,8 @@ const State = {
   HURT: 'hurt',         // 맞고 밀려남 (행동 불가) — 약한 공격
   KNOCKDOWN: 'knockdown', // 날아가 넘어졌다 일어남 (무적, 행동 불가) — 강한 공격
   GATHER: 'gather',     // 줍기·채집 모션 (쪼그려 집음). 구르기로 끊을 수 있음
+  JUMP: 'jump',         // 낮은 턱에서 아래로 뛰어내림 (충돌 끔, 포물선)
+  CLIMB: 'climb',       // 덩굴 타고 절벽 오르내리기 (기력 소모, 공격·구르기 불가, 맞으면 떨어짐)
   DEAD: 'dead',         // 쓰러짐 → 잠시 뒤 부활
 };
 
@@ -334,6 +336,46 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         }
         break;
       }
+      case State.JUMP: {
+        const j = this.data_.terrain;
+        const k = 1 - Math.max(0, this.stateTime) / j.jumpMs;
+        this.body.reset(this.moveFrom.x + (this.moveTo.x - this.moveFrom.x) * k, this.moveFrom.y + (this.moveTo.y - this.moveFrom.y) * k);
+        this.airZ = Math.sin(Math.PI * k) * j.jumpHeight + (1 - k) * 6;
+        if (this.stateTime <= 0) {
+          this.endTerrainMove(true);
+          spawnDust(this.scene, this.x, this.y, { x: 0, y: 0 }, 5);
+          this.scene.cameras.main.shake(90, 0.003);
+          this.makeNoise('roll');
+          this.enter(State.FREE);
+        }
+        break;
+      }
+      case State.CLIMB: {
+        const tr = this.data_.terrain;
+        // 기력 소모: 바닥나면 미끄러져 떨어짐
+        if (!this.stats.spendStamina(tr.climbStaminaPerSec * this.dt / 1000)) {
+          spawnFloatingLabel(this.scene, this.x, this.y - 34, '미끄러졌다!');
+          this.lastTerrainState = State.CLIMB;
+          this.endTerrainMove(false);
+          this.stats.takeDamage(tr.fallDamage);
+          this.knock = { x: 0, y: this.climbDir < 0 ? 1 : -1 };
+          this.enter(State.HURT);
+          break;
+        }
+        // 이동 입력이 있을 때만 움직임 (멈추면 매달려 있음, 반대로 누르면 되돌아감)
+        const m = cmd.move.y * this.climbDir; // 1 = 가던 방향, -1 = 반대
+        const dirNow = Math.abs(cmd.move.y) > 0.3 ? Math.sign(m) : 0;
+        const target = dirNow >= 0 ? this.moveTo : this.moveFrom;
+        const dy = target.y - this.y;
+        const step = tr.climbSpeed * this.dt / 1000 * (dirNow === 0 ? 0 : 1);
+        this.body.reset(this.x, this.y + Math.sign(dy) * Math.min(Math.abs(dy), step));
+        this.climbAnim = (this.climbAnim ?? 0) + step;
+        if (Math.abs(target.y - this.y) < 0.5 && dirNow !== 0) {
+          this.endTerrainMove(true);
+          this.enter(State.FREE);
+        }
+        break;
+      }
       case State.GATHER: {
         this.setVelocity(0, 0);
         const g = this.data_.gather;
@@ -447,6 +489,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
     if (cmd.roll && this.tryRoll(cmd)) return;
     if (cmd.attack && this.tryAttack(0, cmd)) return;
+    if (this.checkTerrainMoves(cmd)) return;
 
     // 목표 속도: 바라보는 반대쪽으로 움직이면(뒷걸음질) 느려짐, 웅크리면 느려짐
     let speed = this.data_.speed * (this.weapon.moveSpeedMultiplier ?? 1);
@@ -534,6 +577,57 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   /**
+   * 높낮이: 벽에 막힌 채 같은 방향으로 잠깐(pushMs) 밀면 —
+   *  낮은 턱 위에서 아래(남쪽)로 → 뛰어내리기 / 덩굴 덮인 절벽에 위로(북쪽) 또는 위에서 아래로 → 기어오르기
+   */
+  checkTerrainMoves(cmd) {
+    const t = this.terrain, tr = this.data_.terrain;
+    if (!t) return false;
+    const { move } = cmd;
+    const b = this.body.blocked, touch = this.body.touching;
+    let want = null;
+    if (move.y > 0.6 && (b.down || touch.down)) {
+      if (t.ledgeLanding(this.x, this.y - 3)) want = 'jump';
+      else if (t.climbableAt(this.x, this.y + 6) && t.isHigh(this.x, this.y - 3)) want = 'climbDown';
+    } else if (move.y < -0.6 && (b.up || touch.up) && t.climbableAt(this.x, this.y - 14)) {
+      want = 'climbUp';
+    }
+    if (!want || want !== this.pushWant) { this.pushWant = want; this.pushMs = 0; return false; }
+    this.pushMs += this.dt;
+    if (this.pushMs < tr.pushMs) return false;
+    this.pushWant = null; this.pushMs = 0;
+    if (want === 'jump') {
+      const to = t.ledgeLanding(this.x, this.y - 3);
+      this.moveFrom = { x: this.x, y: this.y }; this.moveTo = to;
+      this.enter(State.JUMP);
+      return true;
+    }
+    const dir = want === 'climbUp' ? -1 : 1;
+    const to = t.climbTarget(this.x, want === 'climbUp' ? this.y - 14 : this.y - 3, dir);
+    if (!to || this.stats.stamina < tr.climbMinStamina) {
+      if (!to) return false;
+      spawnFloatingLabel(this.scene, this.x, this.y - 34, '기력이 부족하다');
+      return false;
+    }
+    this.moveFrom = { x: this.x, y: this.y }; this.moveTo = to; this.climbDir = dir;
+    this.enter(State.CLIMB);
+    return true;
+  }
+
+  /** 뛰어내리기·기어오르기 중엔 충돌을 끄고 위치를 직접 옮긴다. 끝나거나 끊기면 충돌을 되돌림 */
+  endTerrainMove(arrived) {
+    if (!this.terrainMove) return;
+    this.terrainMove = false;
+    this.body.checkCollision.none = false;
+    this.airZ = 0;
+    if (!arrived) {
+      // 중간에 끊김(맞음·기력 바닥): 기어오르기는 출발한 쪽으로 미끄러져 떨어짐, 뛰어내리기는 착지점으로
+      const p = this.state === State.JUMP || this.lastTerrainState === State.JUMP ? this.moveTo : this.moveFrom;
+      this.body.reset(p.x, p.y);
+    }
+  }
+
+  /**
    * 줍기·채집 모션 시작. 모션 중간(collectAt)에 onCollect 호출 (아이템이 손에 들어오는 순간).
    * @param {{x:number,y:number}} at 바라볼 곳
    */
@@ -547,6 +641,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   enter(state) {
+    if (this.terrainMove && state !== State.JUMP && state !== State.CLIMB) { this.lastTerrainState = this.state; this.endTerrainMove(false); }
     this.state = state;
     const m = this.currentMove;
     switch (state) {
@@ -571,6 +666,14 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       case State.HURT: this.stateTime = this.data_.hurtMs; this.comboIndex = 0; break;
       case State.DEAD: this.stateTime = 0; this.comboIndex = 0; break;
       case State.GATHER: this.stateTime = this.data_.gather.durationMs; this.comboIndex = 0; break;
+      case State.JUMP: case State.CLIMB:
+        this.stateTime = state === State.JUMP ? this.data_.terrain.jumpMs : 0;
+        this.terrainMove = true;
+        this.body.checkCollision.none = true;
+        this.setVelocity(0, 0);
+        this.comboIndex = 0;
+        if (state === State.CLIMB) this.setFacingAngle(-Math.PI / 2); // 벽을 마주봄 (뒷모습)
+        break;
       default:
         this.stateTime = 0;
         this.comboIndex = 0;
@@ -717,6 +820,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         break;
       }
       case State.ROLL: anim = 'roll'; frame = Math.floor(prog(this.data_.roll.durationMs) * cls.anims.roll.frames); break;
+      case State.JUMP: anim = 'walk'; frame = 1; break;
+      case State.CLIMB: anim = 'walk'; frame = Math.floor((this.climbAnim ?? 0) / 6) % cls.anims.walk.frames; break;
       case State.GATHER: anim = cls.anims.gather ? 'gather' : 'idle'; frame = Math.floor(prog(this.data_.gather.durationMs) * (cls.anims.gather?.frames ?? 1)); break;
       case State.HURT: anim = 'hurt'; frame = Math.floor(prog(this.data_.hurtMs) * cls.anims.hurt.frames); break;
       case State.KNOCKDOWN: {
@@ -738,7 +843,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const a = cls.anims[anim];
     if (v.texture.key !== sheet.key) v.setTexture(sheet.key);
     v.setFrame((a.row + vi) * cls.columns + Math.min(frame, a.frames - 1));
-    v.setPosition(this.x, this.y).setDepth(this.depth).setAngle(0).setScale(1).setFlipX(flip);
+    v.setPosition(this.x, this.y - (this.airZ ?? 0)).setDepth(this.depth).setAngle(0).setScale(1).setFlipX(flip);
     if (this.state === State.WINDUP) v.setTint(0xffe0b0);
     else if (this.state !== State.HURT) v.clearTint();
     if (this.state !== State.ROLL && this.state !== State.DEAD) v.setAlpha(this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0 ? 0.45 : 1);
