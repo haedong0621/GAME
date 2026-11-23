@@ -85,3 +85,4 @@
 - **스킬 종류 추가** (`skills.json`) — `comboRamp`(연속기 n타째 피해 +perStep×n), 패시브 배율 `perfectWindowMultiplier`(완벽한 회피 판정 시간)·`counterDamageMultiplier`(반격 피해) → Player.modifier()로 곱해짐
 - **두 번째 보스 뒤엉킨 사냥꾼** (`mangled_hunter`, 맵 북서쪽 들판) — 물기·연속 베기(3타)·도약 덮치기·울부짖기(들개 2마리 소환), 50% 이하 광란 · 소재 뒤엉킨 개가죽·사냥꾼의 은장식(+ 들개 가죽) → 은빛 도축칼(무리 사냥)·들개가죽 사냥꾼 코트(사냥꾼의 감, 들개 귀 두건)
 - **보스 도트 생성기 2** (`tools/art/pixel_hunter.py`) — 두 발 보스용: 몸을 공·관 덩어리로 3D 배치 → 투영 + z버퍼 → 3~4단 셀 셰이딩, 칼은 평판, 잔상 별도. 결과를 mon_px.json에 종류 추가(다른 종류는 유지)
+- **바닥 위험 범위 = 실제 판정** (`systems/Combat.js` groundShapeContains / groundShapePoints) — 보스 공격은 플레이어 **발밑 점**이 바닥 모양 안이면 맞음, 그리기도 같은 점 목록 사용. 모양: 원(`offset`/`radius`, 세로 0.7배) · 부채꼴(`shape: "fan"`, `reach`, `arcDeg` — 횡베기) · 직사각형(돌진 경로, 시작점 고정; 지나가는 몸은 폭과 같은 원). 예고: 바깥 모양 + 안에서 차오르는 진행도, 판정 순간 밝은 테두리; 돌진은 보스 쪽부터 차오름 + 흐르는 화살표 + 조준 고정 순간 하얀 번쩍. `?debug=1`이면 판정 모양(하늘색)·발밑 점 표시 (들개 물기는 아직 예전 원-몸통 판정) → Godot: 같은 점 목록으로 CollisionPolygon2D + Polygon2D

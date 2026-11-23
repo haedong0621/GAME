@@ -1,6 +1,7 @@
 import { applyYSort } from '../systems/YSort.js';
 import { Stats } from '../systems/Stats.js';
-import { findHits } from '../systems/Combat.js';
+import { findHits, groundShapeContains, groundShapePoints, GROUND_SQUASH } from '../systems/Combat.js';
+import { DEBUG } from '../config.js';
 import { spawnFloatingLabel } from '../systems/Effects.js';
 import { StatusEffects } from '../systems/StatusEffects.js';
 import { AwarenessMeter, Level } from '../systems/Stealth.js';
@@ -183,13 +184,13 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
         if (a.type === 'summon') { this.setVelocity(0, 0); if (this.stateTime <= 0) this.enter(State.RECOVERY); break; }
         if (a.type === 'charge') {
           this.setVelocity(this.attackDir.x * a.speed, this.attackDir.y * a.speed);
-          this.checkHit({ x: this.x, y: this.y - CHEST, radius: a.width / 2 });
+          this.checkHit({ kind: 'ellipse', x: this.x, y: this.y, r: a.width / 2, sq: 1 }); // 지나가는 몸 (경로 직사각형 폭과 같음)
           this.chaseThroughMobs(ctx, a);
           if (!this.body.blocked.none) this.stateTime = 0; // 나무 등에 부딪히면 멈춤
         } else {
           const lunge = this.stateTime > a.activeMs / 2 ? a.lunge : 0;
           this.setVelocity(this.attackDir.x * lunge, this.attackDir.y * lunge);
-          this.checkHit(this.circleArea(a));
+          this.checkHit(this.groundShape(a));
         }
         if (this.stateTime <= 0) this.enter(State.RECOVERY);
         break;
@@ -315,18 +316,31 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.enter(State.WINDUP);
   }
 
-  circleArea(a) {
-    return {
-      x: this.x + this.attackDir.x * a.offset,
-      y: this.y - CHEST + this.attackDir.y * a.offset * 0.8,
-      radius: a.radius,
-    };
+  /**
+   * 공격 범위 (바닥 모양). 그리기와 판정이 이 값을 같이 쓴다.
+   * shape: "fan"(부채꼴: reach 길이, arcDeg 각도, 보스 발밑에서) | 기본 원(offset만큼 앞, radius)
+   */
+  groundShape(a) {
+    const d = this.attackDir;
+    if (a.shape === 'fan') {
+      return { kind: 'fan', x: this.x, y: this.y, r: a.reach, angle: Math.atan2(d.y / GROUND_SQUASH, d.x), half: (a.arcDeg / 2) * Math.PI / 180 };
+    }
+    return { kind: 'ellipse', x: this.x + d.x * a.offset, y: this.y + d.y * a.offset * GROUND_SQUASH, r: a.radius };
   }
 
-  checkHit(circle, spec = this.attack) {
+  /** 돌진 경로 (보스 발밑에서 공격 방향으로 속도×시간) */
+  chargeShape(a) {
+    const d = this.attackDir;
+    const o = this.state === State.ACTIVE && this.chargeFrom ? this.chargeFrom : this;
+    return { kind: 'rect', x: o.x, y: o.y, dx: d.x, dy: d.y, len: (a.speed * a.activeMs) / 1000, w: a.width / 2 };
+  }
+
+  /** 플레이어 발밑이 바닥 범위 안이면 맞음 */
+  checkHit(shape, spec = this.attack) {
+    this.lastHitShape = shape;
     if (this.hitPlayerThisAttack) return;
     const p = this.getPlayer();
-    if (findHits(circle, [p]).length === 0) return;
+    if (p.isDead || !groundShapeContains(shape, p.x, p.y)) return;
     const result = p.receiveHit(spec.damage, this.x, this.y - CHEST, { knockdown: !!spec.knockdown, source: this });
     if (result !== 'ignored') this.hitPlayerThisAttack = true; // 회피했어도 이번 공격은 끝
   }
@@ -355,7 +369,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.comboActive -= dt;
     const lunge = this.comboActive > h.activeMs / 2 ? h.lunge : 0;
     this.setVelocity(this.attackDir.x * lunge, this.attackDir.y * lunge);
-    this.checkHit(this.circleArea(h), h);
+    this.checkHit(this.groundShape(h), h);
     if (this.comboActive > 0) return;
     if (this.comboIdx + 1 < this.attack.hits.length) this.startComboHit(this.comboIdx + 1);
     else this.enter(State.RECOVERY);
@@ -372,7 +386,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     if (this.stateTime > 0) return;
     this.airZ = 0;
     this.scene.cameras.main.shake(220, 0.008);
-    this.checkHit({ x: this.leapTarget.x, y: this.leapTarget.y - 8, radius: a.radius });
+    this.checkHit({ kind: 'ellipse', x: this.leapTarget.x, y: this.leapTarget.y, r: a.radius });
     this.enter(State.RECOVERY);
   }
 
@@ -413,6 +427,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
       case State.ACTIVE:
         this.stateTime = a.activeMs ?? 0;
         if (a.type === 'combo') this.startComboHit(0);
+        if (a.type === 'charge') this.chargeFrom = { x: this.x, y: this.y };
         if (a.type === 'leap') { this.leaping = true; this.leapFrom = { x: this.x, y: this.y }; this.body.checkCollision.none = true; }
         if (a.type === 'summon') this.doSummon();
         break;
@@ -489,58 +504,77 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.drawSenses();
   }
 
-  /** 바닥의 위험 범위 표시: 예고 동작 중 점점 진해지고, 판정 순간 번쩍 */
+  /**
+   * 바닥의 위험 범위 표시: 바깥 모양(= 실제 판정 범위) + 안쪽에서 차오르는 진행도(다 차면 공격). 판정 순간엔 번쩍.
+   * 돌진은 직사각형이 보스 쪽에서 끝까지 차오르고, 방향이 고정되는 순간 테두리가 하얗게 번쩍, 화살표가 진행 방향을 가리킨다.
+   */
   drawTelegraph() {
     const g = this.telegraph;
     g.clear();
+    g.setDepth(-0.5); // 바닥 바로 위 (모든 물체보다 뒤)
+    this.drawDebugHit(g);
     if (this.state !== State.WINDUP && this.state !== State.ACTIVE) return;
     const a = this.attack;
-    const t = this.state === State.WINDUP ? 1 - this.stateTime / this.windupTotal : 1;
-    const alpha = this.state === State.ACTIVE ? 0.55 : 0.12 + 0.3 * t;
-    g.setDepth(-0.5); // 바닥 바로 위 (모든 물체보다 뒤)
-
     if (a.type === 'summon') return;
+    const t = this.state === State.WINDUP ? 1 - this.stateTime / this.windupTotal : 1;
+
+    let shape, prog, hot;
     if (a.type === 'leap') {
-      // 착지점 표시 (예고 중엔 따라다니다가 고정)
-      const c = this.leapTarget ?? { x: this.x, y: this.y };
-      const tt = this.state === State.ACTIVE ? 1 - Math.max(0, this.stateTime) / a.activeMs : t;
-      const al = this.state === State.ACTIVE ? 0.3 + 0.35 * tt : alpha;
-      g.fillStyle(0xd03020, al).fillEllipse(c.x, c.y, a.radius * 2, a.radius * 1.4);
-      g.lineStyle(1, 0xff6040, 0.7).strokeEllipse(c.x, c.y, a.radius * 2, a.radius * 1.4);
-      g.fillStyle(0xff5030, al * 0.8).fillEllipse(c.x, c.y, a.radius * 2 * tt, a.radius * 1.4 * tt);
-      return;
-    }
-    if (a.type === 'combo') {
+      shape = { kind: 'ellipse', x: this.leapTarget?.x ?? this.x, y: this.leapTarget?.y ?? this.y, r: a.radius };
+      prog = this.state === State.ACTIVE ? 1 - Math.max(0, this.stateTime) / a.activeMs : t * 0.6;
+      hot = this.state === State.ACTIVE && this.stateTime < 90;
+    } else if (a.type === 'combo') {
       // 지금(또는 다음) 타의 범위. 예고 중엔 첫 타, 타 사이엔 다음 타가 차오름
       const h = this.state === State.WINDUP ? a.hits[0] : this.curHit;
       const inGap = this.state === State.ACTIVE && this.comboGap > 0;
-      const tt = this.state === State.WINDUP ? t : inGap ? 1 - this.comboGap / h.gapMs : 1;
-      const al = this.state === State.ACTIVE && !inGap ? 0.55 : 0.15 + 0.3 * tt;
-      const c = this.circleArea(h), gy = c.y + CHEST * 0.6;
-      g.fillStyle(0xd03020, al).fillEllipse(c.x, gy, c.radius * 2, c.radius * 1.4);
-      g.lineStyle(1, 0xff6040, 0.7).strokeEllipse(c.x, gy, c.radius * 2, c.radius * 1.4);
-      g.fillStyle(0xff5030, al * 0.8).fillEllipse(c.x, gy, c.radius * 2 * tt, c.radius * 1.4 * tt);
+      shape = this.groundShape(h);
+      prog = this.state === State.WINDUP ? t : inGap ? 1 - this.comboGap / h.gapMs : 1;
+      hot = this.state === State.ACTIVE && !inGap;
+    } else if (a.type === 'charge') {
+      this.drawCharge(g, a, t);
       return;
-    }
-    if (a.type === 'charge') {
-      const len = (a.speed * a.activeMs) / 1000;
-      const d = this.attackDir, px = -d.y, py = d.x, w = a.width / 2;
-      const x0 = this.x, y0 = this.y - 4;
-      const pts = [
-        { x: x0 + px * w, y: y0 + py * w },
-        { x: x0 + d.x * len + px * w, y: y0 + d.y * len + py * w },
-        { x: x0 + d.x * len - px * w, y: y0 + d.y * len - py * w },
-        { x: x0 - px * w, y: y0 - py * w },
-      ];
-      g.fillStyle(0xd03020, alpha).fillPoints(pts, true);
-      g.lineStyle(1, 0xff6040, 0.6).strokePoints(pts, true);
     } else {
-      const c = this.circleArea(a);
-      const groundY = c.y + CHEST * 0.6; // 바닥에 그려지도록 살짝 아래로
-      g.fillStyle(0xd03020, alpha).fillEllipse(c.x, groundY, c.radius * 2, c.radius * 1.4);
-      g.lineStyle(1, 0xff6040, 0.7).strokeEllipse(c.x, groundY, c.radius * 2, c.radius * 1.4);
-      // 진행 정도를 보여 주는 안쪽 원 (다 차면 공격)
-      g.fillStyle(0xff5030, alpha * 0.8).fillEllipse(c.x, groundY, c.radius * 2 * t, c.radius * 1.4 * t);
+      shape = this.groundShape(a);
+      prog = t;
+      hot = this.state === State.ACTIVE;
+    }
+    const base = hot ? 0.55 : 0.14 + 0.22 * prog;
+    g.fillStyle(0xd03020, base).fillPoints(groundShapePoints(shape), true);
+    g.fillStyle(0xff5030, hot ? 0.35 : 0.3 + 0.25 * prog).fillPoints(groundShapePoints(shape, Math.max(0.02, prog)), true);
+    g.lineStyle(hot ? 2 : 1, hot ? 0xffe0c0 : 0xff6040, 0.85).strokePoints(groundShapePoints(shape), true);
+  }
+
+  /** 돌진 예고: 경로가 보스 쪽에서부터 차오름 + 화살표 + 조준 고정 순간 번쩍 */
+  drawCharge(g, a, t) {
+    const shape = this.chargeShape(a);
+    const active = this.state === State.ACTIVE;
+    const lockT = a.aimLockAt ?? 0;
+    const locked = active || t >= lockT;
+    const flash = !active && t >= lockT && t < lockT + 0.08;
+    g.fillStyle(0xd03020, active ? 0.4 : 0.2 + 0.15 * t).fillPoints(groundShapePoints(shape), true);
+    g.fillStyle(0xff4020, active ? 0.35 : 0.5).fillPoints(groundShapePoints(shape, active ? 1 : Math.max(0.02, t)), true);
+    g.lineStyle(flash ? 3 : 2, flash ? 0xffffff : locked ? 0xffc080 : 0xff6040, flash ? 1 : 0.9).strokePoints(groundShapePoints(shape), true);
+    // 진행 방향 화살표 (안쪽에서 흐르듯 움직임)
+    const d = { x: shape.dx, y: shape.dy }, px = -d.y, py = d.x, w = shape.w * 0.55;
+    const flow = (this.animClock / 6) % 26;
+    g.lineStyle(2, 0xffe0b0, locked ? 0.85 : 0.5);
+    for (let s = 14 + flow; s < shape.len - 6; s += 26) {
+      const cx = shape.x + d.x * s, cy = shape.y + d.y * s;
+      g.beginPath();
+      g.moveTo(cx - d.x * 7 + px * w, cy - d.y * 7 + py * w);
+      g.lineTo(cx, cy);
+      g.lineTo(cx - d.x * 7 - px * w, cy - d.y * 7 - py * w);
+      g.strokePath();
+    }
+  }
+
+  /** ?debug=1: 실제 판정 모양(하늘색)과 플레이어 발밑 점 */
+  drawDebugHit(g) {
+    if (!DEBUG || this.state === State.DEAD) return;
+    const p = this.getPlayer();
+    g.fillStyle(0x40e0ff, 1).fillRect(p.x - 1, p.y - 1, 3, 3);
+    if (this.state === State.ACTIVE && this.lastHitShape) {
+      g.lineStyle(1, 0x40e0ff, 1).strokePoints(groundShapePoints(this.lastHitShape), true);
     }
   }
 

@@ -59,7 +59,10 @@
         "offset": 40,
         "radius": 30,
         "lunge": 60,
-        "knockdown": false
+        "knockdown": false,
+        "shape": "fan",
+        "reach": 68,
+        "arcDeg": 120
       },
       {
         "id": "slam",
@@ -233,7 +236,10 @@
             "offset": 34,
             "radius": 30,
             "lunge": 120,
-            "knockdown": false
+            "knockdown": false,
+            "shape": "fan",
+            "reach": 70,
+            "arcDeg": 150
           },
           {
             "gapMs": 260,
@@ -242,7 +248,10 @@
             "offset": 30,
             "radius": 26,
             "lunge": 110,
-            "knockdown": false
+            "knockdown": false,
+            "shape": "fan",
+            "reach": 58,
+            "arcDeg": 120
           },
           {
             "gapMs": 420,
