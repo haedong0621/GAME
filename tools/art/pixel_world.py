@@ -10,7 +10,9 @@
 채집: rock0~1.png·rock_rubble.png(34×28), stump.png(56×80, 나무와 같은 밑동), herb.png·herb_picked.png(22×20)
 3/4 시점 입체: 흙길·물은 한 단 파인 땅(북쪽 흙벽이 보임), 소품은 공·원기둥·상자 면에 왼쪽 위 빛으로 명암 계산
 
-맵(maps/world.tmj)의 바닥은 --remap 으로 "풀/흙/물" 종류를 읽어 이웃을 보고 알맞은 타일 번호로 바꾼다.
+  44~55 절벽 벽면(윗줄·아랫줄·낮은 턱 × 끝 4종, collides), 56~58 돌계단, 59~74 고지대 가장자리 덧그림, 75 절벽 밑 그늘
+맵(maps/world.tmj)의 바닥은 --remap 으로 "풀/흙/물" 종류와 height 레이어(1 절벽 고지대, 2 낮은 턱 고지대, 3 오르막)를 읽어
+알맞은 타일 번호(경계·벽면·계단)와 cliff_rim 덧그림 레이어를 만든다.
 실행: python3 tools/art/pixel_world.py [--remap]
 Godot: TileSet + Terrain(지형) 세트로 같은 자동 경계를 만들 수 있다.
 """
@@ -180,11 +182,147 @@ def terrain(kind, mask, seed):
                 for i in range(1, 5): px[x + i, y + 1] = W['deep']
     return img
 
+# ---------------- 절벽 (높이 2단: 땅 / 고지대) ----------------
+# 3/4 시점 규칙: 고지대 윗면은 제 칸에 그대로, 남쪽 가장자리 "아래 칸"에 절벽 벽면을 그린다 (스타듀밸리·드로바식).
+#   절벽(높이값 1): 벽면 2칸 (윗줄: 풀이 늘어진 턱, 아랫줄: 밑동 그림자) — 못 지나감, 덩굴(climb)로만 오름
+#   낮은 턱(높이값 2): 벽면 1칸 — 위에서 아래로 뛰어내릴 수 있음
+#   오르막(높이값 3): 벽면 자리에 돌계단 — 오르내릴 수 있음
+# 벽면 끝: 왼쪽·오른쪽이 이어지는지(L=1, R=2)로 4종 — 끝이면 둥글게 깎이고 옆면이 보임
+FACE = [(44, 38, 32), (62, 52, 42), (84, 70, 54), (108, 90, 68), (132, 112, 84)]
+CLIFF_TOP, CLIFF_BOT, LEDGE, RAMP_TOP, RAMP_BOT, RAMP_LEDGE, RIM, BASE_SHADOW = 44, 48, 52, 56, 57, 58, 59, 75
+
+def face_tile(kind, conn, seed):
+    """kind: 'top' | 'bot' | 'ledge', conn: L=1 R=2 (옆 칸도 벽면이면 이어짐)"""
+    rnd = random.Random(seed)
+    img = grass(0, seed)                # 벽이 깎인 바깥은 풀 (끝 부분)
+    px = img.load()
+    Lc, Rc = conn & 1, conn & 2
+    lip = 5 if kind in ('top', 'ledge') else 0
+    bottom = T if kind == 'top' else T - 6 if kind == 'bot' else T - 8
+    def inside(x, y):
+        # 끝(이어지지 않은 쪽)은 아래로 갈수록 둥글게 안쪽으로 깎임
+        if not Lc and x < 3 + (2 if y > bottom - 8 and kind != 'top' else 0): return False
+        if not Rc and x > T - 4 - (2 if y > bottom - 8 and kind != 'top' else 0): return False
+        return y < bottom
+    for y in range(T):
+        for x in range(T):
+            if not inside(x, y): continue
+            # 흙·바위 층: 가로 지층 + 위에서 빛 (위 밝고 아래 어두움)
+            depth = (y + (0 if kind != 'bot' else T)) / (2 * T if kind != 'ledge' else T)
+            i = 3 if depth < 0.2 else 2 if depth < 0.55 else 1
+            strata = (y + int(2 * math.sin(x * 0.4 + seed))) % 9
+            if strata == 0: i = max(0, i - 1)
+            elif strata == 1 and i < 4: i += 1
+            if (x * 7 + y * 3 + seed) % 23 == 0: i = max(0, i - 1)
+            if not Lc and x < 5: i = max(0, i - 1)          # 옆면(끝) 그늘
+            if not Rc and x > T - 6: i = min(4, i + 1)       # 오른쪽 끝은 빛 받는 쪽
+            px[x, y] = FACE[i]
+    # 세로 금
+    for _ in range(2):
+        x = rnd.randrange(6, T - 6); y0 = rnd.randrange(lip + 2, max(lip + 3, bottom - 8))
+        for k in range(rnd.randint(4, 8)):
+            X, Y = x + (k // 3) * rnd.choice((-1, 1)), y0 + k
+            if 0 <= X < T and Y < bottom and inside(X, Y): px[X, Y] = FACE[0]
+    # 박힌 돌
+    for _ in range(2):
+        x, y = rnd.randrange(5, T - 7), rnd.randrange(lip + 3, max(lip + 4, bottom - 5))
+        if inside(x, y) and inside(x + 2, y + 1):
+            for dx, dy, c in ((0, 0, 4), (1, 0, 4), (2, 0, 3), (0, 1, 2), (1, 1, 2), (2, 1, 1)):
+                px[x + dx, y + dy] = FACE[c]
+    # 윗턱: 풀이 벽 위로 늘어짐 (들쭉날쭉)
+    if lip:
+        for x in range(T):
+            if not inside(x, lip + 1) and not inside(x, 0): continue
+            h = lip + (1 if (x * 5 + seed) % 4 == 0 else 0) + (2 if (x * 3 + seed) % 7 == 0 else 0)
+            for y in range(h):
+                px[x, y] = G['tuft'] if y == 0 else G['base'] if y < h - 2 else G['dark']
+            px[x, h] = G['deep']
+    # 밑동: 아래쪽 땅과 만나는 곳에 부스러기·그늘
+    if kind in ('bot', 'ledge'):
+        for x in range(T):
+            if inside(x, bottom - 1):
+                for y in range(bottom, min(T, bottom + 4)):
+                    c = px[x, y]
+                    px[x, y] = tuple(int(v * (0.55 + 0.1 * (y - bottom))) for v in c)
+        for _ in range(3):
+            x = rnd.randrange(4, T - 6)
+            if inside(x, bottom - 1):
+                px[x, bottom] = FACE[2]; px[x + 1, bottom] = FACE[3]; px[x, bottom + 1] = FACE[1]
+    return img
+
+def ramp_tile(kind, seed):
+    """돌계단: 디딤돌(밝은 윗면 + 어두운 앞면)이 줄지어. 양옆은 낮은 돌턱"""
+    img = Image.new('RGB', (T, T), FACE[1])
+    px = img.load()
+    step = 8
+    off = 0 if kind != 'bot' else 4
+    for y in range(T):
+        k = (y + off) % step
+        for x in range(T):
+            c = FACE[3] if k < 3 else FACE[2] if k < 5 else FACE[1]
+            if k == 2: c = FACE[4] if (x + y) % 5 else FACE[3]
+            if x < 4 or x > T - 5: c = FACE[1] if x in (3, T - 4) else FACE[2] if k < 4 else FACE[0]   # 옆 돌턱
+            px[x, y] = c
+    if kind in ('top', 'ledge'):
+        for x in range(T):
+            px[x, 0] = G['tuft']; px[x, 1] = G['base']; px[x, 2] = G['dark']
+    if kind in ('bot', 'ledge'):
+        for x in range(T):
+            for y in range(T - 3, T): px[x, y] = tuple(int(v * 0.7) for v in px[x, y])
+    return img
+
+def rim_tile(mask):
+    """고지대 윗면 가장자리 덧그림 (투명 바탕). mask: 그 방향 이웃이 낮은 땅이면 N=1 E=2 S=4 W=8"""
+    img = Image.new('RGBA', (T, T), (220, 236, 170, 26))   # 고지대 윗면은 살짝 밝게 (빛을 더 받음)
+    px = img.load()
+    dark, light = (30, 44, 28, 255), (120, 150, 86, 255)
+    for i in range(T):
+        if mask & 1: px[i, 0] = dark; px[i, 1] = light                     # 뒤쪽 가장자리
+        if mask & 4: px[i, T - 1] = light                                   # 앞 가장자리 (벽면 위 턱)
+        if mask & 8: px[0, i] = dark; px[1, i] = (40, 58, 36, 200)          # 왼쪽 낭떠러지
+        if mask & 2: px[T - 1, i] = dark; px[T - 2, i] = light              # 오른쪽 낭떠러지 (빛 받음)
+    return img
+
+def base_shadow():
+    """절벽 바로 아래 땅에 드리우는 그늘 (투명 바탕)"""
+    img = Image.new('RGBA', (T, T), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(7):
+        for x in range(T):
+            px[x, y] = (8, 14, 8, int(110 * (1 - y / 7)))
+    return img
+
+def cliff_tiles():
+    t = [face_tile('top', c, 500 + c) for c in range(4)]
+    t += [face_tile('bot', c, 510 + c) for c in range(4)]
+    t += [face_tile('ledge', c, 520 + c) for c in range(4)]
+    t += [ramp_tile('top', 1), ramp_tile('bot', 2), ramp_tile('ledge', 3)]
+    t += [rim_tile(m) for m in range(16)]
+    t += [base_shadow()]
+    return t
+
+def vines():
+    """덩굴: 절벽 벽면(2칸) 위에 덮는 그림 32×64. 이게 있는 곳만 기어오를 수 있다"""
+    rnd = random.Random(9)
+    img = Image.new('RGBA', (T, 2 * T), (0, 0, 0, 0))
+    px = img.load()
+    V = [(30, 52, 30), (44, 76, 40), (64, 104, 54), (92, 132, 70)]
+    for k in range(4):
+        x = 4 + k * 7 + rnd.randint(-1, 1)
+        for y in range(2, 2 * T - 4 - rnd.randint(0, 8)):
+            xx = x + int(1.5 * math.sin(y * 0.25 + k))
+            put(img, xx, y, V[0] + (255,)); put(img, xx + 1, y, V[1] + (255,))
+            if y % 5 == k % 5:                                            # 잎
+                for dx, dy, c in ((2, 0, 2), (3, 0, 3), (2, 1, 1), (-1, 0, 2), (-2, 1, 1)):
+                    put(img, xx + dx, y + dy, V[c] + (255,))
+    return outline(img)
+
 def tileset():
     tiles = [grass(v, 100 + v) for v in range(4)]
     tiles += [terrain('dirt', m, 200 + m) for m in range(16)]
     tiles += [terrain('water', m, 300 + m) for m in range(16)]
     tiles += [grass(0 if v < 5 else 1 if v < 7 else 2, 400 + v) for v in range(8)]  # 36~43: 풀 추가 변형 (반복 무늬 줄이기)
+    tiles += cliff_tiles()                                                              # 44~75: 절벽·계단·가장자리
     cols = 8
     rows = math.ceil(len(tiles) / cols)
     sheet = Image.new('RGBA', (cols * T, rows * T), (0, 0, 0, 0))
@@ -485,19 +623,53 @@ def kind_of(gid):
     if 21 <= gid <= 36: return 'water'
     return 'grass'
 
+def height_marks():
+    """Tiled에서 높이를 칠할 때 보는 표시 타일 (게임에선 안 그림): 1=절벽 고지대, 2=낮은 턱 고지대, 3=오르막"""
+    img = Image.new('RGBA', (3 * T, T), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for i, c in enumerate(((200, 80, 60, 110), (220, 180, 60, 110), (80, 160, 220, 130))):
+        d.rectangle([i * T, 0, i * T + T - 1, T - 1], fill=c, outline=c[:3] + (220,))
+    img.save(os.path.join(TILES_DIR, 'height_marks.png'))
+
+def heights_of(m):
+    """맵의 height 레이어 → 2차원 높이값 (0 낮은 땅, 1 절벽 고지대, 2 낮은 턱 고지대, 3 오르막)"""
+    Wm, Hm = m['width'], m['height']
+    hl = next((l for l in m['layers'] if l['name'] == 'height'), None)
+    hts = next((t for t in m['tilesets'] if t['name'] == 'height_marks'), None)
+    if not hl or not hts: return [[0] * Wm for _ in range(Hm)]
+    f = hts['firstgid']
+    return [[(hl['data'][y * Wm + x] - f + 1) if hl['data'][y * Wm + x] >= f else 0 for x in range(Wm)] for y in range(Hm)]
+
 def remap():
     m = json.load(open(MAP))
     layer = next(l for l in m['layers'] if l['name'] == 'ground')
     Wm, Hm = m['width'], m['height']
     data = layer['data']
-    # 이미 새 타일셋이면 종류는 그대로 읽힘 (1~4 = 풀)
-    old_ts = m['tilesets'][0].get('name') == 'placeholder_tiles'
-    kinds = [[('dirt' if data[y * Wm + x] == 3 else 'water' if data[y * Wm + x] == 4 else 'grass') if old_ts else kind_of(data[y * Wm + x])
-              for x in range(Wm)] for y in range(Hm)]
-    rnd = random.Random(42)
-    new = []
+    kinds = [[kind_of(data[y * Wm + x]) for x in range(Wm)] for y in range(Hm)]
+    H = heights_of(m)
+    high = lambda x, y: 0 <= x < Wm and 0 <= y < Hm and H[y][x] in (1, 2)
+    # 벽면 자리: 고지대 남쪽 가장자리 아래 (절벽 2칸, 낮은 턱 1칸). 오르막(3)이면 계단
+    face = {}
     for y in range(Hm):
         for x in range(Wm):
+            if not high(x, y) or high(x, y + 1): continue
+            rows = ('top', 'bot') if H[y][x] == 1 else ('ledge',)
+            for k, kind in enumerate(rows):
+                Y = y + 1 + k
+                if Y >= Hm or high(x, Y): break
+                face[(x, Y)] = ('ramp_' + kind) if H[Y][x] == 3 else kind
+    rnd = random.Random(42)
+    new, rim = [], []
+    for y in range(Hm):
+        for x in range(Wm):
+            f = face.get((x, y))
+            if f:
+                if f.startswith('ramp_'): idx = {'ramp_top': RAMP_TOP, 'ramp_bot': RAMP_BOT, 'ramp_ledge': RAMP_LEDGE}[f]
+                else:
+                    conn = (1 if face.get((x - 1, y)) == f else 0) | (2 if face.get((x + 1, y)) == f else 0)
+                    idx = {'top': CLIFF_TOP, 'bot': CLIFF_BOT, 'ledge': LEDGE}[f] + conn
+                new.append(idx + 1); rim.append(0)
+                continue
             k = kinds[y][x]
             if k == 'grass':
                 r = rnd.random()
@@ -510,19 +682,50 @@ def remap():
                     if same: mask |= bit
                 idx = (4 if k == 'dirt' else 20) + mask
             new.append(idx + 1)  # firstgid 1
+            # 덧그림: 고지대 가장자리 선 / 절벽 밑 그늘
+            if high(x, y):
+                mk = sum(b for b, (dx, dy) in ((1, (0, -1)), (2, (1, 0)), (4, (0, 1)), (8, (-1, 0)))
+                         if 0 <= x + dx < Wm and 0 <= y + dy < Hm and not high(x + dx, y + dy))
+                rim.append(RIM + mk + 1)
+            elif face.get((x, y - 1)) in ('bot', 'ledge'):
+                rim.append(BASE_SHADOW + 1)
+            else:
+                rim.append(0)
     layer['data'] = new
-    n, cols, size = 44, 8, (8 * T, 6 * T)
+    n, cols = 76, 8
+    size = (cols * T, math.ceil(n / cols) * T)
+    collide = list(range(20, 36)) + list(range(CLIFF_TOP, LEDGE + 4))   # 물 + 벽면 (계단은 지나감)
+    hts = next((t for t in m['tilesets'] if t['name'] == 'height_marks'), None)
+    hl = next((l for l in m['layers'] if l['name'] == 'height'), None)
     m['tilesets'] = [{
         'firstgid': 1, 'name': 'world_tiles', 'image': '../assets/tiles/world_tiles.png',
         'imagewidth': size[0], 'imageheight': size[1], 'tilewidth': T, 'tileheight': T,
         'tilecount': n, 'columns': cols, 'margin': 0, 'spacing': 0,
-        'tiles': [{'id': i, 'properties': [{'name': 'collides', 'type': 'bool', 'value': True}]} for i in range(20, 36)],
+        'tiles': [{'id': i, 'properties': [{'name': 'collides', 'type': 'bool', 'value': True}]} for i in collide],
+    }, {
+        'firstgid': n + 1, 'name': 'height_marks', 'image': '../assets/tiles/height_marks.png',
+        'imagewidth': 3 * T, 'imageheight': T, 'tilewidth': T, 'tileheight': T,
+        'tilecount': 3, 'columns': 3, 'margin': 0, 'spacing': 0,
     }]
+    # height 레이어: 예전 firstgid 기준 값을 새 firstgid로 옮김
+    if hl and hts:
+        hl['data'] = [(g - hts['firstgid'] + n + 1) if g >= hts['firstgid'] else 0 for g in hl['data']]
+    # 덧그림 레이어 (ground 바로 위)
+    rl = next((l for l in m['layers'] if l['name'] == 'cliff_rim'), None)
+    if not rl:
+        rl = {'id': max(l['id'] for l in m['layers']) + 1, 'name': 'cliff_rim', 'type': 'tilelayer', 'width': Wm, 'height': Hm,
+              'x': 0, 'y': 0, 'opacity': 1, 'visible': True}
+        gi = next(i for i, l in enumerate(m['layers']) if l['name'] == 'ground')
+        m['layers'].insert(gi + 1, rl)
+    rl['data'] = rim
+    m['nextlayerid'] = max(l['id'] for l in m['layers']) + 1
     json.dump(m, open(MAP, 'w'), indent=1)
-    print('map remapped', Wm, Hm)
+    print('map remapped', Wm, Hm, 'faces', len(face))
 
 if __name__ == '__main__':
     print('tiles', tileset())
     props()
     gatherables()
+    vines().save(os.path.join(TILES_DIR, 'vines.png'))
+    height_marks()
     if '--remap' in sys.argv: remap()
