@@ -58,8 +58,10 @@
   "perfectDodge": {
     "slowFactor": 0.3,
     "slowRealMs": 450,
-    "rollBrake": 0.2,
+    "rollBrake": 0,
     "counterWindowMs": 900,
-    "counterDamageMultiplier": 1.5
+    "counterDamageMultiplier": 1.5,
+    "settleMs": 150,
+    "invulnMs": 300
   }
 }

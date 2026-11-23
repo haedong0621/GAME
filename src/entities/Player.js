@@ -126,7 +126,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         spawnAfterimage(this.scene, this.visual);
         spawnBigLabel(this.scene, this.x, this.y - 34, '완벽한 회피!');
         const pd = this.data_.perfectDodge;
-        this.rollBrake = pd.rollBrake;          // 남은 구르기를 확 줄여 몬스터 옆에 멈춤
+        this.rollBrake = pd.rollBrake;          // 그 자리에서 멈춤 (몬스터 바로 옆)
+        this.stateTime = Math.min(this.stateTime, pd.settleMs); // 남은 구르기를 짧게 끝내고 착지
+        this.setVelocity(0, 0);
+        this.invulnMs = pd.invulnMs;            // 구르기가 일찍 끝나도 잠깐 무적
         this.counterMs = pd.counterWindowMs;    // 반격 기회: 이 시간 안의 첫 공격은 구르기를 끊고 나가며 강해짐
         this.onPerfectDodge?.(opts.source);
       } else {
