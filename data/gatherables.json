@@ -1,25 +1,83 @@
 {
-  "_설명": "채집 대상. tool: hit = 무기로 때려서(hits번), interact = 상호작용(E)으로 줍기 모션. drops = 항상, bonusDrops = chance 확률. respawnMs 뒤 다시 자람. textures = 처음 모습(여러 개면 위치로 고름), depleted = 다 캔 뒤 모습. 무기의 gatherPower(기본 1)만큼 한 번에 깎임",
+  "_설명": "채집 대상. tool: hit = 무기로 때려서(hits번), interact = 상호작용(E)으로 줍기 모션. drops = 항상, bonusDrops = chance 확률. respawnMs 뒤 다시 자람. textures = 처음 모습(여러 개면 위치로 고름), depleted = 다 캔 뒤 모습. 무기의 gatherPower(기본 1)만큼 한 번에 깎임. biomeTextures = 지역 번호별 다른 그림 (예: 숲은 침엽수, 늪은 죽은 나무)",
   "tree": {
-    "name": "나무", "tool": "hit", "hits": 3,
-    "textures": ["tree0", "tree1", "tree2"], "depleted": "stump",
-    "drops": [{"itemId": "wood", "amount": 2}],
-    "bonusDrops": [{"itemId": "apple", "amount": 1, "chance": 0.3}],
-    "respawnMs": 90000, "fx": "wood",
-    "hurtbox": {"width": 18, "height": 34}
+    "name": "나무",
+    "tool": "hit",
+    "hits": 3,
+    "textures": [
+      "tree0",
+      "tree1",
+      "tree2"
+    ],
+    "depleted": "stump",
+    "drops": [
+      {
+        "itemId": "wood",
+        "amount": 2
+      }
+    ],
+    "bonusDrops": [
+      {
+        "itemId": "apple",
+        "amount": 1,
+        "chance": 0.3
+      }
+    ],
+    "respawnMs": 90000,
+    "fx": "wood",
+    "hurtbox": {
+      "width": 18,
+      "height": 34
+    },
+    "biomeTextures": {
+      "2": [
+        "deadtree0"
+      ],
+      "3": [
+        "pine0",
+        "pine1"
+      ]
+    }
   },
   "rock": {
-    "name": "바위", "tool": "hit", "hits": 4,
-    "textures": ["rock0", "rock1"], "depleted": "rock_rubble",
-    "drops": [{"itemId": "stone", "amount": 2}],
-    "respawnMs": 120000, "fx": "stone",
-    "hurtbox": {"width": 28, "height": 22},
-    "blocker": {"width": 26, "height": 12}
+    "name": "바위",
+    "tool": "hit",
+    "hits": 4,
+    "textures": [
+      "rock0",
+      "rock1"
+    ],
+    "depleted": "rock_rubble",
+    "drops": [
+      {
+        "itemId": "stone",
+        "amount": 2
+      }
+    ],
+    "respawnMs": 120000,
+    "fx": "stone",
+    "hurtbox": {
+      "width": 28,
+      "height": 22
+    },
+    "blocker": {
+      "width": 26,
+      "height": 12
+    }
   },
   "herb_patch": {
-    "name": "약초", "tool": "interact",
-    "textures": ["herb"], "depleted": "herb_picked",
-    "drops": [{"itemId": "herb", "amount": 2}],
+    "name": "약초",
+    "tool": "interact",
+    "textures": [
+      "herb"
+    ],
+    "depleted": "herb_picked",
+    "drops": [
+      {
+        "itemId": "herb",
+        "amount": 2
+      }
+    ],
     "respawnMs": 60000
   }
 }

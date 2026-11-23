@@ -10,5 +10,6 @@
 | `assets/characters/mon_hunter.png` (+ `mon_px.json`의 hunter) | `tools/art/pixel_hunter.py`로 Claude가 공·관 덩어리 3D 배치 + 셀 셰이딩으로 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 두 번째 보스 뒤엉킨 사냥꾼 |
 | `assets/tiles/world_tiles.png`, `tree0~2.png`, `bush.png`, `workbench.png`, `dummy.png` | `tools/art/pixel_world.py`로 Claude가 생성 (바닥 타일 76종: 풀 4 + 흙길 경계 16 + 물 경계 16 + 풀 추가 8 + 절벽 벽면·계단·가장자리 32, 소품) | 이 프로젝트 | 자체 제작 (제한 없음) | 배경 도트 |
 | `assets/tiles/rock0~1.png`, `rock_rubble.png`, `stump.png`, `herb.png`, `herb_picked.png` | `tools/art/pixel_world.py`로 Claude가 생성 (셀 셰이딩) | 이 프로젝트 | 자체 제작 (제한 없음) | 채집 대상 (바위·그루터기·약초) |
-| `assets/tiles/height_marks.png` | `tools/art/pixel_world.py`로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | Tiled 높이 표시용 (게임에선 안 씀) |
-| `assets/maps/world_cliffs_*.png` | `tools/art/terrain_bake.py`가 맵 height 레이어로 구운 절벽 그림 (Claude 작성 도구) | 이 프로젝트 | 자체 제작 (제한 없음) | 구불구불한 절벽·계단·덩굴 |
+| `assets/tiles/height_marks.png`, `region_marks.png` | `tools/art/pixel_world.py`로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | Tiled 높이 표시용 (게임에선 안 씀) |
+| `assets/maps/world_land_*.png` | `tools/art/terrain_bake.py`가 맵(ground·region·height 레이어)으로 구운 바닥 그림 (Claude 작성 도구) | 이 프로젝트 | 자체 제작 (제한 없음) | 지역별 바닥·흙길·물·절벽·계단·덩굴 |
+| `assets/tiles/pine0~1.png`, `deadtree0.png`, `decor_*.png` | `tools/art/pixel_world.py`로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 지역별 나무(침엽수·죽은 나무)와 깔개 소품(버섯·마른 풀·갈대·뼈·모닥불 자리·천막) |

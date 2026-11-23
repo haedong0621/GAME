@@ -13,7 +13,7 @@ import { spawnFloatingLabel } from '../systems/Effects.js';
 import { Terrain } from '../systems/Terrain.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
-import { GROUND_DEPTH } from '../systems/YSort.js';
+import { GROUND_DEPTH, applyYSort } from '../systems/YSort.js';
 import { WORLD_ZOOM } from '../config.js';
 
 /**
@@ -31,9 +31,11 @@ export class WorldScene extends window.Phaser.Scene {
     const tileset = map.addTilesetImage('world_tiles', 'world_tiles');
     const ground = map.createLayer('ground', tileset, 0, 0);
     ground.setDepth(GROUND_DEPTH);
-    ground.setCollisionByProperty({ collides: true }); // 물·절벽 벽면 등 막힌 타일
-    // 절벽: terrain_bake.py가 구운 그림 조각 (바닥 바로 위, 모든 물체보다 뒤)
+    ground.setCollisionByProperty({ collides: true }); // 물 등 막힌 타일
+    ground.setVisible(false); // 그림은 굽기 도구가 만든 바닥 한 장(지역별 바닥 + 흙길·물 + 절벽)이 대신함 — 타일은 충돌용
+    // 바닥 그림: terrain_bake.py가 구운 조각 (지역별 바닥 + 흙길·물 + 절벽), 모든 물체보다 뒤
     const terrainData = this.cache.json.get('worldTerrain');
+    this.terrain = new Terrain(terrainData);
     for (const c of terrainData?.chunks ?? []) this.add.image(c.x, c.y, c.key).setOrigin(0, 0).setDepth(GROUND_DEPTH + 0.05);
 
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -74,6 +76,14 @@ export class WorldScene extends window.Phaser.Scene {
           this.interactables.push(wb);
           break;
         }
+        case 'decor': {
+          // 깔기만 하는 소품 (지역별: 마른 풀, 갈대, 버섯, 뼈, 모닥불 자리, 천막…). 천막은 막음
+          const kind = getProperty(obj, 'kind');
+          const img = this.add.image(obj.x, obj.y, `decor_${kind}`).setOrigin(0.5, 1);
+          applyYSort(img);
+          if (kind === 'tent') blockers.add(this.add.zone(obj.x, obj.y - 6, 34, 12));
+          break;
+        }
         case 'climb':
           break; // 덩굴: 그림은 절벽 굽기에 포함, 오를 수 있는 범위는 terrain 격자 파일에 있음
         case 'autosave':
@@ -92,7 +102,7 @@ export class WorldScene extends window.Phaser.Scene {
         }
         case 'tree': case 'rock': case 'herb_patch': {
           // 채집 대상: 나무·바위는 무기로, 약초는 E(줍기 모션)로
-          const g = new Gatherable(this, obj.x, obj.y, obj.type, gatherDefs[obj.type], (x, y, drops) => this.spawnDrops(x, y, drops));
+          const g = new Gatherable(this, obj.x, obj.y, obj.type, gatherDefs[obj.type], (x, y, drops) => this.spawnDrops(x, y, drops), this.terrain.regionAt(obj.x, obj.y));
           if (g.blocker) blockers.add(g.blocker);
           this.gatherables.push(g);
           break;
@@ -141,7 +151,6 @@ export class WorldScene extends window.Phaser.Scene {
 
     // ---- 플레이어
     // 높낮이: 절벽 벽면·고지대 경계를 막는 사각형 (격자에서 합쳐 만듦)
-    this.terrain = new Terrain(terrainData);
     for (const w of this.terrain.solidRects()) blockers.add(this.add.zone(w.x + w.width / 2, w.y + w.height / 2, w.width, w.height));
 
     const playerData = this.registry.get('playerData');
@@ -288,6 +297,7 @@ export class WorldScene extends window.Phaser.Scene {
 
     this.player.update(cmd, delta);
     this.checkAutosave();
+    this.checkRegion();
 
     // 몬스터: 플레이어가 이번 프레임에 낸 소리와 환경을 보고 판단
     this.coneGfx.clear();
@@ -396,6 +406,20 @@ export class WorldScene extends window.Phaser.Scene {
     p.equip(0, false);
     p.equipArmor(p.data_.startArmor, false);
     this.banner('장비 초기화', '#9adf5a');
+  }
+
+  /** 다른 지역에 들어서면 이름을 띄운다 (data/regions.json). 경계에서 왔다 갔다 해도 2.5초에 한 번만 */
+  checkRegion() {
+    const r = this.terrain.regionAt(this.player.x, this.player.y);
+    if (this.currentRegion === undefined) { this.currentRegion = r; return; }
+    if (r === this.currentRegion) return;
+    this.currentRegion = r;
+    const now = this.time.now;
+    if (now - (this.regionShownAt ?? -9999) < 2500 && r === this.lastShownRegion) return;
+    const info = this.registry.get('regionsData')?.[r];
+    if (!info) return;
+    this.regionShownAt = now; this.lastShownRegion = r;
+    this.banner(info.name, info.color);
   }
 
   /** 가까운 상호작용 대상: 제작대, 캘 수 있는 약초, 바닥 아이템 중 가장 가까운 것 */

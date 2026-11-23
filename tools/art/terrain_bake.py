@@ -53,10 +53,65 @@ def load():
         d = np.array(hl['data'], dtype=np.int32).reshape(Ht, Wt)
         H = np.where(d >= hts['firstgid'], d - hts['firstgid'] + 1, 0)
     climbs = [o for l in m['layers'] if l['type'] == 'objectgroup' for o in l['objects'] if o['type'] == 'climb']
-    return m, H, climbs
+    # 지역(바이옴): region 레이어 (없으면 전부 0 = 들머리 풀밭)
+    rl = next((l for l in m['layers'] if l['name'] == 'region'), None)
+    rts = next((t for t in m['tilesets'] if t['name'] == 'region_marks'), None)
+    R = np.zeros((Ht, Wt), dtype=np.int32)
+    if rl and rts:
+        d = np.array(rl['data'], dtype=np.int32).reshape(Ht, Wt)
+        R = np.where(d >= rts['firstgid'], d - rts['firstgid'] + 1, 0)
+    return m, H, climbs, R
+
+def bake_ground(m, R, W, Hp):
+    """바닥 전체를 한 장으로: 지역마다 다른 바닥 + 지역 경계는 구불구불하게 섞임 + 흙길·물은 그 지역 바닥 위에"""
+    import pixel_world as pw
+    Ht, Wt = R.shape
+    gl = next(l for l in m['layers'] if l['name'] == 'ground')
+    data = np.array(gl['data'], dtype=np.int32).reshape(Ht, Wt)
+    kinds = [[pw.kind_of(int(data[y, x])) for x in range(Wt)] for y in range(Ht)]
+    # 픽셀별 지역: 지역마다 흐린 표시 + 노이즈 → 가장 큰 쪽 (경계는 점점이 섞이게 잔 노이즈)
+    nb = 6
+    score = np.zeros((nb, Hp, W), dtype=np.float32)
+    n1 = value_noise(W, Hp, 64, 51) * 0.28 + value_noise(W, Hp, 16, 52, 1) * 0.10
+    jitter = np.random.default_rng(53).random((Hp, W)).astype(np.float32) * 0.08
+    for b in range(nb):
+        if not (R == b).any(): score[b] = -1; continue
+        im = Image.fromarray(((R == b) * 255).astype(np.uint8), 'L').resize((W, Hp), Image.NEAREST).filter(ImageFilter.GaussianBlur(26))
+        score[b] = np.asarray(im, dtype=np.float32) / 255 + (n1 if b % 2 else -n1) + jitter * (1 if b % 2 else -1)
+    biome = np.argmax(score, axis=0).astype(np.uint8)
+    # 지역 바닥 칸 (지역마다 8가지 변형) / 흙길·물 칸 (지역별·마스크별) 미리 만들어 둠
+    var = {(b, v): np.asarray(pw.biome_tile(b, v, 100 + v + b * 10), dtype=np.uint8) for b in range(nb) for v in range(8)}
+    weights = [0, 0, 0, 0, 1, 1, 2, 3]
+    cache = {}
+    rnd = random.Random(42)
+    out = np.zeros((Hp, W, 3), dtype=np.uint8)
+    for ty in range(Ht):
+        for tx in range(Wt):
+            sl = (slice(ty * T, ty * T + T), slice(tx * T, tx * T + T))
+            k = kinds[ty][tx]
+            if k == 'grass':
+                v = weights[rnd.randrange(8)] if rnd.random() < 0.5 else rnd.randrange(8)
+                bs = biome[sl]
+                present = np.unique(bs)
+                if len(present) == 1: out[sl] = var[(int(present[0]), v)]
+                else:
+                    tile = np.zeros((T, T, 3), dtype=np.uint8)
+                    for b in present: tile[bs == b] = var[(int(b), v)][bs == b]
+                    out[sl] = tile
+            else:
+                mask = 0
+                for bit, (dx, dy) in ((1, (0, -1)), (2, (1, 0)), (4, (0, 1)), (8, (-1, 0))):
+                    X, Y = tx + dx, ty + dy
+                    if not (0 <= X < Wt and 0 <= Y < Ht) or kinds[Y][X] == k: mask |= bit
+                b = int(np.bincount(biome[sl].ravel(), minlength=nb).argmax())
+                key = (b, k, mask)
+                if key not in cache:
+                    cache[key] = np.asarray(pw.biome_terrain(b, k, mask, (200 if k == 'dirt' else 300) + mask), dtype=np.uint8)
+                out[sl] = cache[key]
+    return out
 
 def bake():
-    m, H, climbs = load()
+    m, H, climbs, R = load()
     Ht, Wt = H.shape
     W, Hp = Wt * T, Ht * T
     rnd = random.Random(7)
@@ -225,21 +280,24 @@ def bake():
     os.makedirs(OUT_IMG, exist_ok=True)
     name = os.path.splitext(os.path.basename(MAP))[0]
     for fn in os.listdir(OUT_IMG):
-        if fn.startswith(f'{name}_cliffs_'): os.remove(os.path.join(OUT_IMG, fn))
-    rgba = np.clip(img, 0, 255).astype(np.uint8)
+        if fn.startswith(f'{name}_cliffs_') or fn.startswith(f'{name}_land_'): os.remove(os.path.join(OUT_IMG, fn))
+    # 바닥(지역별) 위에 절벽 덧그림을 합성 → 한 장 (불투명)
+    ground = bake_ground(m, R, W, Hp).astype(np.float32)
+    a = np.clip(img[..., 3:4], 0, 255) / 255
+    land = (ground * (1 - a) + np.clip(img[..., :3], 0, 255) * a).astype(np.uint8)
     chunks = []
     for y in range(0, Hp, CHUNK):
         for x in range(0, W, CHUNK):
-            part = rgba[y:y + CHUNK, x:x + CHUNK]
-            if part[..., 3].max() == 0: continue
-            key = f'{name}_cliffs_{x // CHUNK}_{y // CHUNK}'
-            Image.fromarray(part, 'RGBA').save(os.path.join(OUT_IMG, key + '.png'), optimize=True)
+            part = land[y:y + CHUNK, x:x + CHUNK]
+            key = f'{name}_land_{x // CHUNK}_{y // CHUNK}'
+            Image.fromarray(part, 'RGB').save(os.path.join(OUT_IMG, key + '.png'), optimize=True)
             chunks.append({'key': key, 'x': x, 'y': y, 'path': f'assets/maps/{key}.png'})
     out_json = os.path.join(os.path.dirname(MAP), f'{name}_terrain.json')
     json.dump({'_설명': 'tools/art/terrain_bake.py가 만든 파일 (직접 고치지 말 것). cell px 격자: . 낮은 땅 ^ 고지대 C 절벽 벽면 L 낮은 턱 벽면 # 경계띠 R 계단 S 비탈 경계(지나감)',
-               'cell': CELL, 'cols': gw, 'rows': gh, 'grid': rows, 'climb': vines, 'chunks': chunks},
+               'cell': CELL, 'cols': gw, 'rows': gh, 'grid': rows, 'climb': vines, 'chunks': chunks,
+               'tile': T, 'regions': [''.join(str(int(v)) for v in row) for row in R]},
               open(out_json, 'w'), ensure_ascii=False, indent=0)
-    print('terrain baked', W, Hp, 'chunks', len(chunks), 'solid cells', sum(r.count('C') + r.count('L') + r.count('#') for r in rows))
+    print('land baked', W, Hp, 'chunks', len(chunks), 'solid cells', sum(r.count('C') + r.count('L') + r.count('#') for r in rows))
 
 if __name__ == '__main__':
     bake()

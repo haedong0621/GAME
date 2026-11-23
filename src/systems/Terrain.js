@@ -15,6 +15,14 @@ export class Terrain {
     this.rows = data?.rows ?? 0;
     this.grid = data?.grid ?? [];
     this.climbRects = data?.climb ?? [];
+    this.tile = data?.tile ?? 32;
+    this.regions = data?.regions ?? [];
+  }
+
+  /** 지역 번호 (0 = 들머리 풀밭) */
+  regionAt(x, y) {
+    const row = this.regions[Math.floor(y / this.tile)];
+    return row ? Number(row[Math.floor(x / this.tile)] ?? 0) : 0;
   }
 
   at(cx, cy) {

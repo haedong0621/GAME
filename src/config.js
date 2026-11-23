@@ -38,6 +38,7 @@ export const PATHS = {
   skills: 'data/skills.json',
   recipes: 'data/recipes.json',
   gatherables: 'data/gatherables.json',
+  regions: 'data/regions.json',
   worldMap: 'maps/world.tmj',
   worldTerrain: 'maps/world_terrain.json',
   worldTiles: 'assets/tiles/world_tiles.png',

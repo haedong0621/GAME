@@ -22,6 +22,7 @@ export class BootScene extends window.Phaser.Scene {
     this.load.json('skills', PATHS.skills);
     this.load.json('recipes', PATHS.recipes);
     this.load.json('gatherables', PATHS.gatherables);
+    this.load.json('regions', PATHS.regions);
     this.load.tilemapTiledJSON('world', PATHS.worldMap);
     // 절벽 굽기 결과 (tools/art/terrain_bake.py): 충돌 격자 + 그림 조각
     this.load.json('worldTerrain', PATHS.worldTerrain);
@@ -53,7 +54,8 @@ export class BootScene extends window.Phaser.Scene {
     }
     this.load.image('world_tiles', PATHS.worldTiles);
     // 배경 소품 도트 (tools/art/pixel_world.py)
-    for (const k of ['tree0', 'tree1', 'tree2', 'bush', 'workbench', 'dummy', 'stump', 'rock0', 'rock1', 'rock_rubble', 'herb', 'herb_picked']) this.load.image(k, `assets/tiles/${k}.png`);
+    for (const k of ['tree0', 'tree1', 'tree2', 'bush', 'workbench', 'dummy', 'stump', 'rock0', 'rock1', 'rock_rubble', 'herb', 'herb_picked', 'pine0', 'pine1', 'deadtree0',
+      'decor_mushrooms', 'decor_tallgrass', 'decor_reeds', 'decor_bones', 'decor_campfire', 'decor_tent']) this.load.image(k, `assets/tiles/${k}.png`);
   }
 
   create() {
@@ -71,6 +73,7 @@ export class BootScene extends window.Phaser.Scene {
     this.registry.set('armors', this.cache.json.get('armors'));
     this.registry.set('skills', this.cache.json.get('skills'));
     this.registry.set('gatherables', this.cache.json.get('gatherables'));
+    this.registry.set('regionsData', this.cache.json.get('regions'));
     this.registry.set('crafting', new Crafting(this.cache.json.get('recipes'), this.cache.json.get('weapons'), this.cache.json.get('armors')));
 
     // 알림용 값은 미리 만들어 둔다: Phaser registry는 "처음" 저장할 때는 changedata 이벤트를 보내지 않음

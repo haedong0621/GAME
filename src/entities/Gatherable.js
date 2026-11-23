@@ -11,7 +11,8 @@ export class Gatherable {
    * @param {string} kind 'tree' | 'rock' | 'herb_patch'
    * @param {(x:number, y:number, drops:Array) => void} dropItems 떨어뜨릴 아이템을 월드에 만든다
    */
-  constructor(scene, x, y, kind, def, dropItems) {
+  /** @param {number} region 지역 번호 (지역마다 다른 그림: def.biomeTextures) */
+  constructor(scene, x, y, kind, def, dropItems, region = 0) {
     this.scene = scene;
     this.x = x;
     this.y = y;
@@ -22,7 +23,7 @@ export class Gatherable {
     this.hp = def.hits ?? 1;
     this.depleted = false;
     // 위치로 모양 결정 (같은 자리는 항상 같은 모양)
-    const tex = def.textures;
+    const tex = def.biomeTextures?.[region] ?? def.textures;
     this.texture = tex[Math.abs(Math.round(x * 7 + y * 13)) % tex.length];
     this.sprite = scene.add.image(x, y, this.texture).setOrigin(0.5, 1);
     applyYSort(this.sprite);
