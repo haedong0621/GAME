@@ -304,8 +304,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       case State.HURT: {
         const k = Math.max(0, this.stateTime / this.data_.hurtMs) * this.data_.knockbackSpeed * this.modifier('knockbackMultiplier');
         this.setVelocity(this.knock.x * k, this.knock.y * k);
-        // 맞고 밀려나는 중에 누른 구르기·공격은 버리지 않고 예약 → 끝나자마자 실행 (구르기 우선)
-        this.bufferInput(cmd);
+        // 맞고 밀려나는 동작 후반(40%)에 누른 구르기·공격만 예약 → 끝나자마자 실행 (맞는 순간의 늦은 입력은 버림)
+        if (this.stateTime <= this.data_.hurtMs * 0.4) this.bufferInput(cmd);
         if (this.stateTime <= 0) {
           const next = this.queued;
           this.queued = null;
@@ -321,7 +321,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         const air = Math.max(0, 1 - t / kd.airMs);
         this.setVelocity(this.knock.x * kd.launchSpeed * air, this.knock.y * kd.launchSpeed * air);
         if (!this.landed && t >= kd.airMs) { this.landed = true; spawnDust(this.scene, this.x, this.y, this.knock, 6); this.scene.cameras.main.shake(120, 0.004); }
-        this.bufferInput(cmd);
+        // 입력 예약은 일어나는 동작 후반부에 누른 것만 (맞을 때·넘어진 동안 누른 늦은 입력이 기상 직후 튀어나오지 않게)
+        if (t >= kd.airMs + kd.downMs + kd.getUpMs * 0.5) this.bufferInput(cmd);
         if (this.stateTime <= 0) {
           const next = this.queued;
           this.queued = null;
