@@ -302,6 +302,9 @@ def build():
     meta = {'dirs': {'down': ['down', False], 'downright': ['downside', False], 'right': ['side', False], 'upright': ['upside', False],
                      'up': ['up', False], 'upleft': ['upside', True], 'left': ['side', True], 'downleft': ['downside', True]},
             'views': VIEWS, 'kinds': {}}
+    # 다른 생성기가 만든 종류(예: pixel_hunter.py의 hunter)는 그대로 둔다
+    mp = os.path.join(OUT_DIR, 'mon_px.json')
+    if os.path.exists(mp): meta['kinds'] = json.load(open(mp)).get('kinds', {})
     for kind, anims in ANIMS.items():
         S = SPECS[kind]; F = S['frame']
         cols = max(len(v) for v in anims.values())
