@@ -34,6 +34,44 @@
           "amount": 1
         }
       ]
+    },
+    {
+      "id": "hunter_cleaver",
+      "result": {
+        "kind": "weapon",
+        "id": "hunter_cleaver"
+      },
+      "materials": [
+        {
+          "itemId": "hunter_silver",
+          "amount": 2
+        },
+        {
+          "itemId": "tangled_pelt",
+          "amount": 1
+        },
+        {
+          "itemId": "wood",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "hunter_coat",
+      "result": {
+        "kind": "armor",
+        "id": "hunter_coat"
+      },
+      "materials": [
+        {
+          "itemId": "tangled_pelt",
+          "amount": 3
+        },
+        {
+          "itemId": "hound_pelt",
+          "amount": 3
+        }
+      ]
     }
   ]
 }

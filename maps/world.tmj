@@ -11,7 +11,7 @@
  "infinite": false,
  "compressionlevel": -1,
  "nextlayerid": 3,
- "nextobjectid": 146,
+ "nextobjectid": 148,
  "tilesets": [
   {
    "firstgid": 1,
@@ -4427,7 +4427,7 @@
     },
     {
      "id": 144,
-     "name": "\ubd81\uc11c\ucabd \ub4e4\ud310",
+     "name": "\ub4a4\uc5c9\ud0a8 \uc0ac\ub0e5\uafbc\uc758 \ub4e4\ud310 \uc55e",
      "type": "autosave",
      "x": 608,
      "y": 96,
@@ -4446,6 +4446,25 @@
      "height": 256,
      "rotation": 0,
      "visible": true
+    },
+    {
+     "id": 147,
+     "name": "\ub4a4\uc5c9\ud0a8 \uc0ac\ub0e5\uafbc",
+     "type": "monster",
+     "x": 300,
+     "y": 236,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "monsterId",
+       "type": "string",
+       "value": "mangled_hunter"
+      }
+     ]
     }
    ]
   }

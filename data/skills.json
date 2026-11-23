@@ -15,5 +15,20 @@
     "description": "맞아도 덜 밀려나고(-50%), 구르기 기력 소모가 줄어든다(-20%).",
     "knockbackMultiplier": 0.5,
     "rollStaminaMultiplier": 0.8
+  },
+  "pack_frenzy": {
+    "name": "무리 사냥",
+    "from": "뒤엉킨 사냥꾼",
+    "type": "comboRamp",
+    "description": "연속기가 이어질수록 더 아프다: 2타 +15%, 3타 +30%.",
+    "perStep": 0.15
+  },
+  "hunter_instinct": {
+    "name": "사냥꾼의 감",
+    "from": "뒤엉킨 사냥꾼",
+    "type": "passive",
+    "description": "완벽한 회피가 더 쉽게 나오고(판정 시간 +35%), 완벽한 회피 뒤 반격이 더 아프다(+30%).",
+    "perfectWindowMultiplier": 1.35,
+    "counterDamageMultiplier": 1.3
   }
 }

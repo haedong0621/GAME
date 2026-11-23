@@ -40,5 +40,19 @@
       {"name": "되베기", "from": 110, "to": -75, "windupMs": 110, "activeMs": 90, "recoveryMs": 300, "chainAfterMs": 70, "damage": 15, "staminaCost": 9, "lungeSpeed": 90, "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45, "lean": 7, "crouch": 1.0, "moveCancelAfterMs": 170},
       {"name": "내려찍기", "from": -165, "to": 20, "windupMs": 250, "activeMs": 110, "recoveryMs": 480, "chainAfterMs": 260, "damage": 31, "staminaCost": 15, "lungeSpeed": 170, "hitDistance": 20, "hitRadius": 19, "shake": 0.006, "hitstopMs": 100, "lean": 11, "crouch": 0.85, "moveCancelAfterMs": 360}
     ]
+  },
+
+  "hunter_cleaver": {
+    "name": "사냥꾼의 은빛 도축칼",
+    "type": "sword",
+    "description": "뒤엉킨 사냥꾼이 쥐고 있던 넓적한 칼. 들개를 베던 톱니가 등에 나 있다. 연타가 이어질수록 깊게 파고든다.",
+    "moveSpeedMultiplier": 1.0,
+    "view": {"bladeLength": 22, "bladeWidth": 5, "bladeColor": "#c0c6d2", "hiltColor": "#503826", "restAngle": 115},
+    "skills": ["pack_frenzy"],
+    "combo": [
+      {"name": "가로 베기", "from": -110, "to": 75, "windupMs": 140, "activeMs": 90, "recoveryMs": 300, "chainAfterMs": 70, "damage": 13, "staminaCost": 9, "lungeSpeed": 80, "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45, "lean": 7, "crouch": 1.0, "moveCancelAfterMs": 170},
+      {"name": "되베기", "from": 110, "to": -75, "windupMs": 110, "activeMs": 90, "recoveryMs": 300, "chainAfterMs": 70, "damage": 14, "staminaCost": 9, "lungeSpeed": 90, "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45, "lean": 7, "crouch": 1.0, "moveCancelAfterMs": 170},
+      {"name": "내려찍기", "from": -165, "to": 20, "windupMs": 250, "activeMs": 110, "recoveryMs": 480, "chainAfterMs": 260, "damage": 27, "staminaCost": 15, "lungeSpeed": 170, "hitDistance": 20, "hitRadius": 19, "shake": 0.006, "hitstopMs": 100, "lean": 11, "crouch": 0.85, "moveCancelAfterMs": 360}
+    ]
   }
 }

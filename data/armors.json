@@ -16,5 +16,15 @@
       "swamp_toughness"
     ],
     "outfit": "swamp"
+  },
+  "hunter_coat": {
+    "name": "들개가죽 사냥꾼 코트",
+    "description": "사냥꾼의 검붉은 코트에 들개 가죽 두건을 덧댔다. 두건에 귀가 쫑긋 서 있다. 입으면 공격이 오는 순간이 느껴진다.",
+    "maxHpBonus": 20,
+    "texture": "player",
+    "skills": [
+      "hunter_instinct"
+    ],
+    "outfit": "hunter"
   }
 }

@@ -5,5 +5,7 @@
   "herb": {"name": "약초", "type": "consumable", "stack": 20, "description": "물가에서 자라는 풀. 회복약의 재료.", "heal": 5, "placeholderColor": "#5fd06a"},
   "beast_hide": {"name": "늪짐승 가죽", "type": "material", "stack": 99, "description": "질기고 축축한 가죽. 썩은 늪 냄새가 난다.", "placeholderColor": "#5d6b3a"},
   "beast_fang": {"name": "늪짐승 송곳니", "type": "material", "stack": 99, "description": "누렇게 바랜 송곳니. 무기 재료로 쓸 만하다.", "placeholderColor": "#e0d2a8"},
-  "hound_pelt": {"name": "들개 가죽", "type": "material", "stack": 99, "description": "얇고 냄새나는 가죽. 언젠가 쓸모가 있을지도.", "placeholderColor": "#8a6a4a"}
+  "hound_pelt": {"name": "들개 가죽", "type": "material", "stack": 99, "description": "얇고 냄새나는 가죽. 언젠가 쓸모가 있을지도.", "placeholderColor": "#8a6a4a"},
+  "tangled_pelt": {"name": "뒤엉킨 개가죽", "type": "material", "stack": 99, "description": "사람 털과 개 털이 한데 엉겨 붙은 가죽. 꿰매면 질기다.", "placeholderColor": "#7a6048"},
+  "hunter_silver": {"name": "사냥꾼의 은장식", "type": "material", "stack": 99, "description": "늑대인간 사냥꾼이 몸에 지니던 은 버클과 장식. 피가 말라붙어 있다.", "placeholderColor": "#c8ccd4"}
 }

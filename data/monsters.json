@@ -165,5 +165,145 @@
     ],
     "staggerMs": 700,
     "pixelKind": "hound"
+  },
+  "mangled_hunter": {
+    "name": "뒤엉킨 사냥꾼",
+    "lore": "늑대인간을 쫓던 사냥꾼. 들개 떼에게 물어뜯겨 죽으면서 들개들과 엉망으로 뒤섞여 버렸다. 아직도 울부짖으면 들개가 모여든다.",
+    "ai": "boss",
+    "sizeClass": "medium",
+    "texture": "boss_swamp",
+    "pixelKind": "hunter",
+    "maxHp": 520,
+    "speed": 78,
+    "chaseStopDistance": 40,
+    "leashRadius": 520,
+    "roarMs": 1000,
+    "sneakAttackMultiplier": 2.0,
+    "attackCooldownMs": 380,
+    "hurtbox": {
+      "width": 40,
+      "height": 64
+    },
+    "feetCollider": {
+      "width": 30,
+      "height": 14
+    },
+    "respawnMs": 15000,
+    "staggerMs": 850,
+    "mobChargeDamage": 20,
+    "phases": [
+      {
+        "hpBelow": 0.5,
+        "name": "광란",
+        "speedMultiplier": 1.3,
+        "windupMultiplier": 0.8
+      }
+    ],
+    "attacks": [
+      {
+        "id": "bite",
+        "name": "들개 머리 물기",
+        "type": "circle",
+        "minRange": 0,
+        "maxRange": 60,
+        "weight": 3,
+        "windupMs": 380,
+        "activeMs": 110,
+        "recoveryMs": 520,
+        "damage": 13,
+        "offset": 32,
+        "radius": 24,
+        "lunge": 90,
+        "knockdown": false
+      },
+      {
+        "id": "rend",
+        "name": "연속 베기",
+        "type": "combo",
+        "minRange": 0,
+        "maxRange": 80,
+        "weight": 4,
+        "windupMs": 700,
+        "recoveryMs": 950,
+        "hits": [
+          {
+            "gapMs": 0,
+            "activeMs": 110,
+            "damage": 14,
+            "offset": 34,
+            "radius": 30,
+            "lunge": 120,
+            "knockdown": false
+          },
+          {
+            "gapMs": 260,
+            "activeMs": 100,
+            "damage": 12,
+            "offset": 30,
+            "radius": 26,
+            "lunge": 110,
+            "knockdown": false
+          },
+          {
+            "gapMs": 420,
+            "activeMs": 140,
+            "damage": 24,
+            "offset": 38,
+            "radius": 34,
+            "lunge": 150,
+            "knockdown": true
+          }
+        ]
+      },
+      {
+        "id": "pounce",
+        "name": "도약 덮치기",
+        "type": "leap",
+        "minRange": 90,
+        "maxRange": 260,
+        "weight": 3,
+        "windupMs": 820,
+        "aimLockAt": 0.7,
+        "activeMs": 520,
+        "recoveryMs": 900,
+        "damage": 26,
+        "radius": 46,
+        "height": 46,
+        "knockdown": true
+      },
+      {
+        "id": "howl",
+        "name": "울부짖기",
+        "type": "summon",
+        "minRange": 0,
+        "maxRange": 400,
+        "weight": 2,
+        "windupMs": 900,
+        "activeMs": 200,
+        "recoveryMs": 700,
+        "summonId": "feral_hound",
+        "count": 2,
+        "maxAlive": 3,
+        "cooldownMs": 14000,
+        "anim": "roar"
+      }
+    ],
+    "drops": [
+      {
+        "itemId": "tangled_pelt",
+        "amount": 3
+      },
+      {
+        "itemId": "hunter_silver",
+        "amount": 2
+      }
+    ],
+    "perception": {
+      "visionRange": 190,
+      "visionAngleDeg": 140,
+      "detectPerSec": 2.2,
+      "closeSenseRadius": 34,
+      "hearingMultiplier": 1.5
+    }
   }
 }

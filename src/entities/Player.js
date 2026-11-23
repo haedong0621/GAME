@@ -122,7 +122,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (this.isInvincible) {
       // 구르기 시작 직후(perfectWindowMs 안)에 피하면 완벽한 회피
       const rolled = this.data_.roll.durationMs - this.stateTime;
-      if (rolled <= (this.data_.roll.perfectWindowMs ?? 0)) {
+      if (rolled <= (this.data_.roll.perfectWindowMs ?? 0) * this.modifier('perfectWindowMultiplier')) {
         spawnAfterimage(this.scene, this.visual);
         spawnBigLabel(this.scene, this.x, this.y - 34, '완벽한 회피!');
         const pd = this.data_.perfectDodge;
@@ -573,7 +573,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     for (const target of hits) {
       if (this.hitThisSwing.has(target)) continue; // 한 번 휘두를 때 같은 대상은 한 번만
       this.hitThisSwing.add(target);
-      const dmg = this.counterSwing ? Math.round(m.damage * this.data_.perfectDodge.counterDamageMultiplier) : m.damage;
+      // 스킬: 무리 사냥(comboRamp) = 연속기 n타째 +perStep×n, 사냥꾼의 감 = 반격 피해 배율
+      const ramp = this.skills.reduce((acc, sk) => acc + (sk.type === 'comboRamp' ? sk.perStep * this.comboIndex : 0), 0);
+      const base = m.damage * (1 + ramp);
+      const dmg = Math.round(this.counterSwing ? base * this.data_.perfectDodge.counterDamageMultiplier * this.modifier('counterDamageMultiplier') : base);
       const dealt = target.takeDamage(dmg, { fromX: this.x, fromY: this.y });
       spawnDamageNumber(this.scene, target.x, target.getHurtbox().y - 10, dealt, this.counterSwing ? '#9fdcff' : undefined);
       if (this.counterSwing) spawnBigLabel(this.scene, target.x, target.getHurtbox().y - 18, '반격!', '#9fdcff');
