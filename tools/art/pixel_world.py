@@ -624,10 +624,10 @@ def kind_of(gid):
     return 'grass'
 
 def height_marks():
-    """Tiled에서 높이를 칠할 때 보는 표시 타일 (게임에선 안 그림): 1=절벽 고지대, 2=낮은 턱 고지대, 3=오르막"""
-    img = Image.new('RGBA', (3 * T, T), (0, 0, 0, 0))
+    """Tiled에서 높이를 칠할 때 보는 표시 타일 (게임에선 안 그림): 1=절벽 고지대, 2=낮은 턱 고지대, 3=계단 자리, 4=비탈 고지대"""
+    img = Image.new('RGBA', (4 * T, T), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    for i, c in enumerate(((200, 80, 60, 110), (220, 180, 60, 110), (80, 160, 220, 130))):
+    for i, c in enumerate(((200, 80, 60, 110), (220, 180, 60, 110), (80, 160, 220, 130), (90, 200, 90, 110))):
         d.rectangle([i * T, 0, i * T + T - 1, T - 1], fill=c, outline=c[:3] + (220,))
     img.save(os.path.join(TILES_DIR, 'height_marks.png'))
 
@@ -675,8 +675,8 @@ def remap():
         'tiles': [{'id': i, 'properties': [{'name': 'collides', 'type': 'bool', 'value': True}]} for i in range(20, 36)],
     }, {
         'firstgid': n + 1, 'name': 'height_marks', 'image': '../assets/tiles/height_marks.png',
-        'imagewidth': 3 * T, 'imageheight': T, 'tilewidth': T, 'tileheight': T,
-        'tilecount': 3, 'columns': 3, 'margin': 0, 'spacing': 0,
+        'imagewidth': 4 * T, 'imageheight': T, 'tilewidth': T, 'tileheight': T,
+        'tilecount': 4, 'columns': 4, 'margin': 0, 'spacing': 0,
     }]
     if hl and hts:
         hl['data'] = [(g - hts['firstgid'] + n + 1) if g >= hts['firstgid'] else 0 for g in hl['data']]

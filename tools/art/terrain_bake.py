@@ -8,7 +8,8 @@
   3) 벽면 윗턱(늘어진 풀), 지층·금·박힌 돌, 밑동 돌무더기·그늘, 계단, 덩굴을 그림에 함께 굽는다
   4) 8px 격자로 "어디가 막혔는지"를 기록 → 게임은 이 격자로 충돌·뛰어내리기·덩굴 오르기를 판단
 
-입력: maps/world.tmj  (height 레이어: 1 절벽 고지대, 2 낮은 턱 고지대, 3 계단 자리 / climb 오브젝트 = 덩굴)
+입력: maps/world.tmj  (height 레이어: 1 절벽 고지대, 2 낮은 턱 고지대, 3 계단 자리, 4 비탈 고지대 / climb 오브젝트 = 덩굴)
+  가장자리 종류는 가까운 고지대 칸 종류를 넓게 섞어 정함 → 절벽이 점점 낮아져 턱이 되고, 비탈로 풀리는 식으로 이어짐
 출력: assets/maps/<맵>_cliffs_<x>_<y>.png (1024px 조각, 투명 바탕), maps/<맵>_terrain.json (격자·조각 목록)
 실행: python3 tools/art/terrain_bake.py   (pixel_world.py --remap 이 끝에 자동으로 부름)
 Godot: 같은 그림 조각을 Sprite2D로, 격자에서 CollisionPolygon2D(또는 TileMap 충돌 레이어)를 만든다.
@@ -59,7 +60,7 @@ def bake():
     Ht, Wt = H.shape
     W, Hp = Wt * T, Ht * T
     rnd = random.Random(7)
-    high_t = ((H == 1) | (H == 2)).astype(np.uint8) * 255
+    high_t = ((H == 1) | (H == 2) | (H == 4)).astype(np.uint8) * 255
     # 1) 부드러운 고지대 모양
     field = Image.fromarray(high_t, 'L').resize((W, Hp), Image.NEAREST).filter(ImageFilter.GaussianBlur(9))
     f = np.asarray(field, dtype=np.float32) / 255
@@ -69,8 +70,11 @@ def bake():
     def blur_of(mask, r):
         im = Image.fromarray(mask.astype(np.uint8) * 255, 'L').resize((W, Hp), Image.NEAREST).filter(ImageFilter.GaussianBlur(r))
         return np.asarray(im, dtype=np.float32) / 255
-    cw = blur_of(H == 1, 22); lw = blur_of(H == 2, 22)
+    cw = blur_of(H == 1, 22); lw = blur_of(H == 2, 22); sw = blur_of(H == 4, 22)
     cliffw = cw / (cw + lw + 1e-4)
+    slopew = sw / (cw + lw + sw + 1e-4)          # 1 = 비탈 (벽면 없이 완만하게 기운 풀밭)
+    # 비탈 명암용 부드러운 높이: 실제 경계(M)를 넓게 흐림 → 경계를 따라 완만한 경사 띠
+    fs = np.asarray(Image.fromarray(M.astype(np.uint8) * 255, 'L').filter(ImageFilter.GaussianBlur(14)), dtype=np.float32) / 255
     ramp = np.asarray(Image.fromarray((H == 3).astype(np.uint8) * 255, 'L').resize((W, Hp), Image.NEAREST)) > 0
 
     # 2) 벽면: 각 열에서 고지대가 끝나는 곳부터 아래로 h픽셀
@@ -84,8 +88,11 @@ def bake():
         ys = np.where(col[:-1] & ~col[1:])[0] + 1          # 고지대 → 낮은 땅으로 바뀌는 곳
         for y0 in ys:
             w = cliffw[max(0, y0 - 4), x]
+            sl = slopew[max(0, y0 - 4), x]
             k = 1 if w >= 0.5 else 2
             h = int(FACE_H[2] + (FACE_H[1] - FACE_H[2]) * np.clip((w - 0.3) / 0.4, 0, 1) + hnoise[x] * (2 + 4 * w))
+            h = int(h * np.clip(1 - sl / 0.5, 0, 1))   # 비탈 쪽으로 갈수록 벽면이 낮아지다 사라짐
+            if h < 5: continue
             for d in range(h):
                 y = y0 + d
                 if y >= Hp or M[y, x]: break
@@ -95,10 +102,29 @@ def bake():
 
     img = np.zeros((Hp, W, 4), dtype=np.float32)
     # 3-1) 고지대 윗면: 살짝 밝게 + 경계 테두리(북·동·서)
-    img[M] = (226, 240, 176, 26)
-    edge_out = (~M) & (F == 0) & (np.roll(M, 1, 0) | np.roll(M, -1, 0) | np.roll(M, 1, 1) | np.roll(M, -1, 1))
+    hard = slopew < 0.5                                     # 절벽·턱 가장자리 (비탈은 경계선 없음)
+    wash = np.where(hard, M.astype(np.float32), np.clip((fs - 0.3) / 0.4, 0, 1))
+    img[..., 0], img[..., 1], img[..., 2] = 226, 240, 176
+    img[..., 3] = wash * 26
+    # 비탈 명암: 부드러운 높이의 기울기로 빛 계산 (남쪽 비탈은 그늘, 북서쪽을 향한 면은 밝게) + 등고선 풀 줄무늬
+    gy_s, gx_s = np.gradient(fs)
+    lit = (-gx_s * -0.5 + -gy_s * -0.62) * 26                # 법선·빛 내적 (평지 = 0)
+    slope_zone = (slopew > 0.3) & (fs > 0.04) & (fs < 0.96)
+    # 남쪽을 향한 비탈(카메라 쪽): 꼭대기는 밝고 아래로 갈수록 그늘 → 경사가 읽힘
+    south = np.clip(-gy_s * 30, 0, 1)
+    a = np.clip(lit, -1, 1) * 0.6 + south * (fs - 0.6) * 2.6
+    a = np.clip(a, -1, 1) * np.clip((slopew - 0.3) / 0.3, 0, 1)
+    dark = slope_zone & (a < 0)
+    light = slope_zone & (a > 0)
+    img[dark] = np.stack([np.full(dark.sum(), 12), np.full(dark.sum(), 20), np.full(dark.sum(), 12), -a[dark] * 120], 1)
+    img[light] = np.stack([np.full(light.sum(), 236), np.full(light.sum(), 246), np.full(light.sum(), 190), a[light] * 60], 1)
+    xx0 = np.arange(W)[None, :].repeat(Hp, 0); yy0 = np.arange(Hp)[:, None].repeat(W, 1)
+    for lv in (0.3, 0.6):                                    # 남쪽 비탈에 등고선 풀 줄 (점선, 은은하게)
+        ridge = slope_zone & (south > 0.3) & (np.abs(fs - lv) < 0.015) & (((xx0 // 2) + (yy0 // 3)) % 3 != 0)
+        img[ridge] = (40, 62, 36, 80)
+    edge_out = (~M) & (F == 0) & hard & (np.roll(M, 1, 0) | np.roll(M, -1, 0) | np.roll(M, 1, 1) | np.roll(M, -1, 1))
     img[edge_out] = (28, 40, 26, 230)
-    edge_in = M & (~np.roll(M, -1, 1) | ~np.roll(M, 1, 1) | ~np.roll(M, 1, 0))
+    edge_in = M & hard & (~np.roll(M, -1, 1) | ~np.roll(M, 1, 1) | ~np.roll(M, 1, 0))
     img[edge_in & (F[np.clip(np.arange(Hp) + 1, 0, Hp - 1)][:, :] == 0)] = (120, 150, 86, 200)
 
     # 3-2) 벽면 색: 위 밝고 아래 어두움, 지층, 옆면 명암(경사 방향), 금
@@ -173,9 +199,9 @@ def bake():
     # 3-6) 외곽선: 벽면·고지대 바깥 경계에 어두운 선 (캐릭터 도트와 같은 느낌)
     solid_vis = img[..., 3] > 200
     out = (~solid_vis) & (np.roll(face, -1, 1) | np.roll(face, 1, 1) | np.roll(face, -1, 0))
-    img[out & ~M] = (22, 20, 18, 255)
+    img[out & ~M & hard] = (22, 20, 18, 255)
 
-    # 4) 충돌 격자 (8px): '.' 낮은 땅, '^' 고지대, 'C' 절벽 벽면, 'L' 낮은 턱 벽면, '#' 경계띠, 'R' 계단
+    # 4) 충돌 격자 (8px): '.' 낮은 땅, '^' 고지대, 'C' 절벽 벽면, 'L' 낮은 턱 벽면, '#' 경계띠, 'R' 계단, 'S' 비탈 경계(지나감)
     gw, gh = W // CELL, Hp // CELL
     rows = []
     for cy in range(gh):
@@ -185,7 +211,7 @@ def bake():
             fm, mm, rr = face[sl], M[sl], ramp[sl]
             if rr.any() and (fm.any() or (mm.any() and not mm.all())): row.append('R')
             elif fm.mean() >= 0.25: row.append('L' if (Fk[sl][fm] == 2).mean() > 0.5 else 'C')
-            elif mm.any() and not mm.all(): row.append('#')
+            elif mm.any() and not mm.all(): row.append('S' if slopew[sl].mean() >= 0.5 else '#')
             elif mm.mean() > 0.5: row.append('^')
             else: row.append('.')
         rows.append(''.join(row))
@@ -210,7 +236,7 @@ def bake():
             Image.fromarray(part, 'RGBA').save(os.path.join(OUT_IMG, key + '.png'), optimize=True)
             chunks.append({'key': key, 'x': x, 'y': y, 'path': f'assets/maps/{key}.png'})
     out_json = os.path.join(os.path.dirname(MAP), f'{name}_terrain.json')
-    json.dump({'_설명': 'tools/art/terrain_bake.py가 만든 파일 (직접 고치지 말 것). cell px 격자: . 낮은 땅 ^ 고지대 C 절벽 벽면 L 낮은 턱 벽면 # 경계띠 R 계단',
+    json.dump({'_설명': 'tools/art/terrain_bake.py가 만든 파일 (직접 고치지 말 것). cell px 격자: . 낮은 땅 ^ 고지대 C 절벽 벽면 L 낮은 턱 벽면 # 경계띠 R 계단 S 비탈 경계(지나감)',
                'cell': CELL, 'cols': gw, 'rows': gh, 'grid': rows, 'climb': vines, 'chunks': chunks},
               open(out_json, 'w'), ensure_ascii=False, indent=0)
     print('terrain baked', W, Hp, 'chunks', len(chunks), 'solid cells', sum(r.count('C') + r.count('L') + r.count('#') for r in rows))
