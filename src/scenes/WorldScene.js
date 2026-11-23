@@ -279,6 +279,7 @@ export class WorldScene extends window.Phaser.Scene {
     const near = this.nearestInteractable();
     this.registry.set('interactPrompt', near && !this.player.isDead ? near.label : null);
     if (cmd.useItem) this.eatBestFood();
+    if (cmd.openInventory && this.player.stateName === 'free') { this.openPanel('inventory'); return; }
     if (cmd.interact && near && this.player.stateName === 'free') {
       if (near.isPickup || near.isGatherable) {
         // 줍기·채집: 쪼그려 집는 모션 중간에 손에 들어옴 (주변 아이템은 한 번에)
@@ -492,10 +493,17 @@ export class WorldScene extends window.Phaser.Scene {
     const inv = this.registry.get('inventory');
     const foods = items.ids().map((id) => ({ id, ...items.get(id) })).filter((it) => it.heal && inv.count(it.id) > 0).sort((a, b) => a.heal - b.heal);
     if (!foods.length) { spawnFloatingLabel(this, pl.x, pl.y - 34, '먹을 게 없다'); return; }
-    const f = foods[0];
-    inv.remove(f.id, 1);
-    const healed = s.heal(f.heal);
+    this.eatFood(foods[0].id);
+  }
+
+  /** 음식 하나 먹기 (가방 창에서도 씀) */
+  eatFood(id) {
+    const pl = this.player, inv = this.registry.get('inventory'), f = this.registry.get('items').get(id);
+    if (!f?.heal || inv.count(id) <= 0) return false;
+    inv.remove(id, 1);
+    const healed = pl.stats.heal(f.heal);
     spawnFloatingLabel(this, pl.x, pl.y - 34, `${f.name} +${healed}`);
+    return true;
   }
 
   /** 제작 화면 등 열기: 월드를 멈추고 UI 씬에 알린다 (닫히면 UI 씬이 월드를 다시 움직임) */

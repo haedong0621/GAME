@@ -1,6 +1,7 @@
 import { DEBUG, FORCE_TOUCH } from '../config.js';
 import { TouchControls } from '../systems/TouchControls.js';
 import { InputDebugPanel } from '../systems/InputDebugPanel.js';
+import { InventoryPanel } from '../systems/InventoryPanel.js';
 import { CraftingPanel } from '../systems/CraftingPanel.js';
 import { DevTools } from '../systems/DevTools.js';
 import { PauseMenu } from '../systems/PauseMenu.js';
@@ -70,7 +71,20 @@ export class UIScene extends window.Phaser.Scene {
 
     // 월드가 패널 열기를 요청하면 (월드는 이미 멈춘 상태)
     this.registry.events.on('changedata-openPanel', (_p, req) => {
-      if (!req || req.type !== 'crafting' || this.panel) return;
+      if (!req || this.panel) return;
+      if (req.type === 'inventory') {
+        this.registry.set('panelOpen', true);
+        const world = this.scene.get('World');
+        this.panel = new InventoryPanel(this, {
+          player: this.registry.get('player'), inventory, items,
+          weapons: this.registry.get('weapons'), gear: this.registry.get('gear'), skills: this.registry.get('skills'),
+          heroPx: this.registry.get('heroPx'),
+          eat: (id) => world.eatFood(id),
+          onClose: () => { this.panel = null; this.registry.set('panelOpen', false); this.scene.resume('World'); },
+        });
+        return;
+      }
+      if (req.type !== 'crafting') return;
       this.registry.set('panelOpen', true);
       this.panel = new CraftingPanel(this, {
         crafting: this.registry.get('crafting'),
@@ -100,7 +114,7 @@ export class UIScene extends window.Phaser.Scene {
       this.registry.set('touch', new TouchControls(this));
     } else {
       this.add.text(12, this.scale.height - 8,
-        'WASD/TFGH 이동 · Shift 질주 · C 웅크림 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기 · E 줍기 · R 먹기 · ` 입력 진단' + (DEBUG ? '   [debug]' : ''),
+        'WASD/TFGH 이동 · Shift 질주 · C 웅크림 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기 · E 줍기 · R 먹기 · I 가방 · ` 입력 진단' + (DEBUG ? '   [debug]' : ''),
         { ...small, color: '#c9ced4' }).setOrigin(0, 1).setShadow(1, 1, '#000', 0);
     }
   }

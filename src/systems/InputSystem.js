@@ -25,6 +25,7 @@ const BUTTON_CODES = {
   KeyE: ['interact', true],
   KeyR: ['useItem', true],
   KeyC: ['sneakToggle', true],
+  KeyI: ['openInventory', true],
   Digit1: ['switchWeapon', 0], Digit2: ['switchWeapon', 1], Digit3: ['switchWeapon', 2], KeyQ: ['switchWeapon', 'next'],
 };
 /** 브라우저 기본 동작(스크롤 등)을 막을 키 */
@@ -38,7 +39,7 @@ export class InputSystem {
   constructor(scene, getTouch) {
     this.getTouch = getTouch;
     this.held = new Set(); // 지금 누르고 있는 이동 방향
-    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false, useItem: false, sneakToggle: false };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false, useItem: false, sneakToggle: false, openInventory: false };
     this.sneakOn = false;
     this.scene = scene;
     this.mouseActive = false; // 마우스가 화면 위에서 움직였으면 조준 모드
@@ -139,6 +140,7 @@ export class InputSystem {
       lockToggle: this.pressed.lockToggle || !!t?.lockToggle,
       interact: this.pressed.interact || !!t?.interact,
       useItem: this.pressed.useItem || !!t?.useItem,
+      openInventory: this.pressed.openInventory || !!t?.openInventory,
       attack: this.pressed.attack || !!t?.attack,
       roll: this.pressed.roll || !!t?.roll,
       sprint: this.rawHeld.has('ShiftLeft') || this.rawHeld.has('ShiftRight') || !!t?.rollHeld, // Shift 누르는 동안 전력질주 (휴대폰: 구르기 버튼 꾹)
@@ -150,6 +152,7 @@ export class InputSystem {
     this.pressed.lockToggle = false;
     this.pressed.interact = false;
     this.pressed.useItem = false;
+    this.pressed.openInventory = false;
     return cmd;
   }
 }

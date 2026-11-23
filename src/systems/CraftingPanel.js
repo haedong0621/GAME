@@ -81,7 +81,18 @@ export class CraftingPanel {
 
   render() {
     const { crafting, inventory, player, items, skills } = this.ctx;
+    // 목록이 길면 5줄씩 보이고 고른 줄이 보이게 스크롤
+    const VIS = 5;
+    this.scroll = Math.max(0, Math.min(this.scroll ?? 0, this.rows.length - VIS));
+    if (this.sel < this.scroll) this.scroll = this.sel;
+    if (this.sel >= this.scroll + VIS) this.scroll = this.sel - VIS + 1;
     this.rows.forEach((row, i) => {
+      const k = i - this.scroll, vis = k >= 0 && k < VIS;
+      for (const o of [row.rect, row.title, row.sub]) o.setVisible(vis);
+      if (vis) {
+        const y = this.y0 + 64 + k * 58;
+        row.rect.setY(y + 24); row.title.setY(y + 8); row.sub.setY(y + 28);
+      }
       const info = crafting.resultInfo(row.recipe);
       const owned = crafting.isOwned(row.recipe, player);
       const can = crafting.canCraft(row.recipe, inventory, player);

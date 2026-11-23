@@ -23,11 +23,12 @@ export class TouchControls {
       { action: 'sneakToggle', label: '웅크림', x: W - 360, y: H - 52, r: 34, color: 0x3a3a5a },
       { action: 'interact', label: '줍기·열기', x: W - 345, y: H - 150, r: 40, color: 0x4a7a4a, onlyWhen: 'interactPrompt' },
       { action: 'useItem', label: '먹기', x: W - 330, y: H - 255, r: 30, color: 0x6a4a3a },
+      { action: 'openInventory', label: '가방', x: W - 400, y: H - 300, r: 28, color: 0x4a4a3a },
     ];
 
     this.stick = { pointerId: null, baseX: 0, baseY: 0, x: 0, y: 0 };
     this.move = { x: 0, y: 0 };
-    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false, useItem: false };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false, useItem: false, openInventory: false };
     this.held = new Map(); // pointerId → 버튼 (눌린 모양 표시용)
 
     this.g = scene.add.graphics().setDepth(10);
@@ -84,7 +85,7 @@ export class TouchControls {
   consume() {
     const rollHeld = [...this.held.values()].some((b) => b.action === 'roll'); // 구르기 버튼을 누르고 있음 → 전력질주
     const out = { move: { ...this.move }, ...this.pressed, sneak: !!this.sneakOn, rollHeld };
-    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false, useItem: false };
+    this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false, useItem: false, openInventory: false };
     return out;
   }
 
