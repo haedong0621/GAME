@@ -187,7 +187,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const oldMax = this.stats.maxHp;
     this.armorId = id;
     this.armor = armor;
-    if (this.heroPx) this.visual.setTexture(`hero_${armor.outfit ?? 'rags'}`, 0); // 갑옷마다 같은 배치의 도트 시트
+    if (this.heroPx) { /* 도트 주인공: 시트는 updateHeroPx에서 갑옷·무기에 맞춰 고름 */ }
     else if (!this.hero3d) this.visual.setTexture(armor.texture); // 3D 시험 캐릭터는 갑옷 겉모습 미적용
     this.stats.maxHp = this.data_.maxHp + (armor.maxHpBonus ?? 0);
     this.stats.hp = Math.max(1, Math.min(this.stats.maxHp, this.stats.hp + (this.stats.maxHp - oldMax)));
@@ -251,7 +251,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         this.bufferInput(cmd);
         // 예비 동작 중에는 조준 방향으로 조금씩 틀 수 있다 (몬스터 헌터식 미세 조정)
         const want = this.desiredDir(cmd);
-        if (want) this.turnTo(Math.atan2(want.y, want.x), this.data_.attackSteerDegPerSec);
+        if (want) {
+          this.turnTo(Math.atan2(want.y, want.x), this.data_.attackSteerDegPerSec);
+          this.setFacingAngle(this.snapAttack(this.facingAngle));
+        }
         if (this.stateTime <= 0) this.enter(State.ACTIVE);
         break;
       }
@@ -297,7 +300,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   finishFrame() {
     applyYSort(this);
     this.updatePose();
-    if (this.hero3d) this.weaponView.image.setVisible(false); // 3D 캐릭터는 무기를 손에 든 채로 렌더됨
+    if (this.hero3d || this.heroPx) this.weaponView.image.setVisible(false); // 무기가 캐릭터 그림에 포함됨
     else this.weaponView.update(this);
     this.drawFx();
   }
@@ -310,6 +313,13 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   /** 소리 내기: 근처 몬스터가 듣는다 (data/player.json stealth.noise 반경) */
   makeNoise(kind) {
     this.noiseBus?.emit(this.x, this.y, this.data_.stealth.noise[kind], kind);
+  }
+
+  /** 도트 주인공은 공격이 8방향 그림이므로 공격 방향을 45° 단위로 맞춘다 (판정도 그림과 일치) */
+  snapAttack(angle) {
+    if (!this.heroPx) return angle;
+    const step = Math.PI / 4;
+    return Math.round(angle / step) * step;
   }
 
   // ---------- 조준·회전 ----------
@@ -447,7 +457,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const move = this.weapon.combo[index];
     if (!move || !this.stats.spendStamina(move.staminaCost)) return false;
     const dir = this.attackDir(cmd);
-    this.setFacingAngle(Math.atan2(dir.y, dir.x)); // 공격은 조준한 쪽으로 즉시 돌아서 시작
+    this.setFacingAngle(this.snapAttack(Math.atan2(dir.y, dir.x))); // 공격은 조준한 쪽으로 즉시 돌아서 시작
     this.comboIndex = index;
     this.weaponView.beginWindup();
     this.enter(State.WINDUP);
@@ -571,16 +581,27 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (this.state !== State.ROLL && this.state !== State.DEAD) v.setAlpha(this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0 ? 0.45 : 1);
   }
 
+  /** 2D 도트 주인공: 지금 갑옷·무기에 맞는 시트 */
+  heroPxSheet() {
+    const meta = this.heroPx;
+    const byWeapon = meta.sheets[this.armor?.outfit ?? 'rags'] ?? meta.sheets.rags;
+    return byWeapon[this.weaponId] ?? byWeapon.rusty_sword;
+  }
+
   /**
-   * 2D 도트 주인공 (Core Keeper식): 방향 3개(아래·위·옆, 왼쪽은 뒤집기) × 동작 프레임.
-   * 무기는 따로 그려서 360도 회전 (WeaponView) — 몸은 4방향, 조준은 자유.
-   * Godot: AnimatedSprite2D(SpriteFrames "동작_방향") + flip_h, 무기는 별도 Sprite2D.
+   * 2D 도트 주인공 (3/4 탑뷰 8방향 — 그린 건 5방향, 왼쪽 계열은 뒤집기, 칼이 그림에 포함).
+   * 공격 프레임: [예비동작…] → 잔상 → 타격(길게 유지) → 마무리 → 제자리. 상태 시간에 맞춰 고른다.
+   * Godot: AnimatedSprite2D + SpriteFrames("동작_방향") + flip_h, 공격은 AnimationPlayer로 상태 시간에 맞춤.
    */
   updateHeroPx() {
     const meta = this.heroPx;
     const v = this.visual;
-    const deg = this.facingAngle * 180 / Math.PI;
-    const dir = deg > 45 && deg < 135 ? 0 : deg < -45 && deg > -135 ? 1 : 2; // 0=아래 1=위 2=옆
+    const sheet = this.heroPxSheet();
+    const cls = meta.classes[sheet.class];
+    const deg = this.facingAngle * 180 / Math.PI; // 0=오른쪽, 90=아래
+    const DIR8 = ['right', 'downright', 'down', 'downleft', 'left', 'upleft', 'up', 'upright'];
+    const [view, flip] = meta.dirs[DIR8[((Math.round(deg / 45) % 8) + 8) % 8]];
+    const vi = meta.views.indexOf(view);
     const dt = this.inHitstop ? 0 : this.dt;
     const prog = (total) => Math.min(0.999, Math.max(0, 1 - this.stateTime / total));
     let anim = 'idle', frame = 0;
@@ -589,13 +610,20 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         const sp = Math.hypot(this.body.velocity.x, this.body.velocity.y);
         anim = sp > 15 ? 'walk' : 'idle';
         this.animClock += dt * (anim === 'walk' ? Math.max(0.6, sp / 140) : 1);
-        const per = anim === 'walk' ? 130 : 450; // 걷기 약 8프레임/초, 대기 숨쉬기 느리게
-        frame = Math.floor(this.animClock / per) % meta.anims[anim].frames;
+        frame = Math.floor(this.animClock / (anim === 'walk' ? 130 : 450)) % cls.anims[anim].frames;
         break;
       }
-      case State.WINDUP: anim = 'attack'; frame = 0; break;
-      case State.ACTIVE: anim = 'attack'; frame = 1; break;
-      case State.RECOVERY: anim = 'attack'; frame = prog(this.currentMove.recoveryMs) < 0.5 ? 1 : 2; break;
+      case State.WINDUP: case State.ACTIVE: case State.RECOVERY: {
+        const names = Object.keys(cls.anims).filter((n) => n.startsWith('atk') || n.startsWith('gs'));
+        anim = names[Math.min(this.comboIndex, names.length - 1)];
+        const n = cls.anims[anim].frames;
+        const antic = n - 4, smear = n - 4, impact = n - 3, follow = n - 2, rest = n - 1;
+        const m = this.currentMove;
+        if (this.state === State.WINDUP) frame = Math.min(antic - 1, Math.floor(prog(m.windupMs) * antic));
+        else if (this.state === State.ACTIVE) frame = prog(m.activeMs) < 0.5 ? smear : impact;
+        else { const t = prog(m.recoveryMs); frame = t < 0.4 ? impact : t < 0.75 ? follow : rest; }
+        break;
+      }
       case State.ROLL: anim = 'roll'; frame = Math.floor(prog(this.data_.roll.durationMs) * 4); break;
       case State.HURT: anim = 'hurt'; frame = 0; break;
       case State.DEAD:
@@ -605,10 +633,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         break;
     }
     if (this.state !== State.DEAD) this.deathClock = 0;
-    const a = meta.anims[anim];
-    v.setFrame((a.row + dir) * meta.columns + Math.min(frame, a.frames - 1));
-    v.setPosition(this.x, this.y).setDepth(this.depth).setAngle(0).setScale(1);
-    if (dir === 2) v.setFlipX(this.facing.x < 0); else v.setFlipX(false);
+    const a = cls.anims[anim];
+    if (v.texture.key !== sheet.key) v.setTexture(sheet.key);
+    v.setFrame((a.row + vi) * cls.columns + Math.min(frame, a.frames - 1));
+    v.setPosition(this.x, this.y).setDepth(this.depth).setAngle(0).setScale(1).setFlipX(flip);
     if (this.state === State.WINDUP) v.setTint(0xffe0b0);
     else if (this.state !== State.HURT) v.clearTint();
     if (this.state !== State.ROLL && this.state !== State.DEAD) v.setAlpha(this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0 ? 0.45 : 1);
@@ -657,6 +685,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   spawnSlashFx(m) {
+    if (this.heroPx) return; // 도트 주인공은 그림 안의 잔상으로 대신함
     const base = Math.atan2(this.facing.y, this.facing.x);
     const big = m.hitRadius >= 22;
     spawnSlash(this.scene, this.x, this.y - CHEST_OFFSET, base + m.from * DEG * 0.85, base + m.to * DEG * 0.85,

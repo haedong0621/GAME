@@ -25,7 +25,14 @@ export class BootScene extends window.Phaser.Scene {
     if (HERO_PX) {
       // 2D 도트 주인공: 갑옷(outfit)마다 같은 배치의 시트 (tools/art/pixel_hero.py)
       this.load.json('heroPxMeta', 'assets/characters/hero_px.json');
-      for (const o of ['rags', 'swamp']) this.load.spritesheet(`hero_${o}`, `assets/characters/hero_${o}.png`, { frameWidth: 32, frameHeight: 40 });
+      // 시트 목록은 메타 JSON에 있으므로, JSON이 로드되면 이어서 시트들을 불러온다
+      this.load.once('filecomplete-json-heroPxMeta', (_k, _t, meta) => {
+        for (const byWeapon of Object.values(meta.sheets)) {
+          for (const s of Object.values(byWeapon)) {
+            this.load.spritesheet(s.key, `assets/characters/${s.key}.png`, { frameWidth: meta.frameWidth, frameHeight: meta.frameHeight });
+          }
+        }
+      });
     }
     if (HERO_STYLE) {
       // 3D 렌더 → 도트 스프라이트 시트 (시험)
