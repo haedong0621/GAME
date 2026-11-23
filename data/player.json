@@ -39,7 +39,8 @@
       "sneak": 18,
       "roll": 140,
       "attack": 110,
-      "hit": 170
+      "hit": 170,
+      "sprint": 170
     },
     "walkNoiseIntervalMs": 300,
     "bushVisibility": 0.35,
@@ -77,5 +78,11 @@
     "climbStaminaPerSec": 16,
     "climbMinStamina": 10,
     "fallDamage": 6
+  },
+  "sprint": {
+    "speedMultiplier": 1.55,
+    "staminaPerSec": 18,
+    "recoverAt": 30,
+    "turnDegPerSec": 540
   }
 }

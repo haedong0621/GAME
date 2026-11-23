@@ -135,6 +135,7 @@ export class InputSystem {
       useItem: this.pressed.useItem || !!t?.useItem,
       attack: this.pressed.attack || !!t?.attack,
       roll: this.pressed.roll || !!t?.roll,
+      rollHeld: this.rawHeld.has('Space') || this.rawHeld.has('KeyK') || !!t?.rollHeld, // 꾹 누르고 있으면 전력질주
       switchWeapon: this.pressed.switchWeapon ?? t?.switchWeapon ?? null,
     };
     this.pressed.attack = false;

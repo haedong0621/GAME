@@ -82,7 +82,8 @@ export class TouchControls {
 
   /** InputSystem이 매 프레임 호출. 버튼 누름은 한 번 가져가면 지워진다. */
   consume() {
-    const out = { move: { ...this.move }, ...this.pressed, sneak: !!this.sneakOn };
+    const rollHeld = [...this.held.values()].some((b) => b.action === 'roll'); // 구르기 버튼을 누르고 있음 → 전력질주
+    const out = { move: { ...this.move }, ...this.pressed, sneak: !!this.sneakOn, rollHeld };
     this.pressed = { attack: false, roll: false, switchWeapon: null, lockToggle: false, interact: false, useItem: false };
     return out;
   }

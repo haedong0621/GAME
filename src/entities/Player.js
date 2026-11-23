@@ -491,15 +491,32 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (cmd.attack && this.tryAttack(0, cmd)) return;
     if (this.checkTerrainMoves(cmd)) return;
 
+    // 전력질주: 구르기 키를 꾹 누른 채 움직이면 (구르기가 끝난 뒤 이어짐). 기력 소모, 발소리 큼, 웅크리면 못 함
+    const sp = this.data_.sprint;
+    const wantSprint = moving && cmd.rollHeld && !this.isSneaking && !this.sprintTired;
+    if (wantSprint && !this.stats.spendStamina(sp.staminaPerSec * this.dt / 1000)) {
+      this.sprintTired = true;
+      spawnFloatingLabel(this.scene, this.x, this.y - 30, '숨이 차다');
+    }
+    if (this.sprintTired && (!cmd.rollHeld || this.stats.stamina >= sp.recoverAt)) this.sprintTired = false;
+    this.isSprinting = wantSprint && !this.sprintTired;
+
     // 목표 속도: 바라보는 반대쪽으로 움직이면(뒷걸음질) 느려짐, 웅크리면 느려짐
     let speed = this.data_.speed * (this.weapon.moveSpeedMultiplier ?? 1);
     if (this.isSneaking) speed *= this.data_.stealth.sneakSpeedMultiplier;
+    if (this.isSprinting) {
+      speed *= sp.speedMultiplier;
+      // 질주 중엔 달리는 쪽을 바라봄 (조준 방향 무시) + 흙먼지
+      this.turnTo(Math.atan2(move.y, move.x), sp.turnDegPerSec);
+      this.sprintDustMs = (this.sprintDustMs ?? 0) - this.dt;
+      if (this.sprintDustMs <= 0) { this.sprintDustMs = 170; spawnDust(this.scene, this.x, this.y, move, 1); }
+    }
     // 걷는 소리: 일정 간격으로 (웅크리면 아주 작게)
     if (moving) {
       this.walkNoiseMs -= this.dt;
       if (this.walkNoiseMs <= 0) {
         this.walkNoiseMs = this.data_.stealth.walkNoiseIntervalMs;
-        this.makeNoise(this.isSneaking ? 'sneak' : 'walk');
+        this.makeNoise(this.isSneaking ? 'sneak' : this.isSprinting ? 'sprint' : 'walk');
       }
     }
     if (moving) {
@@ -641,6 +658,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   enter(state) {
+    if (state !== State.FREE) this.isSprinting = false;
     if (this.terrainMove && state !== State.JUMP && state !== State.CLIMB) { this.lastTerrainState = this.state; this.endTerrainMove(false); }
     this.state = state;
     const m = this.currentMove;
@@ -802,9 +820,12 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       case State.FREE: {
         const sp = Math.hypot(this.body.velocity.x, this.body.velocity.y);
         const moving = sp > 15;
-        anim = this.isSneaking ? (moving ? 'sneak' : 'sneak_idle') : (moving ? 'walk' : 'idle');
-        this.animClock += dt * (moving ? Math.max(0.6, sp / 140) : 1);
-        const per = { walk: 130, sneak: 110, idle: 450, sneak_idle: 600 }[anim]; // 웅크려 걷기는 느린 속도에 맞춰 보폭 자주
+        // 이동 모션: 웅크림 / 전력질주 / 뒷걸음질·느린 걸음 = 걷기 / 보통 = 뛰기
+        const back = moving && (this.body.velocity.x * this.facing.x + this.body.velocity.y * this.facing.y) < 0;
+        const runAnim = cls.anims.run ? (this.isSprinting && cls.anims.sprint ? 'sprint' : back || sp < 90 ? 'walk' : 'run') : 'walk';
+        anim = this.isSneaking ? (moving ? 'sneak' : 'sneak_idle') : (moving ? runAnim : 'idle');
+        this.animClock += dt * (moving ? Math.max(0.6, sp / (anim === 'sprint' ? 217 : 140)) : 1);
+        const per = { walk: 130, run: 105, sprint: 90, sneak: 110, idle: 450, sneak_idle: 600 }[anim]; // 웅크려 걷기는 느린 속도에 맞춰 보폭 자주
         frame = Math.floor(this.animClock / per) % cls.anims[anim].frames;
         break;
       }
