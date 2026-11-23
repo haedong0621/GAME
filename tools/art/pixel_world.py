@@ -7,6 +7,7 @@
   20~35 물 16종:   20 + 이웃 마스크 (물가 거품·진흙 테두리), 모두 collides=true
   36~43 풀 추가 변형 (같은 무늬 반복이 덜 보이게 섞어 깐다)
 소품: assets/tiles/tree0~2.png(56×80), bush.png(36×28), workbench.png(44×38), dummy.png(32×44)
+채집: rock0~1.png·rock_rubble.png(34×28), stump.png(56×80, 나무와 같은 밑동), herb.png·herb_picked.png(22×20)
 3/4 시점 입체: 흙길·물은 한 단 파인 땅(북쪽 흙벽이 보임), 소품은 공·원기둥·상자 면에 왼쪽 위 빛으로 명암 계산
 
 맵(maps/world.tmj)의 바닥은 --remap 으로 "풀/흙/물" 종류를 읽어 이웃을 보고 알맞은 타일 번호로 바꾼다.
@@ -213,16 +214,16 @@ def shadow(img, cx, cy, rx, ry, alpha=90):
 
 BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 
-def shade_idx(n, ramp_len, x, y, ao=0.0):
-    """법선 → 빛 세기 → 색 단계 (경계는 바이어 디더로 부드럽게)"""
+def shade_idx(n, ramp_len, x, y, ao=0.0, dither=True):
+    """법선 → 빛 세기 → 색 단계 (dither면 경계를 바이어 디더로 부드럽게, 아니면 딱 끊긴 셀 셰이딩)"""
     l = max(0.0, n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2])
     v = 0.18 + 0.95 * l - ao
     v = min(max(v, 0), 0.999) * ramp_len
     i = int(v)
-    if v - i > (BAYER[y % 4][x % 4] + 0.5) / 16 and i < ramp_len - 1: i += 1
+    if dither and v - i > (BAYER[y % 4][x % 4] + 0.5) / 16 and i < ramp_len - 1: i += 1
     return i
 
-def render_spheres(img, spheres, ramp, rnd=None, floor_y=None):
+def render_spheres(img, spheres, ramp, rnd=None, floor_y=None, dither=True, squash=1.0):
     """공 덩어리들을 z버퍼로 그린다. spheres: (cx, cy, cz, r, ramp?) 화면좌표. 앞쪽(z 큰) 픽셀이 이긴다"""
     w, h = img.size
     zb = [[-1e9] * w for _ in range(h)]
@@ -230,9 +231,9 @@ def render_spheres(img, spheres, ramp, rnd=None, floor_y=None):
     for s in spheres:
         cx, cy, cz, r = s[:4]
         rp = s[4] if len(s) > 4 else ramp
-        for y in range(max(0, int(cy - r - 1)), min(h, int(cy + r + 2))):
+        for y in range(max(0, int(cy - r * squash - 1)), min(h, int(cy + r * squash + 2))):
             for x in range(max(0, int(cx - r - 1)), min(w, int(cx + r + 2))):
-                dx, dy = x + 0.5 - cx, y + 0.5 - cy
+                dx, dy = x + 0.5 - cx, (y + 0.5 - cy) / squash
                 d2 = dx * dx + dy * dy
                 if d2 > r * r: continue
                 dz = math.sqrt(r * r - d2)
@@ -243,7 +244,7 @@ def render_spheres(img, spheres, ramp, rnd=None, floor_y=None):
                 ao = 0.25 * max(0, (y - (floor_y if floor_y is not None else h)) / 10 + 1) if floor_y is not None else 0
                 # 덩어리 사이 틈(뒤에 있는 공 테두리)은 어둡게
                 ao += 0.18 * (1 - dz / r) ** 2
-                px[x, y] = rp[shade_idx(n, len(rp), x, y, ao)] + (255,)
+                px[x, y] = rp[shade_idx(n, len(rp), x, y, ao, dither)] + (255,)
     return zb
 
 def cylinder(img, cx, y0, y1, r0, r1, ramp, rnd, grooves=True):
@@ -393,6 +394,90 @@ def props():
     workbench().save(os.path.join(TILES_DIR, 'workbench.png'))
     dummy().save(os.path.join(TILES_DIR, 'dummy.png'))
 
+
+# ---------------- 채집 대상 (셀 셰이딩: 디더 없이 3~4단 → 덜 3D스럽게) ----------------
+ROCK = [(62, 62, 66), (96, 96, 98), (130, 128, 124), (162, 158, 148)]
+
+def rock(seed):
+    rnd = random.Random(seed)
+    img = Image.new('RGBA', (34, 28), (0, 0, 0, 0))
+    sph = [(17, 17, 0, 11), (10, 19, -2, 7), (24, 19, -2, 8), (15, 12, -1, 7)]
+    sph += [(rnd.uniform(8, 26), rnd.uniform(12, 20), -1, rnd.uniform(4, 6)) for _ in range(3)]
+    render_spheres(img, sph, ROCK, dither=False, squash=0.82)
+    px = img.load()
+    # 금 (어두운 선 + 아래 밝은 점) 과 이끼
+    for _ in range(3):
+        x, y = rnd.randrange(8, 26), rnd.randrange(9, 20)
+        for k in range(rnd.randint(3, 5)):
+            X, Y = x + k, y + (k // 2) * (1 if seed % 2 else -1)
+            if 0 <= X < 34 and 0 <= Y < 28 and px[X, Y][3]:
+                px[X, Y] = ROCK[0] + (255,)
+                if Y + 1 < 28 and px[X, Y + 1][3]: px[X, Y + 1] = ROCK[2] + (255,)
+    for _ in range(10):
+        x, y = rnd.randrange(6, 28), rnd.randrange(5, 14)
+        if px[x, y][3] and px[x, y][:3] in (ROCK[2], ROCK[3]): px[x, y] = (84, 112, 62, 255)
+    return shadow(outline(img), 17, 26, 14, 2)
+
+def rubble(seed):
+    """다 캐낸 바위: 납작한 돌 부스러기"""
+    rnd = random.Random(seed)
+    img = Image.new('RGBA', (34, 28), (0, 0, 0, 0))
+    sph = [(rnd.uniform(7, 27), rnd.uniform(20, 24), 0, rnd.uniform(2.5, 4.5)) for _ in range(6)]
+    render_spheres(img, sph, ROCK, dither=False, squash=0.7)
+    return shadow(outline(img), 17, 26, 12, 2, alpha=60)
+
+def stump(seed):
+    """벤 나무: 나이테가 보이는 그루터기 (나무 그림과 같은 크기·같은 밑동 위치)"""
+    rnd = random.Random(seed)
+    Wd, Ht = 56, 80
+    img = Image.new('RGBA', (Wd, Ht), (0, 0, 0, 0))
+    cx = Wd // 2
+    cylinder(img, cx, 66, 75, 5.5, 6.0, BARK, rnd)
+    for s in (-1, 1):
+        for k in range(8):
+            x = cx + s * (5 + k); y = 74 + k // 3
+            for yy in range(y - 2 + k // 4, y + 1):
+                put(img, int(x), yy, (BARK[3] if s < 0 else BARK[1]) + (255,))
+    d = ImageDraw.Draw(img)
+    d.ellipse([cx - 6, 63, cx + 6, 69], fill=(176, 140, 96))      # 잘린 면
+    d.ellipse([cx - 4, 64, cx + 4, 68], outline=(140, 104, 70))   # 나이테
+    put(img, cx, 66, (120, 90, 60, 255))
+    for _ in range(5):                                             # 나뭇조각
+        x, y = rnd.randrange(cx - 14, cx + 14), rnd.randrange(74, 78)
+        put(img, x, y, (176, 140, 96, 255)); put(img, x + 1, y, (140, 104, 70, 255))
+    return shadow(outline(img), cx, 75, 12, 3)
+
+HERB = [(38, 70, 44), (58, 104, 56), (88, 140, 72), (128, 176, 96)]
+
+def herb(picked=False):
+    rnd = random.Random(7)
+    img = Image.new('RGBA', (22, 20), (0, 0, 0, 0))
+    px = img.load()
+    leaves = 9 if not picked else 0
+    for i in range(leaves):
+        a = -math.pi / 2 + (i - 4) * 0.36
+        L = 7 + (i % 3)
+        for k in range(L):
+            x = 11 + math.cos(a) * k * 1.1; y = 17 + math.sin(a) * k * 0.9
+            c = HERB[1] if k < L * 0.4 else HERB[2] if k < L * 0.8 else HERB[3]
+            if i % 2: c = HERB[min(3, HERB.index(c) + 1)] if c != HERB[3] else c
+            put(img, int(x), int(y), c + (255,)); put(img, int(x) + 1, int(y), HERB[0] + (255,))
+    if not picked:
+        for x, y in ((7, 7), (14, 6), (11, 4)):                    # 하늘빛 꽃봉오리 (약초 표시) + 줄기
+            for yy in range(y + 1, 16): put(img, x, yy, HERB[1] + (255,))
+            put(img, x, y, (150, 200, 220, 255)); put(img, x + 1, y, (110, 160, 190, 255)); put(img, x, y - 1, (210, 236, 240, 255))
+    else:
+        for x in (8, 10, 12, 14):                                  # 뜯긴 줄기
+            put(img, x, 17, HERB[1] + (255,)); put(img, x, 16, HERB[2] + (255,))
+    return shadow(outline(img), 11, 18, 8, 2, alpha=60)
+
+def gatherables():
+    for i in range(2): rock(30 + i * 11).save(os.path.join(TILES_DIR, f'rock{i}.png'))
+    rubble(3).save(os.path.join(TILES_DIR, 'rock_rubble.png'))
+    stump(4).save(os.path.join(TILES_DIR, 'stump.png'))
+    herb().save(os.path.join(TILES_DIR, 'herb.png'))
+    herb(True).save(os.path.join(TILES_DIR, 'herb_picked.png'))
+
 # ---------------- 맵 바닥 다시 매기기 ----------------
 def kind_of(gid):
     """새 타일셋 번호(firstgid 1) → 종류"""
@@ -439,4 +524,5 @@ def remap():
 if __name__ == '__main__':
     print('tiles', tileset())
     props()
+    gatherables()
     if '--remap' in sys.argv: remap()
