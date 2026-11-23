@@ -22,6 +22,11 @@ export class BootScene extends window.Phaser.Scene {
     this.load.json('skills', PATHS.skills);
     this.load.json('recipes', PATHS.recipes);
     this.load.tilemapTiledJSON('world', PATHS.worldMap);
+    // 몬스터 도트 시트 (tools/art/pixel_monsters.py)
+    this.load.json('monPxMeta', 'assets/characters/mon_px.json');
+    this.load.once('filecomplete-json-monPxMeta', (_k, _t, meta) => {
+      for (const k of Object.values(meta.kinds)) this.load.spritesheet(k.key, `assets/characters/${k.key}.png`, { frameWidth: k.frameWidth, frameHeight: k.frameHeight });
+    });
     if (HERO_PX) {
       // 2D 도트 주인공: 갑옷(outfit)마다 같은 배치의 시트 (tools/art/pixel_hero.py)
       this.load.json('heroPxMeta', 'assets/characters/hero_px.json');
@@ -70,6 +75,7 @@ export class BootScene extends window.Phaser.Scene {
     this.registry.set('loadSlot', null);
     this.registry.set('hero3d', HERO_STYLE ? this.cache.json.get('hero3dMeta') : null);
     this.registry.set('heroPx', HERO_PX ? this.cache.json.get('heroPxMeta') : null);
+    this.registry.set('monPx', this.cache.json.get('monPxMeta'));
 
     this.scene.start('Title'); // 시작 화면 → 이어하기/불러오기/새로 시작 → World + UI
   }

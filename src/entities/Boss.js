@@ -4,6 +4,7 @@ import { findHits } from '../systems/Combat.js';
 import { spawnFloatingLabel } from '../systems/Effects.js';
 import { StatusEffects } from '../systems/StatusEffects.js';
 import { AwarenessMeter, Level } from '../systems/Stealth.js';
+import { MonsterSprite } from '../systems/MonsterSprite.js';
 
 /** 보스 행동 상태 (Godot: enum State) */
 const State = {
@@ -59,6 +60,10 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
 
     this.visual = scene.add.image(x, y, data.texture).setOrigin(0.5, 1);
+    const monPx = scene.registry.get('monPx');
+    /** 도트 시트 (없으면 임시 그래픽) */
+    this.sprite = data.pixelKind && monPx?.kinds[data.pixelKind] ? new MonsterSprite(this.visual, monPx, data.pixelKind) : null;
+    this.animClock = 0;
     this.telegraph = scene.add.graphics();
     this.hpBarSmall = scene.add.graphics();
     this.icon = scene.add.text(x, y, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffe060', resolution: 2 })
@@ -110,6 +115,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   /** @param {{player, env, noises, mobs, stealth}} ctx */
   update(dt, ctx) {
     this.ctx = ctx;
+    this.dt = dt;
     if (this.state === State.DEAD) { this.syncVisual(); return; }
     this.status.update(dt);
     if (this.state === State.DEAD) return; // 독으로 쓰러졌을 수 있음
@@ -336,7 +342,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.body.enable = false;
     this.telegraph.clear();
     this.visual.clearTint().setTint(0x555555);
-    this.scene.tweens.add({ targets: this.visual, alpha: 0.35, angle: this.facing.x < 0 ? -80 : 80, duration: 600, ease: 'Quad.out' });
+    if (this.sprite) { this.deathClock = 0; this.scene.tweens.add({ targets: this.visual, alpha: 0.55, delay: 500, duration: 600 }); }
+    else this.scene.tweens.add({ targets: this.visual, alpha: 0.35, angle: this.facing.x < 0 ? -80 : 80, duration: 600, ease: 'Quad.out' });
     this.scene.cameras.main.shake(500, 0.008);
     this.onDefeated(this);
 
@@ -378,14 +385,17 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     applyYSort(this);
     const v = this.visual;
     v.setPosition(this.x, this.y).setDepth(this.depth);
-    if (this.state !== State.DEAD && this.facing.x !== 0) v.setFlipX(this.facing.x < 0);
-
-    // 몸 연출: 예고 동작 중 웅크렸다가, 공격 때 펴짐
-    let sy = 1;
-    if (this.state === State.WINDUP) sy = 1 - 0.12 * (1 - this.stateTime / this.windupTotal);
-    else if (this.state === State.ACTIVE) sy = 1.08;
-    else if (this.state === State.ROAR) sy = 1.05 + Math.sin(this.stateTime / 40) * 0.04;
-    if (this.state !== State.DEAD) v.setScale(1 / Math.sqrt(sy), sy);
+    if (this.sprite) {
+      this.updatePixelFrame();
+    } else {
+      if (this.state !== State.DEAD && this.facing.x !== 0) v.setFlipX(this.facing.x < 0);
+      // 몸 연출: 예고 동작 중 웅크렸다가, 공격 때 펴짐
+      let sy = 1;
+      if (this.state === State.WINDUP) sy = 1 - 0.12 * (1 - this.stateTime / this.windupTotal);
+      else if (this.state === State.ACTIVE) sy = 1.08;
+      else if (this.state === State.ROAR) sy = 1.05 + Math.sin(this.stateTime / 40) * 0.04;
+      if (this.state !== State.DEAD) v.setScale(1 / Math.sqrt(sy), sy);
+    }
 
     this.drawTelegraph();
     this.drawSmallHpBar();
@@ -422,6 +432,35 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
       // 진행 정도를 보여 주는 안쪽 원 (다 차면 공격)
       g.fillStyle(0xff5030, alpha * 0.8).fillEllipse(c.x, groundY, c.radius * 2 * t, c.radius * 1.4 * t);
     }
+  }
+
+  /**
+   * 도트 시트 프레임: 상태·공격 종류·진행도에 맞춰 고름. 공격 중엔 공격 방향을 바라봄.
+   * 공격 그림: swipe/slam = [예고0, 예고1, 판정, 회복], charge = [예고0, 예고1, 질주×4, 멈춤]
+   */
+  updatePixelFrame() {
+    const sp = this.sprite;
+    const dt = this.dt ?? 16;
+    this.animClock += dt;
+    const prog = (total) => Math.min(0.999, Math.max(0, 1 - this.stateTime / total));
+    const moving = Math.hypot(this.body.velocity.x, this.body.velocity.y) > 8;
+    let anim = 'idle', frame = Math.floor(this.animClock / 600) % 2, face = this.facing;
+    const atk = this.attack?.id;
+    switch (this.state) {
+      case State.CHASE: case State.RETURN:
+        if (moving) { anim = 'walk'; frame = Math.floor(this.animClock / 170) % sp.frames('walk'); }
+        break;
+      case State.ROAR: anim = 'roar'; frame = Math.floor(this.animClock / 150) % 2; break;
+      case State.WINDUP: anim = atk; frame = prog(this.windupTotal) < 0.5 ? 0 : 1; face = this.attackDir; break;
+      case State.ACTIVE:
+        anim = atk; face = this.attackDir;
+        frame = atk === 'charge' ? 2 + Math.floor(this.animClock / 70) % 4 : 2;
+        break;
+      case State.RECOVERY: anim = atk; face = this.attackDir; frame = atk === 'charge' ? 6 : 3; break;
+      case State.STAGGER: anim = 'stagger'; frame = Math.floor(this.animClock / 120) % 2; break;
+      case State.DEAD: anim = 'death'; this.deathClock = (this.deathClock ?? 0) + dt; frame = Math.floor(this.deathClock / 220); break;
+    }
+    sp.show(anim, frame, face);
   }
 
   /** 경계 표시(? / 경계 막대)와, 웅크린 동안 바닥에 보이는 시야 부채꼴 (잡몹과 같은 규칙) */

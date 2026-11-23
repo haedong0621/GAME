@@ -22,18 +22,18 @@
     "texture": "boss_swamp",
     "maxHp": 420,
     "speed": 62,
-    "chaseStopDistance": 34,
+    "chaseStopDistance": 46,
     "leashRadius": 480,
     "roarMs": 900,
     "sneakAttackMultiplier": 2.0,
     "attackCooldownMs": 450,
     "hurtbox": {
-      "width": 46,
-      "height": 42
+      "width": 64,
+      "height": 54
     },
     "feetCollider": {
-      "width": 36,
-      "height": 14
+      "width": 48,
+      "height": 18
     },
     "respawnMs": 15000,
     "phases": [
@@ -50,14 +50,14 @@
         "name": "할퀴기",
         "type": "circle",
         "minRange": 0,
-        "maxRange": 60,
+        "maxRange": 72,
         "weight": 3,
         "windupMs": 520,
         "activeMs": 120,
         "recoveryMs": 560,
         "damage": 18,
-        "offset": 30,
-        "radius": 28,
+        "offset": 40,
+        "radius": 30,
         "lunge": 60,
         "knockdown": false
       },
@@ -66,14 +66,14 @@
         "name": "몸통 내려찍기",
         "type": "circle",
         "minRange": 0,
-        "maxRange": 70,
+        "maxRange": 80,
         "weight": 2,
         "windupMs": 950,
         "activeMs": 160,
         "recoveryMs": 900,
         "damage": 28,
         "offset": 0,
-        "radius": 62,
+        "radius": 70,
         "lunge": 0,
         "knockdown": true
       },
@@ -81,7 +81,7 @@
         "id": "charge",
         "name": "돌진",
         "type": "charge",
-        "minRange": 70,
+        "minRange": 80,
         "maxRange": 240,
         "weight": 3,
         "windupMs": 780,
@@ -90,7 +90,7 @@
         "recoveryMs": 1000,
         "damage": 24,
         "speed": 310,
-        "width": 40,
+        "width": 52,
         "knockdown": true
       }
     ],
@@ -112,7 +112,8 @@
       "hearingMultiplier": 1.2
     },
     "mobChargeDamage": 20,
-    "staggerMs": 900
+    "staggerMs": 900,
+    "pixelKind": "swamp"
   },
   "feral_hound": {
     "name": "굶주린 들개",
@@ -162,6 +163,7 @@
         "amount": 1
       }
     ],
-    "staggerMs": 700
+    "staggerMs": 700,
+    "pixelKind": "hound"
   }
 }

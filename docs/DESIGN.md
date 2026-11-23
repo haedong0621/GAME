@@ -79,3 +79,4 @@
 - **협동** — 2~4명 협동, 무료 방식(P2P 또는 Supabase Realtime), 싱글 재미 검증 후 착수 → Godot `MultiplayerAPI`(WebSocket/WebRTC)로 재구현
 - **협동 대비 원칙** — 게임 상태는 렌더링과 분리해 한곳에 모으고, 입력은 "명령"으로 변환해 처리 (지금부터 모든 기능에 적용)
 - **몬스터 크기 등급** — `data/monsters.json` `sizeClass`(small/medium/large); 소형·중형 규칙 구현됨, 대형(부술 수 있는 것 부수기·벽 충돌 비틀거림)은 미구현 → Godot 같은 enum, 충돌 레이어/마스크로 구분
+- **몬스터 도트 그림** (`systems/MonsterSprite.js`, `data/monsters.json` `pixelKind`) — 시트 `mon_<종류>.png` + `mon_px.json`(행 = 동작 × 5방향, 8방향 → 그린 방향+뒤집기); 보스: 대기·걷기·포효·할퀴기/내려찍기 [예고0·예고1·판정·회복]·돌진 [예고0·예고1·질주×4·멈춤]·휘청·쓰러짐, 공격 중엔 공격 방향을 봄; 들개: 대기·달리기·물기 [노림0·노림1·덮침·회복]·피격·휘청·쓰러짐 → Godot AnimatedSprite2D + flip_h

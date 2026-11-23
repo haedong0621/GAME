@@ -4,6 +4,7 @@ import { findHits } from '../systems/Combat.js';
 import { spawnFloatingLabel } from '../systems/Effects.js';
 import { StatusEffects } from '../systems/StatusEffects.js';
 import { AwarenessMeter, Level } from '../systems/Stealth.js';
+import { MonsterSprite } from '../systems/MonsterSprite.js';
 
 const State = {
   IDLE: 'idle',               // 집 근처 어슬렁 (모름)
@@ -48,6 +49,9 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
 
     this.visual = scene.add.image(x, y, data.texture).setOrigin(0.5, 1);
+    const monPx = scene.registry.get('monPx');
+    this.sprite = data.pixelKind && monPx?.kinds[data.pixelKind] ? new MonsterSprite(this.visual, monPx, data.pixelKind) : null;
+    this.animClock = Math.random() * 1000;
     this.icon = scene.add.text(x, y, '', { fontFamily: 'sans-serif', fontSize: '10px', fontStyle: 'bold', color: '#ffe060', resolution: 2 })
       .setOrigin(0.5, 1).setStroke('#1b1410', 3);
     this.gfx = scene.add.graphics(); // 경계 막대, 시야 부채꼴, 공격 예고
@@ -126,6 +130,7 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
   // ---------- 매 프레임 ----------
   /** @param {{player, env, noises, mobs, stealth, showCones:boolean}} ctx */
   update(dt, ctx) {
+    this.dt = dt;
     if (this.state === State.DEAD) { this.syncVisual(ctx); return; }
     this.status.update(dt);
     if (this.state === State.DEAD) return;
@@ -299,7 +304,9 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     this.gfx.clear();
     this.icon.setText('');
     this.visual.setTint(0x555555);
-    this.scene.tweens.add({ targets: this.visual, alpha: 0, angle: this.facing.x < 0 ? -90 : 90, duration: 700, delay: 300 });
+    this.deathClock = 0;
+    if (this.sprite) this.scene.tweens.add({ targets: this.visual, alpha: 0, duration: 600, delay: 900 });
+    else this.scene.tweens.add({ targets: this.visual, alpha: 0, angle: this.facing.x < 0 ? -90 : 90, duration: 700, delay: 300 });
     this.onDefeated(this);
     if (this.data_.respawnMs) {
       this.respawnTimer = this.scene.time.delayedCall(this.data_.respawnMs, () => this.revive());
@@ -312,9 +319,30 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     this.body.enable = true;
     this.body.reset(this.home.x, this.home.y);
     this.visual.setAlpha(1).setAngle(0).clearTint();
+    this.deathClock = 0;
     this.stats.reset();
     this.meter.reset();
     this.enter(State.IDLE);
+  }
+
+  /** 도트 시트 프레임: 물기 = [노림0, 노림1, 덮침, 회복] */
+  updatePixelFrame() {
+    const sp = this.sprite, dt = this.dt ?? 16;
+    this.animClock += dt;
+    const a = this.data_.attack;
+    const moving = Math.hypot(this.body.velocity.x, this.body.velocity.y) > 8;
+    let anim = moving ? 'run' : 'idle';
+    let frame = moving ? Math.floor(this.animClock / 90) % sp.frames('run') : Math.floor(this.animClock / 500) % 2;
+    let face = this.facing;
+    switch (this.state) {
+      case State.WINDUP: anim = 'bite'; frame = this.stateTime > a.windupMs / 2 ? 0 : 1; face = this.attackDir; break;
+      case State.ACTIVE: anim = 'bite'; frame = 2; face = this.attackDir; break;
+      case State.RECOVERY: anim = 'bite'; frame = 3; face = this.attackDir; break;
+      case State.HURT: anim = 'hurt'; frame = this.stateTime > this.data_.hurtMs / 2 ? 0 : 1; break;
+      case State.STAGGER: anim = 'stagger'; frame = Math.floor(this.animClock / 110) % 2; break;
+      case State.DEAD: anim = 'death'; this.deathClock = (this.deathClock ?? 0) + dt; frame = Math.floor(this.deathClock / 180); break;
+    }
+    sp.show(anim, frame, face);
   }
 
   /** 경계 해제 (플레이어가 쓰러졌을 때 등) */
@@ -329,9 +357,12 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     applyYSort(this);
     const v = this.visual;
     v.setPosition(this.x, this.y).setDepth(this.depth);
+    if (this.sprite) this.updatePixelFrame();
     if (this.state === State.DEAD) return;
-    if (Math.abs(this.facing.x) > 0.2) v.setFlipX(this.facing.x < 0);
-    v.setScale(1, this.state === State.WINDUP ? 0.85 : this.state === State.ACTIVE ? 1.08 : 1);
+    if (!this.sprite) {
+      if (Math.abs(this.facing.x) > 0.2) v.setFlipX(this.facing.x < 0);
+      v.setScale(1, this.state === State.WINDUP ? 0.85 : this.state === State.ACTIVE ? 1.08 : 1);
+    }
     if (this.state === State.WINDUP) v.setTint(0xffa080);
     else if (this.state !== State.HURT) v.clearTint();
 
