@@ -126,7 +126,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       // 구르기 시작 직후(perfectWindowMs 안)에 피하면 완벽한 회피
       const rolled = this.data_.roll.durationMs - this.stateTime;
       if (rolled <= (this.data_.roll.perfectWindowMs ?? 0) * this.modifier('perfectWindowMultiplier')) {
-        spawnAfterimage(this.scene, this.visual);
+        for (const sp of this.heroSprites) spawnAfterimage(this.scene, sp);
         spawnBigLabel(this.scene, this.x, this.y - 34, '완벽한 회피!');
         const pd = this.data_.perfectDodge;
         this.rollBrake = pd.rollBrake;          // 그 자리에서 멈춤 (몬스터 바로 옆)
@@ -792,11 +792,37 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (this.state !== State.ROLL && this.state !== State.DEAD) v.setAlpha(this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0 ? 0.45 : 1);
   }
 
-  /** 2D 도트 주인공: 지금 갑옷·무기에 맞는 시트 */
-  heroPxSheet() {
+  /**
+   * 2D 도트 주인공 겉모습: 부위별 층(머리·몸·팔 앞뒤·다리·무기 앞뒤)의 시트 이름.
+   * 무기 종류(검·대검·맨손)에 따라 모션 세트가 달라 층 시트도 그 종류용을 쓴다.
+   * @returns {{cls:string, keys:Object<string,string>}}
+   */
+  heroLook() {
     const meta = this.heroPx;
-    const byWeapon = meta.sheets[this.armor?.outfit ?? 'rags'] ?? meta.sheets.rags;
-    return byWeapon[this.weaponId] ?? byWeapon.rusty_sword;
+    const cls = this.weapon && meta.weapons[this.weaponId] ? meta.weapons[this.weaponId].class : 'fist';
+    const look = this.look ?? {};
+    const outfit = this.armor?.outfit ?? 'rags';
+    const keys = {};
+    for (const part of ['head', 'body', 'arms', 'legs']) {
+      const byOutfit = meta.parts[part][look[part] ?? outfit] ?? meta.parts[part].rags;
+      Object.assign(keys, byOutfit[cls]);
+    }
+    if (cls !== 'fist') { keys.wpnB = meta.weapons[this.weaponId].wpnB; keys.wpnF = meta.weapons[this.weaponId].wpnF; }
+    return { cls, keys };
+  }
+
+  /** 층 이미지들 (다리 층 = this.visual, 나머지는 여기서 만들어 같이 움직임) */
+  heroLayerImage(k) {
+    if (k === 'legs') return this.visual;
+    this.heroLayers ??= {};
+    this.heroLayers[k] ??= this.scene.add.image(this.x, this.y, '__DEFAULT').setOrigin(this.heroPx.origin.x, this.heroPx.origin.y).setVisible(false);
+    return this.heroLayers[k];
+  }
+
+  /** 지금 보이는 모든 층 (잔상 등 효과용) */
+  get heroSprites() {
+    if (!this.heroPx) return [this.visual];
+    return [this.visual, ...Object.values(this.heroLayers ?? {}).filter((i) => i.visible)];
   }
 
   /**
@@ -807,8 +833,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   updateHeroPx() {
     const meta = this.heroPx;
     const v = this.visual;
-    const sheet = this.heroPxSheet();
-    const cls = meta.classes[sheet.class];
+    const look = this.heroLook();
+    const cls = meta.classes[look.cls];
     const deg = this.facingAngle * 180 / Math.PI; // 0=오른쪽, 90=아래
     const DIR8 = ['right', 'downright', 'down', 'downleft', 'left', 'upleft', 'up', 'upright'];
     const [view, flip] = meta.dirs[DIR8[((Math.round(deg / 45) % 8) + 8) % 8]];
@@ -830,7 +856,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         break;
       }
       case State.WINDUP: case State.ACTIVE: case State.RECOVERY: {
-        const names = Object.keys(cls.anims).filter((n) => n.startsWith('atk') || n.startsWith('gs'));
+        const names = Object.keys(cls.anims).filter((n) => n.startsWith('atk') || n.startsWith('gs') || n.startsWith('pn'));
         anim = names[Math.min(this.comboIndex, names.length - 1)];
         const n = cls.anims[anim].frames;
         const antic = n - 4, smear = n - 4, impact = n - 3, follow = n - 2, rest = n - 1;
@@ -861,13 +887,24 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         break;
     }
     if (this.state !== State.DEAD) this.deathClock = 0;
-    const a = cls.anims[anim];
-    if (v.texture.key !== sheet.key) v.setTexture(sheet.key);
-    v.setFrame((a.row + vi) * cls.columns + Math.min(frame, a.frames - 1));
-    v.setPosition(this.x, this.y - (this.airZ ?? 0)).setDepth(this.depth).setAngle(0).setScale(1).setFlipX(flip);
+    const a = cls.anims[anim] ?? cls.anims.idle;
+    const fi = (a.row + vi) * cls.columns + Math.min(frame, a.frames - 1);
     if (this.state === State.WINDUP) v.setTint(0xffe0b0);
     else if (this.state !== State.HURT) v.clearTint();
     if (this.state !== State.ROLL && this.state !== State.DEAD) v.setAlpha(this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0 ? 0.45 : 1);
+    // 층을 방향별 순서대로 겹침 (다리 층의 색·투명도를 나머지 층이 따라감)
+    const order = meta.layerOrder[view];
+    for (let i = 0; i < order.length; i++) {
+      const k = order[i], key = look.keys[k];
+      const img = this.heroLayerImage(k);
+      if (!key) { img.setVisible(false); continue; }
+      if (img.texture.key !== key) img.setTexture(key);
+      img.setFrame(fi).setVisible(true).setPosition(this.x, this.y - (this.airZ ?? 0)).setDepth(this.depth + i * 0.001)
+        .setAngle(0).setScale(1).setFlipX(flip);
+      if (img === v) continue;
+      img.setAlpha(v.alpha);
+      if (v.isTinted) { if (v.tintFill) img.setTintFill(v.tintTopLeft); else img.setTint(v.tintTopLeft); } else img.clearTint();
+    }
   }
 
   updatePose() {

@@ -46,6 +46,53 @@
    true
   ]
  },
+ "layerOrder": {
+  "down": [
+   "wpnB",
+   "armsB",
+   "legs",
+   "body",
+   "head",
+   "armsF",
+   "wpnF"
+  ],
+  "downside": [
+   "wpnB",
+   "armsB",
+   "legs",
+   "body",
+   "head",
+   "armsF",
+   "wpnF"
+  ],
+  "side": [
+   "wpnB",
+   "armsB",
+   "legs",
+   "body",
+   "head",
+   "armsF",
+   "wpnF"
+  ],
+  "upside": [
+   "wpnB",
+   "armsB",
+   "legs",
+   "head",
+   "body",
+   "armsF",
+   "wpnF"
+  ],
+  "up": [
+   "wpnB",
+   "armsB",
+   "legs",
+   "head",
+   "body",
+   "armsF",
+   "wpnF"
+  ]
+ },
  "classes": {
   "sword": {
    "columns": 6,
@@ -164,62 +211,240 @@
      "frames": 6
     }
    }
+  },
+  "fist": {
+   "columns": 6,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 2
+    },
+    "walk": {
+     "row": 5,
+     "frames": 4
+    },
+    "run": {
+     "row": 10,
+     "frames": 4
+    },
+    "sprint": {
+     "row": 15,
+     "frames": 4
+    },
+    "sneak_idle": {
+     "row": 20,
+     "frames": 2
+    },
+    "sneak": {
+     "row": 25,
+     "frames": 4
+    },
+    "roll": {
+     "row": 30,
+     "frames": 6
+    },
+    "hurt": {
+     "row": 35,
+     "frames": 5
+    },
+    "knockdown": {
+     "row": 40,
+     "frames": 6
+    },
+    "gather": {
+     "row": 45,
+     "frames": 4
+    },
+    "death": {
+     "row": 50,
+     "frames": 5
+    },
+    "pn1": {
+     "row": 55,
+     "frames": 5
+    },
+    "pn2": {
+     "row": 60,
+     "frames": 5
+    },
+    "pn3": {
+     "row": 65,
+     "frames": 5
+    }
+   }
   }
  },
- "sheets": {
-  "rags": {
-   "rusty_sword": {
-    "key": "hero_rags_rusty_sword",
-    "class": "sword"
+ "parts": {
+  "head": {
+   "rags": {
+    "sword": {
+     "head": "hero_head_rags_sword"
+    },
+    "greatsword": {
+     "head": "hero_head_rags_greatsword"
+    },
+    "fist": {
+     "head": "hero_head_rags_fist"
+    }
    },
-   "fang_sword": {
-    "key": "hero_rags_fang_sword",
-    "class": "sword"
+   "swamp": {
+    "sword": {
+     "head": "hero_head_swamp_sword"
+    },
+    "greatsword": {
+     "head": "hero_head_swamp_greatsword"
+    },
+    "fist": {
+     "head": "hero_head_swamp_fist"
+    }
    },
-   "hunter_cleaver": {
-    "key": "hero_rags_hunter_cleaver",
-    "class": "sword"
-   },
-   "old_greatsword": {
-    "key": "hero_rags_old_greatsword",
-    "class": "greatsword"
+   "hunter": {
+    "sword": {
+     "head": "hero_head_hunter_sword"
+    },
+    "greatsword": {
+     "head": "hero_head_hunter_greatsword"
+    },
+    "fist": {
+     "head": "hero_head_hunter_fist"
+    }
    }
   },
-  "swamp": {
-   "rusty_sword": {
-    "key": "hero_swamp_rusty_sword",
-    "class": "sword"
+  "body": {
+   "rags": {
+    "sword": {
+     "body": "hero_body_rags_sword"
+    },
+    "greatsword": {
+     "body": "hero_body_rags_greatsword"
+    },
+    "fist": {
+     "body": "hero_body_rags_fist"
+    }
    },
-   "fang_sword": {
-    "key": "hero_swamp_fang_sword",
-    "class": "sword"
+   "swamp": {
+    "sword": {
+     "body": "hero_body_swamp_sword"
+    },
+    "greatsword": {
+     "body": "hero_body_swamp_greatsword"
+    },
+    "fist": {
+     "body": "hero_body_swamp_fist"
+    }
    },
-   "hunter_cleaver": {
-    "key": "hero_swamp_hunter_cleaver",
-    "class": "sword"
-   },
-   "old_greatsword": {
-    "key": "hero_swamp_old_greatsword",
-    "class": "greatsword"
+   "hunter": {
+    "sword": {
+     "body": "hero_body_hunter_sword"
+    },
+    "greatsword": {
+     "body": "hero_body_hunter_greatsword"
+    },
+    "fist": {
+     "body": "hero_body_hunter_fist"
+    }
    }
   },
-  "hunter": {
-   "rusty_sword": {
-    "key": "hero_hunter_rusty_sword",
-    "class": "sword"
+  "arms": {
+   "rags": {
+    "sword": {
+     "armsB": "hero_armsB_rags_sword",
+     "armsF": "hero_armsF_rags_sword"
+    },
+    "greatsword": {
+     "armsB": "hero_armsB_rags_greatsword",
+     "armsF": "hero_armsF_rags_greatsword"
+    },
+    "fist": {
+     "armsB": "hero_armsB_rags_fist",
+     "armsF": "hero_armsF_rags_fist"
+    }
    },
-   "fang_sword": {
-    "key": "hero_hunter_fang_sword",
-    "class": "sword"
+   "swamp": {
+    "sword": {
+     "armsB": "hero_armsB_swamp_sword",
+     "armsF": "hero_armsF_swamp_sword"
+    },
+    "greatsword": {
+     "armsB": "hero_armsB_swamp_greatsword",
+     "armsF": "hero_armsF_swamp_greatsword"
+    },
+    "fist": {
+     "armsB": "hero_armsB_swamp_fist",
+     "armsF": "hero_armsF_swamp_fist"
+    }
    },
-   "hunter_cleaver": {
-    "key": "hero_hunter_hunter_cleaver",
-    "class": "sword"
-   },
-   "old_greatsword": {
-    "key": "hero_hunter_old_greatsword",
-    "class": "greatsword"
+   "hunter": {
+    "sword": {
+     "armsB": "hero_armsB_hunter_sword",
+     "armsF": "hero_armsF_hunter_sword"
+    },
+    "greatsword": {
+     "armsB": "hero_armsB_hunter_greatsword",
+     "armsF": "hero_armsF_hunter_greatsword"
+    },
+    "fist": {
+     "armsB": "hero_armsB_hunter_fist",
+     "armsF": "hero_armsF_hunter_fist"
+    }
    }
+  },
+  "legs": {
+   "rags": {
+    "sword": {
+     "legs": "hero_legs_rags_sword"
+    },
+    "greatsword": {
+     "legs": "hero_legs_rags_greatsword"
+    },
+    "fist": {
+     "legs": "hero_legs_rags_fist"
+    }
+   },
+   "swamp": {
+    "sword": {
+     "legs": "hero_legs_swamp_sword"
+    },
+    "greatsword": {
+     "legs": "hero_legs_swamp_greatsword"
+    },
+    "fist": {
+     "legs": "hero_legs_swamp_fist"
+    }
+   },
+   "hunter": {
+    "sword": {
+     "legs": "hero_legs_hunter_sword"
+    },
+    "greatsword": {
+     "legs": "hero_legs_hunter_greatsword"
+    },
+    "fist": {
+     "legs": "hero_legs_hunter_fist"
+    }
+   }
+  }
+ },
+ "weapons": {
+  "rusty_sword": {
+   "class": "sword",
+   "wpnB": "hero_wpnB_rusty_sword",
+   "wpnF": "hero_wpnF_rusty_sword"
+  },
+  "fang_sword": {
+   "class": "sword",
+   "wpnB": "hero_wpnB_fang_sword",
+   "wpnF": "hero_wpnF_fang_sword"
+  },
+  "hunter_cleaver": {
+   "class": "sword",
+   "wpnB": "hero_wpnB_hunter_cleaver",
+   "wpnF": "hero_wpnF_hunter_cleaver"
+  },
+  "old_greatsword": {
+   "class": "greatsword",
+   "wpnB": "hero_wpnB_old_greatsword",
+   "wpnF": "hero_wpnF_old_greatsword"
   }
  }
 }

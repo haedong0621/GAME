@@ -95,3 +95,6 @@
 - **지역(바이옴)** (`data/regions.json`, 맵 `region` 레이어, `Terrain.regionAt`) — 지역 번호 → 이름·색. 들어서면 이름 알림(경계에서 왔다 갔다 하면 2.5초에 한 번). 바닥 그림은 굽기(ground 타일 레이어는 숨기고 물 충돌용으로만), 나무는 지역별 그림, 깔개 소품 `type=decor`(`kind`, 천막만 막음) → Godot: 지역 Area2D 또는 같은 격자로 조회, 바닥은 Sprite2D 조각
 - **뛰기·전력질주** (`Player`, `player.json sprint`) — 기본 이동 모션은 뛰기(`run`), 뒷걸음질·느린 걸음은 걷기. Shift를 누른 채 움직이면 전력질주(휴대폰은 구르기 버튼을 꾹 — 구르기 끝난 뒤 이어짐), 달리면 웅크림이 풀림: 속도 ×`speedMultiplier`, 기력 `staminaPerSec` 소모(회복 멈춤), 바닥나면 "숨이 차다" → `recoverAt`까지 못 달림, 달리는 쪽을 바라봄, 발소리 `noise.sprint`(크게 — 스닉과 반대), 흙먼지, 웅크리면 못 함 → Godot: Input.is_action_pressed("roll") + 상태 머신 플래그
 - **웅크리기 켜고 끄기** — C(휴대폰 웅크림 버튼)로 토글 (예전: Shift 누르는 동안). 질주하면 자동으로 꺼짐
+- **주인공 층 그림** (`tools/art/pixel_hero.py`, `Player.heroLook/updateHeroPx`) — 캐릭터를 층으로 나눠 그림: 무기 뒤(wpnB) · 뒤쪽 팔(armsB) · 다리(legs) · 몸(body) · 머리(head) · 앞쪽 팔(armsF) · 무기 앞(wpnF). 위쪽을 볼 땐 몸·머리 순서가 바뀜(`hero_px.json layerOrder`). 시트는 층 × 갑옷 × 무기 종류(검·대검·맨손 — 종류마다 모션 세트가 다름), 무기는 무기별. 게임은 장비한 부위의 층을 같은 프레임 번호로 겹치고, 다리 층(`visual`)의 색·투명도를 나머지 층이 따라감 → 부위마다 다른 세트를 입을 수 있고, 나중에 커스터마이징(얼굴·머리 모양·색) 층도 같은 방식 → Godot: Node2D 아래 Sprite2D 여러 개(같은 frame), z_index를 방향별로
+- **맨손 모션** (`fist` 종류: 잽 → 스트레이트 → 올려치기) — 무기가 없거나 건틀릿일 때
+

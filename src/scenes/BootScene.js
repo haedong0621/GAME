@@ -39,11 +39,11 @@ export class BootScene extends window.Phaser.Scene {
       this.load.json('heroPxMeta', 'assets/characters/hero_px.json');
       // 시트 목록은 메타 JSON에 있으므로, JSON이 로드되면 이어서 시트들을 불러온다
       this.load.once('filecomplete-json-heroPxMeta', (_k, _t, meta) => {
-        for (const byWeapon of Object.values(meta.sheets)) {
-          for (const s of Object.values(byWeapon)) {
-            this.load.spritesheet(s.key, `assets/characters/${s.key}.png`, { frameWidth: meta.frameWidth, frameHeight: meta.frameHeight });
-          }
-        }
+        // 부위별 층 시트 (머리·몸·팔 앞뒤·다리 × 갑옷 × 무기 종류) + 무기 층 시트
+        const keys = new Set();
+        for (const byOutfit of Object.values(meta.parts)) for (const byCls of Object.values(byOutfit)) for (const layers of Object.values(byCls)) for (const k of Object.values(layers)) keys.add(k);
+        for (const w of Object.values(meta.weapons)) { keys.add(w.wpnB); keys.add(w.wpnF); }
+        for (const key of keys) this.load.spritesheet(key, `assets/characters/${key}.png`, { frameWidth: meta.frameWidth, frameHeight: meta.frameHeight });
       });
     }
     if (HERO_STYLE) {
