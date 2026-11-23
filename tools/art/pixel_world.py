@@ -10,9 +10,9 @@
 채집: rock0~1.png·rock_rubble.png(34×28), stump.png(56×80, 나무와 같은 밑동), herb.png·herb_picked.png(22×20)
 3/4 시점 입체: 흙길·물은 한 단 파인 땅(북쪽 흙벽이 보임), 소품은 공·원기둥·상자 면에 왼쪽 위 빛으로 명암 계산
 
-  44~55 절벽 벽면(윗줄·아랫줄·낮은 턱 × 끝 4종, collides), 56~58 돌계단, 59~74 고지대 가장자리 덧그림, 75 절벽 밑 그늘
-맵(maps/world.tmj)의 바닥은 --remap 으로 "풀/흙/물" 종류와 height 레이어(1 절벽 고지대, 2 낮은 턱 고지대, 3 오르막)를 읽어
-알맞은 타일 번호(경계·벽면·계단)와 cliff_rim 덧그림 레이어를 만든다.
+  44~75 (예전 칸 단위 절벽 타일 — 지금은 안 씀. 절벽은 terrain_bake.py가 맵 전체를 부드럽게 구워 그림으로 만든다)
+맵(maps/world.tmj)의 바닥은 --remap 으로 "풀/흙/물" 종류를 읽어 경계 타일 번호를 매기고,
+height 레이어(1 절벽 고지대, 2 낮은 턱 고지대, 3 계단 자리)로 terrain_bake.py를 불러 절벽 그림·충돌 격자를 굽는다.
 실행: python3 tools/art/pixel_world.py [--remap]
 Godot: TileSet + Terrain(지형) 세트로 같은 자동 경계를 만들 수 있다.
 """
@@ -641,35 +641,16 @@ def heights_of(m):
     return [[(hl['data'][y * Wm + x] - f + 1) if hl['data'][y * Wm + x] >= f else 0 for x in range(Wm)] for y in range(Hm)]
 
 def remap():
+    """바닥 타일(풀·흙길·물 경계)을 다시 매기고, 절벽은 terrain_bake.py로 구워 낸다 (칸 단위 벽면 타일은 이제 안 씀)"""
     m = json.load(open(MAP))
     layer = next(l for l in m['layers'] if l['name'] == 'ground')
     Wm, Hm = m['width'], m['height']
     data = layer['data']
     kinds = [[kind_of(data[y * Wm + x]) for x in range(Wm)] for y in range(Hm)]
-    H = heights_of(m)
-    high = lambda x, y: 0 <= x < Wm and 0 <= y < Hm and H[y][x] in (1, 2)
-    # 벽면 자리: 고지대 남쪽 가장자리 아래 (절벽 2칸, 낮은 턱 1칸). 오르막(3)이면 계단
-    face = {}
-    for y in range(Hm):
-        for x in range(Wm):
-            if not high(x, y) or high(x, y + 1): continue
-            rows = ('top', 'bot') if H[y][x] == 1 else ('ledge',)
-            for k, kind in enumerate(rows):
-                Y = y + 1 + k
-                if Y >= Hm or high(x, Y): break
-                face[(x, Y)] = ('ramp_' + kind) if H[Y][x] == 3 else kind
     rnd = random.Random(42)
-    new, rim = [], []
+    new = []
     for y in range(Hm):
         for x in range(Wm):
-            f = face.get((x, y))
-            if f:
-                if f.startswith('ramp_'): idx = {'ramp_top': RAMP_TOP, 'ramp_bot': RAMP_BOT, 'ramp_ledge': RAMP_LEDGE}[f]
-                else:
-                    conn = (1 if face.get((x - 1, y)) == f else 0) | (2 if face.get((x + 1, y)) == f else 0)
-                    idx = {'top': CLIFF_TOP, 'bot': CLIFF_BOT, 'ledge': LEDGE}[f] + conn
-                new.append(idx + 1); rim.append(0)
-                continue
             k = kinds[y][x]
             if k == 'grass':
                 r = rnd.random()
@@ -682,50 +663,32 @@ def remap():
                     if same: mask |= bit
                 idx = (4 if k == 'dirt' else 20) + mask
             new.append(idx + 1)  # firstgid 1
-            # 덧그림: 고지대 가장자리 선 / 절벽 밑 그늘
-            if high(x, y):
-                mk = sum(b for b, (dx, dy) in ((1, (0, -1)), (2, (1, 0)), (4, (0, 1)), (8, (-1, 0)))
-                         if 0 <= x + dx < Wm and 0 <= y + dy < Hm and not high(x + dx, y + dy))
-                rim.append(RIM + mk + 1)
-            elif face.get((x, y - 1)) in ('bot', 'ledge'):
-                rim.append(BASE_SHADOW + 1)
-            else:
-                rim.append(0)
     layer['data'] = new
     n, cols = 76, 8
     size = (cols * T, math.ceil(n / cols) * T)
-    collide = list(range(20, 36)) + list(range(CLIFF_TOP, LEDGE + 4))   # 물 + 벽면 (계단은 지나감)
     hts = next((t for t in m['tilesets'] if t['name'] == 'height_marks'), None)
     hl = next((l for l in m['layers'] if l['name'] == 'height'), None)
     m['tilesets'] = [{
         'firstgid': 1, 'name': 'world_tiles', 'image': '../assets/tiles/world_tiles.png',
         'imagewidth': size[0], 'imageheight': size[1], 'tilewidth': T, 'tileheight': T,
         'tilecount': n, 'columns': cols, 'margin': 0, 'spacing': 0,
-        'tiles': [{'id': i, 'properties': [{'name': 'collides', 'type': 'bool', 'value': True}]} for i in collide],
+        'tiles': [{'id': i, 'properties': [{'name': 'collides', 'type': 'bool', 'value': True}]} for i in range(20, 36)],
     }, {
         'firstgid': n + 1, 'name': 'height_marks', 'image': '../assets/tiles/height_marks.png',
         'imagewidth': 3 * T, 'imageheight': T, 'tilewidth': T, 'tileheight': T,
         'tilecount': 3, 'columns': 3, 'margin': 0, 'spacing': 0,
     }]
-    # height 레이어: 예전 firstgid 기준 값을 새 firstgid로 옮김
     if hl and hts:
         hl['data'] = [(g - hts['firstgid'] + n + 1) if g >= hts['firstgid'] else 0 for g in hl['data']]
-    # 덧그림 레이어 (ground 바로 위)
-    rl = next((l for l in m['layers'] if l['name'] == 'cliff_rim'), None)
-    if not rl:
-        rl = {'id': max(l['id'] for l in m['layers']) + 1, 'name': 'cliff_rim', 'type': 'tilelayer', 'width': Wm, 'height': Hm,
-              'x': 0, 'y': 0, 'opacity': 1, 'visible': True}
-        gi = next(i for i, l in enumerate(m['layers']) if l['name'] == 'ground')
-        m['layers'].insert(gi + 1, rl)
-    rl['data'] = rim
-    m['nextlayerid'] = max(l['id'] for l in m['layers']) + 1
+    m['layers'] = [l for l in m['layers'] if l['name'] != 'cliff_rim']   # 예전 칸 단위 덧그림 레이어 제거
     json.dump(m, open(MAP, 'w'), indent=1)
-    print('map remapped', Wm, Hm, 'faces', len(face))
+    print('map remapped', Wm, Hm)
+    import terrain_bake
+    terrain_bake.bake()
 
 if __name__ == '__main__':
     print('tiles', tileset())
     props()
     gatherables()
-    vines().save(os.path.join(TILES_DIR, 'vines.png'))
     height_marks()
     if '--remap' in sys.argv: remap()

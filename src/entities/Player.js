@@ -588,8 +588,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     let want = null;
     if (move.y > 0.6 && (b.down || touch.down)) {
       if (t.ledgeLanding(this.x, this.y - 3)) want = 'jump';
-      else if (t.climbableAt(this.x, this.y + 6) && t.isHigh(this.x, this.y - 3)) want = 'climbDown';
-    } else if (move.y < -0.6 && (b.up || touch.up) && t.climbableAt(this.x, this.y - 14)) {
+      else if ([-6, 0, 6].some((dx) => t.climbableAt(this.x + dx, this.y + 6)) && t.isHigh(this.x, this.y - 3)) want = 'climbDown';
+    } else if (move.y < -0.6 && (b.up || touch.up) && [-6, 0, 6].some((dx) => t.climbableAt(this.x + dx, this.y - 14))) {
       want = 'climbUp';
     }
     if (!want || want !== this.pushWant) { this.pushWant = want; this.pushMs = 0; return false; }
