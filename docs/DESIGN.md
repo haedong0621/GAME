@@ -53,7 +53,7 @@
 - **제작대·상호작용** (`entities/Workbench.js`, `scenes/WorldScene.js` `nearestInteractable`/`openPanel`) — 맵 `type=workbench`, 반경 안이면 "[E] 제작대 (저장 · 제작)"(휴대폰은 "열기" 버튼), 열면 거점 저장 후 월드 일시정지 → Godot Area2D 범위 + `get_tree().paused`
 - **저장** (`systems/SaveSystem.js`) — 브라우저 localStorage에 **슬롯 2개**: `manual`(수동, 거점) · `auto`(자동, 지역 이동); JSON 한 덩어리 + `version`; 내용: 장소 이름, 플레이 시간, 플레이어 위치·장착/보유 무기·갑옷, 가방, 주운 맵 아이템 id(지금은 다시 안 생김, 채집 단계에서 재생성으로 변경 예정); 체력·몬스터는 저장 안 함; 예전 1칸 저장은 수동 슬롯으로 옮김 → Godot `user://save_manual.json`, `user://save_auto.json`, 나중에 같은 JSON을 클라우드(Supabase)
 - **수동 저장(거점)** (`isSavePoint`, `locationName`) — 거점 오브젝트(지금은 제작대 "들머리 거점", 나중에 마을 등)에 상호작용하면 수동 슬롯 저장, 제작하면 다시 저장 → Godot SavePoint 그룹/컴포넌트
-- **자동 저장(지역 이동)** (맵 `type=autosave` 사각형, 이름 = 장소) — 구역 밖→안으로 들어오는 순간 자동 슬롯 저장(머무는 동안 반복 안 함, 불러온 자리가 구역 안이면 저장 안 함); 지금: 늪지 짐승의 터 앞, 어두운 숲 입구, 북서쪽 들판, 연못가 들개 굴 앞 → Godot Area2D `body_entered`
+- **자동 저장(지역 이동)** (맵 `type=autosave` 사각형, 이름 = 장소) — 구역 밖→안으로 들어오는 순간 자동 슬롯 저장(머무는 동안 반복 안 함, 불러온 자리가 구역 안이면 저장 안 함); 지금: 늪지 짐승의 터 앞, 어두운 숲 입구, 뒤엉킨 사냥꾼의 들판 앞, 연못가 들개 굴 앞 → Godot Area2D `body_entered`
 - **불러오기** (`scenes/TitleScene.js`, `systems/PauseMenu.js`, `systems/MenuList.js`) — 시작 화면: 이어하기(두 슬롯 중 최근)/불러오기(슬롯 선택, 장소·시각·플레이 시간·무기 표시)/새로 시작; 게임 중 Esc·[메뉴]: 계속하기/수동·자동 불러오기/처음부터 다시(확인 창); 불러오기는 슬롯을 sessionStorage에 넘기고 페이지를 새로 불러옴; `?dev=1`·`?play=1`이면 시작 화면 없이 최근 저장으로 시작 → Godot Title.tscn, PauseMenu.tscn, `get_tree().reload_current_scene()`
 - **제작 화면** (`systems/CraftingPanel.js`) — 목록(제작 가능/재료 부족/보유 중), 상세(설명, 데미지 비교, 스킬, 재료 보유/필요), 제작·닫기 버튼; ↑↓ Enter Esc, 마우스·터치 → Godot Control 씬
 - **타격 연출** (`systems/Effects.js`) — 베기 궤적(from→to 방향 호, 240ms 페이드, 굵기는 무기 크기에 따라), 데미지 숫자, 무기 이름 라벨, 맞힐 때 카메라 흔들림(타마다 세기 다름) → Godot Tween + `Camera2D` 오프셋 흔들기
@@ -80,3 +80,8 @@
 - **협동 대비 원칙** — 게임 상태는 렌더링과 분리해 한곳에 모으고, 입력은 "명령"으로 변환해 처리 (지금부터 모든 기능에 적용)
 - **몬스터 크기 등급** — `data/monsters.json` `sizeClass`(small/medium/large); 소형·중형 규칙 구현됨, 대형(부술 수 있는 것 부수기·벽 충돌 비틀거림)은 미구현 → Godot 같은 enum, 충돌 레이어/마스크로 구분
 - **몬스터 도트 그림** (`systems/MonsterSprite.js`, `data/monsters.json` `pixelKind`) — 시트 `mon_<종류>.png` + `mon_px.json`(행 = 동작 × 5방향, 8방향 → 그린 방향+뒤집기); 보스: 대기·걷기·포효·할퀴기/내려찍기 [예고0·예고1·판정·회복]·돌진 [예고0·예고1·질주×4·멈춤]·휘청·쓰러짐, 공격 중엔 공격 방향을 봄; 들개: 대기·달리기·물기 [노림0·노림1·덮침·회복]·피격·휘청·쓰러짐 → Godot AnimatedSprite2D + flip_h
+- **보스 공격 종류 확장** (`entities/Boss.js`, `monsters.json`의 `attacks[].type`) — `circle`(할퀴기·물기) · `charge`(돌진) 에 더해: `combo`(연속 베기: `hits[]` 마다 `gapMs` 동안 다음 타 범위 예고 + 플레이어 쪽으로 다시 조준 → `activeMs` 판정, 한 타씩 따로 피해야 함), `leap`(도약 덮치기: 예고 중 착지점 조준 → `aimLockAt` 이후 고정, 날아가는 동안 충돌 끔(나무·물 넘음), 그림만 포물선으로 띄움(`height`), 착지 원형 판정+넘어뜨림), `summon`(울부짖기: `summonId` 잡몹을 `count`마리, 살아 있는 수 `maxAlive` 이하로, 개별 쿨타임 `cooldownMs`) · 공격 `anim`으로 다른 동작 그림 재사용 → Godot 상태 머신에서 공격 종류별 함수, 착지점은 Marker2D, 불러내기는 signal
+- **불러낸 잡몹** (`WorldScene.summonMob`) — 보스가 ctx.summon(id, x, y) 요청 → 월드가 Mob 생성(죽어도 다시 안 나타남, 바로 추적) → Godot: 보스 signal summon → 월드가 Mob.tscn add_child
+- **스킬 종류 추가** (`skills.json`) — `comboRamp`(연속기 n타째 피해 +perStep×n), 패시브 배율 `perfectWindowMultiplier`(완벽한 회피 판정 시간)·`counterDamageMultiplier`(반격 피해) → Player.modifier()로 곱해짐
+- **두 번째 보스 뒤엉킨 사냥꾼** (`mangled_hunter`, 맵 북서쪽 들판) — 물기·연속 베기(3타)·도약 덮치기·울부짖기(들개 2마리 소환), 50% 이하 광란 · 소재 뒤엉킨 개가죽·사냥꾼의 은장식(+ 들개 가죽) → 은빛 도축칼(무리 사냥)·들개가죽 사냥꾼 코트(사냥꾼의 감, 들개 귀 두건)
+- **보스 도트 생성기 2** (`tools/art/pixel_hunter.py`) — 두 발 보스용: 몸을 공·관 덩어리로 3D 배치 → 투영 + z버퍼 → 3~4단 셀 셰이딩, 칼은 평판, 잔상 별도. 결과를 mon_px.json에 종류 추가(다른 종류는 유지)
