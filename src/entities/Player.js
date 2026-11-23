@@ -491,14 +491,14 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (cmd.attack && this.tryAttack(0, cmd)) return;
     if (this.checkTerrainMoves(cmd)) return;
 
-    // 전력질주: 구르기 키를 꾹 누른 채 움직이면 (구르기가 끝난 뒤 이어짐). 기력 소모, 발소리 큼, 웅크리면 못 함
+    // 전력질주: Shift를 누른 채 움직이면 (휴대폰은 구르기 버튼 꾹). 기력 소모, 발소리 큼, 웅크림은 풀림
     const sp = this.data_.sprint;
-    const wantSprint = moving && cmd.rollHeld && !this.isSneaking && !this.sprintTired;
+    const wantSprint = moving && cmd.sprint && !this.isSneaking && !this.sprintTired;
     if (wantSprint && !this.stats.spendStamina(sp.staminaPerSec * this.dt / 1000)) {
       this.sprintTired = true;
       spawnFloatingLabel(this.scene, this.x, this.y - 30, '숨이 차다');
     }
-    if (this.sprintTired && (!cmd.rollHeld || this.stats.stamina >= sp.recoverAt)) this.sprintTired = false;
+    if (this.sprintTired && (!cmd.sprint || this.stats.stamina >= sp.recoverAt)) this.sprintTired = false;
     this.isSprinting = wantSprint && !this.sprintTired;
 
     // 목표 속도: 바라보는 반대쪽으로 움직이면(뒷걸음질) 느려짐, 웅크리면 느려짐
