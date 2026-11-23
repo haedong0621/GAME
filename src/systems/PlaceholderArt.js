@@ -63,6 +63,16 @@ export function createPlaceholderArt(scene, items, weapons) {
   const hex = (s) => window.Phaser.Display.Color.HexStringToColor(s).color;
   for (const [id, w] of Object.entries(weapons)) {
     if (!w.view) continue;
+    if (w.view.style === 'gauntlet') {
+      // 건틀릿 아이콘: 주먹 + 발톱 셋
+      g.clear();
+      g.fillStyle(hex(w.view.hiltColor)).fillRoundedRect(2, 6, 14, 12, 3);
+      g.fillStyle(0xffffff, 0.3).fillRect(4, 8, 8, 2);
+      g.fillStyle(hex(w.view.bladeColor));
+      for (const y of [7, 11, 15]) g.fillTriangle(16, y - 1, 16, y + 2, 25, y);
+      g.generateTexture(`blade-${id}`, 26, 22);
+      continue;
+    }
     const { bladeLength: L, bladeWidth: W, bladeColor, hiltColor } = w.view;
     const hilt = Math.round(L * 0.25) + 2;
     const width = hilt + L + 2, height = W + 6;

@@ -73,5 +73,65 @@
       {"name": "되베기", "from": 110, "to": -75, "windupMs": 110, "activeMs": 90, "recoveryMs": 300, "chainAfterMs": 70, "damage": 14, "staminaCost": 9, "lungeSpeed": 90, "hitDistance": 18, "hitRadius": 16, "shake": 0.002, "hitstopMs": 45, "lean": 7, "crouch": 1.0, "moveCancelAfterMs": 170},
       {"name": "내려찍기", "from": -165, "to": 20, "windupMs": 250, "activeMs": 110, "recoveryMs": 480, "chainAfterMs": 260, "damage": 27, "staminaCost": 15, "lungeSpeed": 170, "hitDistance": 20, "hitRadius": 19, "shake": 0.006, "hitstopMs": 100, "lean": 11, "crouch": 0.85, "moveCancelAfterMs": 360}
     ]
+  },
+
+  "spine_greatsword": {
+    "hands": "two",
+    "name": "늪짐승 등뼈 대검",
+    "type": "greatsword",
+    "description": "늪지 짐승의 등뼈판을 줄줄이 박아 넣은 거대한 톱날. 휘두를 때마다 늪물이 튄다.",
+    "moveSpeedMultiplier": 0.85,
+    "gatherPower": 2,
+    "view": {"bladeLength": 30, "bladeWidth": 7, "bladeColor": "#d6ccaa", "hiltColor": "#3a4529", "restAngle": 140, "style": "fang", "glowColor": "#9adf5a"},
+    "skills": ["venom_fang"],
+    "combo": [
+      {"name": "크게 휘두르기", "from": -135, "to": 100, "windupMs": 380, "activeMs": 150, "recoveryMs": 460, "chainAfterMs": 200, "damage": 38, "staminaCost": 18, "lungeSpeed": 60, "hitDistance": 22, "hitRadius": 23, "shake": 0.006, "hitstopMs": 110, "lean": 10, "crouch": 0.95, "moveCancelAfterMs": 320},
+      {"name": "내려찍기", "from": -170, "to": 15, "windupMs": 430, "activeMs": 130, "recoveryMs": 680, "chainAfterMs": 380, "damage": 61, "staminaCost": 24, "lungeSpeed": 120, "hitDistance": 24, "hitRadius": 25, "shake": 0.011, "hitstopMs": 170, "lean": 14, "crouch": 0.78, "moveCancelAfterMs": 520}
+    ]
+  },
+
+  "hunter_greatsword": {
+    "hands": "two",
+    "name": "사냥꾼의 처형검",
+    "type": "greatsword",
+    "description": "늑대인간의 목을 치던 은 덧댄 대검. 연타가 이어질수록 깊게 들어간다.",
+    "moveSpeedMultiplier": 0.85,
+    "gatherPower": 2,
+    "view": {"bladeLength": 29, "bladeWidth": 7, "bladeColor": "#c6ccd8", "hiltColor": "#462822", "restAngle": 140},
+    "skills": ["pack_frenzy"],
+    "combo": [
+      {"name": "크게 휘두르기", "from": -135, "to": 100, "windupMs": 380, "activeMs": 150, "recoveryMs": 460, "chainAfterMs": 200, "damage": 36, "staminaCost": 18, "lungeSpeed": 60, "hitDistance": 22, "hitRadius": 23, "shake": 0.006, "hitstopMs": 110, "lean": 10, "crouch": 0.95, "moveCancelAfterMs": 320},
+      {"name": "내려찍기", "from": -170, "to": 15, "windupMs": 430, "activeMs": 130, "recoveryMs": 680, "chainAfterMs": 380, "damage": 58, "staminaCost": 24, "lungeSpeed": 120, "hitDistance": 24, "hitRadius": 25, "shake": 0.011, "hitstopMs": 170, "lean": 14, "crouch": 0.78, "moveCancelAfterMs": 520}
+    ]
+  },
+
+  "swamp_claws": {
+    "hands": "two",
+    "name": "늪짐승 발톱 건틀릿",
+    "type": "fist",
+    "description": "늪지 짐승의 앞발톱을 손등에 박은 가죽 건틀릿. 할퀸 상처가 썩어 들어간다.",
+    "moveSpeedMultiplier": 1.05,
+    "view": {"style": "gauntlet", "bladeColor": "#e2d8b2", "hiltColor": "#404e2e"},
+    "skills": ["venom_fang"],
+    "combo": [
+      {"name": "잽", "from": -30, "to": 30, "windupMs": 90, "activeMs": 70, "recoveryMs": 200, "chainAfterMs": 50, "damage": 10, "staminaCost": 5, "lungeSpeed": 60, "hitDistance": 14, "hitRadius": 12, "shake": 0.001, "hitstopMs": 30, "lean": 4, "crouch": 1.0, "moveCancelAfterMs": 120},
+      {"name": "스트레이트", "from": -30, "to": 30, "windupMs": 100, "activeMs": 80, "recoveryMs": 220, "chainAfterMs": 60, "damage": 13, "staminaCost": 6, "lungeSpeed": 90, "hitDistance": 15, "hitRadius": 12, "shake": 0.002, "hitstopMs": 40, "lean": 6, "crouch": 1.0, "moveCancelAfterMs": 130},
+      {"name": "올려치기", "from": 60, "to": -60, "windupMs": 200, "activeMs": 100, "recoveryMs": 380, "chainAfterMs": 220, "damage": 26, "staminaCost": 10, "lungeSpeed": 140, "hitDistance": 15, "hitRadius": 14, "shake": 0.004, "hitstopMs": 80, "lean": 8, "crouch": 0.9, "moveCancelAfterMs": 300}
+    ]
+  },
+
+  "wolf_claws": {
+    "hands": "two",
+    "name": "늑대 발톱 건틀릿",
+    "type": "fist",
+    "description": "은판을 덧댄 건틀릿에 늑대 발톱을 달았다. 쉴 새 없이 몰아치는 손.",
+    "moveSpeedMultiplier": 1.05,
+    "view": {"style": "gauntlet", "bladeColor": "#ececf0", "hiltColor": "#969aa6"},
+    "skills": ["pack_frenzy"],
+    "combo": [
+      {"name": "잽", "from": -30, "to": 30, "windupMs": 90, "activeMs": 70, "recoveryMs": 200, "chainAfterMs": 50, "damage": 10, "staminaCost": 5, "lungeSpeed": 60, "hitDistance": 14, "hitRadius": 12, "shake": 0.001, "hitstopMs": 30, "lean": 4, "crouch": 1.0, "moveCancelAfterMs": 120},
+      {"name": "스트레이트", "from": -30, "to": 30, "windupMs": 100, "activeMs": 80, "recoveryMs": 220, "chainAfterMs": 60, "damage": 12, "staminaCost": 6, "lungeSpeed": 90, "hitDistance": 15, "hitRadius": 12, "shake": 0.002, "hitstopMs": 40, "lean": 6, "crouch": 1.0, "moveCancelAfterMs": 130},
+      {"name": "올려치기", "from": 60, "to": -60, "windupMs": 200, "activeMs": 100, "recoveryMs": 380, "chainAfterMs": 220, "damage": 24, "staminaCost": 10, "lungeSpeed": 140, "hitDistance": 15, "hitRadius": 14, "shake": 0.004, "hitstopMs": 80, "lean": 8, "crouch": 0.9, "moveCancelAfterMs": 300}
+    ]
   }
 }

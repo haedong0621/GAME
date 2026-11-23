@@ -445,6 +445,26 @@
    "class": "greatsword",
    "wpnB": "hero_wpnB_old_greatsword",
    "wpnF": "hero_wpnF_old_greatsword"
+  },
+  "spine_greatsword": {
+   "class": "greatsword",
+   "wpnB": "hero_wpnB_spine_greatsword",
+   "wpnF": "hero_wpnF_spine_greatsword"
+  },
+  "hunter_greatsword": {
+   "class": "greatsword",
+   "wpnB": "hero_wpnB_hunter_greatsword",
+   "wpnF": "hero_wpnF_hunter_greatsword"
+  },
+  "swamp_claws": {
+   "class": "fist",
+   "wpnB": "hero_wpnB_swamp_claws",
+   "wpnF": "hero_wpnF_swamp_claws"
+  },
+  "wolf_claws": {
+   "class": "fist",
+   "wpnB": "hero_wpnB_wolf_claws",
+   "wpnF": "hero_wpnF_wolf_claws"
   }
  }
 }

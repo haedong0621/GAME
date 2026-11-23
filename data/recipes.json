@@ -23,6 +23,52 @@
       ]
     },
     {
+      "id": "spine_greatsword",
+      "result": {
+        "kind": "weapon",
+        "id": "spine_greatsword"
+      },
+      "materials": [
+        {
+          "itemId": "beast_fang",
+          "amount": 2
+        },
+        {
+          "itemId": "beast_hide",
+          "amount": 1
+        },
+        {
+          "itemId": "swamp_spine_plate",
+          "amount": 1
+        },
+        {
+          "itemId": "wood",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "swamp_claws",
+      "result": {
+        "kind": "weapon",
+        "id": "swamp_claws"
+      },
+      "materials": [
+        {
+          "itemId": "beast_fang",
+          "amount": 2
+        },
+        {
+          "itemId": "beast_hide",
+          "amount": 1
+        },
+        {
+          "itemId": "swamp_spine_plate",
+          "amount": 1
+        }
+      ]
+    },
+    {
       "id": "hunter_cleaver",
       "result": {
         "kind": "weapon",
@@ -43,6 +89,52 @@
         },
         {
           "itemId": "stone",
+          "amount": 2
+        },
+        {
+          "itemId": "silver_wolf_fang",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "hunter_greatsword",
+      "result": {
+        "kind": "weapon",
+        "id": "hunter_greatsword"
+      },
+      "materials": [
+        {
+          "itemId": "hunter_silver",
+          "amount": 3
+        },
+        {
+          "itemId": "tangled_pelt",
+          "amount": 1
+        },
+        {
+          "itemId": "silver_wolf_fang",
+          "amount": 1
+        },
+        {
+          "itemId": "stone",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "wolf_claws",
+      "result": {
+        "kind": "weapon",
+        "id": "wolf_claws"
+      },
+      "materials": [
+        {
+          "itemId": "hunter_silver",
+          "amount": 1
+        },
+        {
+          "itemId": "tangled_pelt",
           "amount": 2
         },
         {

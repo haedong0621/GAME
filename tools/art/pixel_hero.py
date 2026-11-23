@@ -489,6 +489,11 @@ WEAPONS = {
  'fang_sword':     {'cls': 'sword',      'len': 14, 'w': 2, 'blade': (216, 204, 166), 'dark': (150, 140, 110), 'hilt': (58, 69, 41), 'guard': (42, 36, 32), 'fang': True, 'glow': (154, 223, 90)},
  'hunter_cleaver': {'cls': 'sword',      'len': 14, 'w': 3, 'blade': (200, 205, 216), 'dark': (118, 122, 134), 'hilt': (80, 56, 38), 'guard': (42, 36, 32), 'cleaver': True},
  'old_greatsword': {'cls': 'greatsword', 'len': 21, 'w': 3, 'blade': (143, 138, 128), 'dark': (96, 92, 86), 'hilt': (63, 42, 26), 'guard': (42, 36, 32)},
+ # 보스 무기 (종류별): 늪지 짐승 = 뼈·독, 뒤엉킨 사냥꾼 = 은·늑대
+ 'spine_greatsword':  {'cls': 'greatsword', 'len': 22, 'w': 4, 'blade': (214, 204, 170), 'dark': (140, 130, 104), 'hilt': (58, 69, 41), 'guard': (60, 72, 44), 'fang': True, 'spine': True, 'glow': (154, 223, 90)},
+ 'hunter_greatsword': {'cls': 'greatsword', 'len': 21, 'w': 4, 'blade': (198, 204, 216), 'dark': (112, 116, 130), 'hilt': (70, 40, 34), 'guard': (150, 154, 166), 'cleaver': True},
+ 'swamp_claws': {'cls': 'fist', 'gauntlet': True, 'plate': (64, 78, 46), 'plateL': (96, 112, 66), 'claw': (226, 216, 178), 'glow': (154, 223, 90)},
+ 'wolf_claws':  {'cls': 'fist', 'gauntlet': True, 'plate': (150, 154, 166), 'plateL': (206, 210, 220), 'claw': (236, 236, 240), 'fur': (138, 102, 68)},
 }
 
 # ---------------- 뼈대 ----------------
@@ -733,6 +738,11 @@ def draw_blade(img, V, hand_s, bdir, wd, smear=False, t=1.0):
         for i in range(3, L - 2, 3):
             plot(img, base[0] + vec[0] * i + px * 1.6, base[1] + vec[1] * i + py * 1.6, wd['blade'])
         line(img, base[0] - px, base[1] - py, tip[0] - px, tip[1] - py, wd['glow'], 1)
+    if wd.get('spine'):
+        # 등뼈 대검: 칼등에 뼈판 돌기
+        for i in range(4, L - 2, 4):
+            bx, by = base[0] + vec[0] * i + px * 2.2, base[1] + vec[1] * i + py * 2.2
+            plot(img, bx, by, (236, 228, 200)); plot(img, bx + px, by + py, (180, 170, 140))
     if wd.get('cleaver'):
         # 도축칼: 등쪽 톱니 + 말라붙은 핏자국
         for i in range(3, L - 1, 2):
@@ -796,7 +806,7 @@ def draw_layers(outfit_key, weapon_key, view, pose):
     """부위별 층 그림 (같은 좌표계). 갑옷 부위(머리·몸·팔·다리)와 무기를 따로 갈아 끼울 수 있게"""
     o, lc = OUTFITS[outfit_key], LIMB[outfit_key]
     wd = WEAPONS.get(weapon_key)
-    if wd is None: pose = {**pose, 'weapon': False, 'smear': None}
+    if wd is None or wd.get('gauntlet'): pose = {**pose, 'weapon': False, 'smear': None}   # 맨손·건틀릿은 칼 없음
     V = View(view, pose)
     J = rig(pose)
     imgs = {k: Image.new('RGBA', (F, F), (0, 0, 0, 0)) for k in LAYERS}
@@ -848,7 +858,23 @@ def draw_layers(outfit_key, weapon_key, view, pose):
         draw_blade(img, V, hand_s, blade_dir(pose['w']), wd)
 
     leg('L'); leg('R')
-    armR_behind = arm('R'); arm('L')
+    armR_behind = arm('R'); armL_behind = arm('L')
+    if wd and wd.get('gauntlet'):
+        # 건틀릿: 두 손에 철판 주먹 + 앞으로 뻗은 발톱 (팔이 몸 뒤면 뒤 층에)
+        for side, behind in (('R', armR_behind), ('L', armL_behind)):
+            hd, el = S['hand' + side], S['elb' + side]
+            dx, dy = hd[0] - el[0], hd[1] - el[1]; n = math.hypot(dx, dy) or 1; dx, dy = dx / n, dy / n
+            tgt = imgs['wpnB' if behind else 'wpnF']
+            k = 0.8 if behind else 1.0
+            sc = lambda c: tuple(int(v * k) for v in c)
+            line(tgt, hd[0] - dx, hd[1] - dy, hd[0] + dx * 0.5, hd[1] + dy * 0.5, sc(wd['plate']), 3)
+            plot(tgt, hd[0] - dx * 0.5 - 1, hd[1] - dy * 0.5 - 1, sc(wd['plateL']))
+            if wd.get('fur'): line(tgt, el[0] + dx * 1.5, el[1] + dy * 1.5, el[0] + dx * 2.5, el[1] + dy * 2.5, sc(wd['fur']), 3)
+            px_, py_ = -dy, dx
+            for off in (-1.2, 0, 1.2):
+                bx, by = hd[0] + dx * 1.5 + px_ * off, hd[1] + dy * 1.5 + py_ * off
+                line(tgt, bx, by, bx + dx * 3, by + dy * 3, sc(wd['claw']), 1)
+            if wd.get('glow'): plot(tgt, hd[0] + dx * 4.5, hd[1] + dy * 4.5, wd['glow'])
     # 칼은 손이 몸 뒤에 있거나, 칼날이 위(먼 쪽)로 향하면 몸 뒤에
     bd = blade_dir(pose['w']) if wd else (0, 1, 0)
     blade_far = V.ground(bd)[1] < -0.35 or (bd[2] > 0.5 and V.depth(J['handR']) < chest_d + 0.5)
@@ -972,7 +998,8 @@ def finish(img, shadow=True):
     return sh
 
 PARTS = {'head': ['head'], 'body': ['body'], 'arms': ['armsB', 'armsF'], 'legs': ['legs']}
-CLASS_WEAPONS = {'sword': ['rusty_sword', 'fang_sword', 'hunter_cleaver'], 'greatsword': ['old_greatsword'], 'fist': []}
+CLASS_WEAPONS = {'sword': ['rusty_sword', 'fang_sword', 'hunter_cleaver'], 'greatsword': ['old_greatsword', 'spine_greatsword', 'hunter_greatsword'],
+                 'fist': ['swamp_claws', 'wolf_claws']}
 
 def build():
     """부위별 층 시트: hero_<층>_<갑옷>_<무기종류>.png (머리·몸·팔 앞뒤·다리) + 무기 hero_wpn<B|F>_<무기>.png
