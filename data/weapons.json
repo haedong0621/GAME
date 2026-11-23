@@ -1,7 +1,22 @@
 {
-  "_설명": "combo = 연속기 목록. 각 타: from/to = 휘두르는 시작·끝 각도(도, 바라보는 방향 기준, +는 시계방향), windup/active/recovery = 예비동작/판정/후딜(ms), chainAfterMs = 후딜 시작 후 이 시간이 지나면 다음 타·구르기로 이어갈 수 있음, hitstopMs = 맞힌 순간 멈칫, lean = 몸 기울기(도), crouch = 웅크림(1=그대로), moveCancelAfterMs = 후딜 시작 후 이 시간이 지나면 이동 입력으로 후딜을 끊고 바로 움직일 수 있음",
+  "_설명": "hands = one(한손: 왼손·오른손 아무 데나) | two(양손: 오른손에 들고 왼손을 차지). unarmed = 맨손(무기를 안 들었을 때, 가질 수 없음). combo = 연속기 목록. 각 타: from/to = 휘두르는 시작·끝 각도(도, 바라보는 방향 기준, +는 시계방향), windup/active/recovery = 예비동작/판정/후딜(ms), chainAfterMs = 후딜 시작 후 이 시간이 지나면 다음 타·구르기로 이어갈 수 있음, hitstopMs = 맞힌 순간 멈칫, lean = 몸 기울기(도), crouch = 웅크림(1=그대로), moveCancelAfterMs = 후딜 시작 후 이 시간이 지나면 이동 입력으로 후딜을 끊고 바로 움직일 수 있음",
+
+  "unarmed": {
+    "hands": "none",
+    "name": "맨손",
+    "type": "fist",
+    "description": "무기 없이 주먹으로. 약하지만 빠르다.",
+    "moveSpeedMultiplier": 1.05,
+    "skills": [],
+    "combo": [
+      {"name": "잽", "from": -30, "to": 30, "windupMs": 90, "activeMs": 70, "recoveryMs": 200, "chainAfterMs": 50, "damage": 4, "staminaCost": 5, "lungeSpeed": 60, "hitDistance": 14, "hitRadius": 12, "shake": 0.001, "hitstopMs": 30, "lean": 4, "crouch": 1.0, "moveCancelAfterMs": 120},
+      {"name": "스트레이트", "from": -30, "to": 30, "windupMs": 100, "activeMs": 80, "recoveryMs": 220, "chainAfterMs": 60, "damage": 5, "staminaCost": 6, "lungeSpeed": 90, "hitDistance": 15, "hitRadius": 12, "shake": 0.002, "hitstopMs": 40, "lean": 6, "crouch": 1.0, "moveCancelAfterMs": 130},
+      {"name": "올려치기", "from": 60, "to": -60, "windupMs": 200, "activeMs": 100, "recoveryMs": 380, "chainAfterMs": 220, "damage": 10, "staminaCost": 10, "lungeSpeed": 140, "hitDistance": 15, "hitRadius": 14, "shake": 0.004, "hitstopMs": 80, "lean": 8, "crouch": 0.9, "moveCancelAfterMs": 300}
+    ]
+  },
 
   "rusty_sword": {
+    "hands": "one",
     "name": "녹슨 한손검",
     "type": "sword",
     "description": "어디서 주웠는지 모를 녹슨 검. 없는 것보단 낫다.",
@@ -16,6 +31,7 @@
   },
 
   "old_greatsword": {
+    "hands": "two",
     "name": "낡은 대검",
     "type": "greatsword",
     "gatherPower": 2,
@@ -30,6 +46,7 @@
   },
 
   "fang_sword": {
+    "hands": "one",
     "name": "늪짐승 송곳니 검",
     "type": "sword",
     "description": "늪지 짐승의 송곳니를 갈아 만든 톱날 검. 베인 상처가 썩어 들어간다.",
@@ -44,6 +61,7 @@
   },
 
   "hunter_cleaver": {
+    "hands": "one",
     "name": "사냥꾼의 은빛 도축칼",
     "type": "sword",
     "description": "뒤엉킨 사냥꾼이 쥐고 있던 넓적한 칼. 들개를 베던 톱니가 등에 나 있다. 연타가 이어질수록 깊게 파고든다.",

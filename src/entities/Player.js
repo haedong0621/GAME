@@ -3,6 +3,7 @@ import { Stats } from '../systems/Stats.js';
 import { findHits } from '../systems/Combat.js';
 import { spawnDamageNumber, spawnSlash, spawnFloatingLabel, spawnDust, spawnAfterimage, spawnBigLabel } from '../systems/Effects.js';
 import { WeaponView } from './WeaponView.js';
+import { Equipment } from '../systems/Equipment.js';
 
 /** 플레이어 상태 이름 (Godot에서는 enum State) */
 const State = {
@@ -40,7 +41,7 @@ const unit = (x, y) => { const l = Math.hypot(x, y); return l > 0 ? { x: x / l, 
 export class Player extends window.Phaser.Physics.Arcade.Sprite {
   /**
    * @param {object} data data/player.json
-   * @param {{weapons:object, armors:object, skills:object}} db data/weapons.json, armors.json, skills.json
+   * @param {{weapons:object, gear:object, skills:object}} db data/weapons.json, gear.json, skills.json
    * @param {() => Array} getTargets 공격 가능한 대상 목록
    */
   constructor(scene, x, y, data, db, getTargets) {
@@ -50,10 +51,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
     this.data_ = data;
     this.weapons = db.weapons;
-    this.armors = db.armors;
+    this.gear = db.gear;
     this.skillDb = db.skills;
-    this.ownedWeapons = [...data.weaponSlots]; // 가진 무기 (제작하면 늘어남)
-    this.ownedArmors = [data.startArmor];
+    /** 장비 8칸·가진 장비·무기 단축칸 (systems/Equipment.js) */
+    this.equipment = new Equipment({ weapons: db.weapons, gear: db.gear });
     this.getTargets = getTargets;
     this.stats = new Stats(data);
 
@@ -95,8 +96,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
     this.weaponView = new WeaponView(scene);
     this.fx = scene.add.graphics(); // 바라보는 방향 표시 등
-    this.equip(0, false);
-    this.equipArmor(data.startArmor, false);
+    this.resetGear();
 
     applyYSort(this);
   }
@@ -179,47 +179,72 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   // ---------- 무기 ----------
-  /** @param {number} slot 가진 무기 목록(ownedWeapons)의 번호 */
-  equip(slot, announce = true) {
-    const id = this.ownedWeapons[slot];
-    if (!id || !this.weapons[id]) return;
-    this.weaponSlot = slot;
-    this.weaponId = id;
-    this.weapon = this.weapons[id];
-    this.comboIndex = 0;
-    this.weaponView.setWeapon(id);
-    if (announce) spawnFloatingLabel(this.scene, this.x, this.y - 34, this.weapon.name);
+  // ---------- 장비 ----------
+  /** 처음 장비: 시작 무기(단축칸 1·2) + 누더기 옷 */
+  resetGear() {
+    const e = this.equipment;
+    e.owned = []; e.quick = [null, null, null];
+    for (const k of Object.keys(e.slots)) e.slots[k] = null;
+    this.data_.weaponSlots.forEach((id, i) => { e.obtain(id); if (i < 3) e.quick[i] = id; });
+    for (const id of this.data_.startGear ?? []) { e.obtain(id); e.equip(id); }
+    if (e.quick[0]) e.equip(e.quick[0], 'right');
+    this.refreshEquipment(false);
   }
 
-  /** 새 무기를 얻는다 (제작 등). equipNow면 바로 든다. */
-  learnWeapon(id, equipNow) {
-    if (!this.ownedWeapons.includes(id)) this.ownedWeapons.push(id);
-    if (equipNow) this.equip(this.ownedWeapons.indexOf(id));
-  }
-
-  learnArmor(id, equipNow) {
-    if (!this.ownedArmors.includes(id)) this.ownedArmors.push(id);
-    if (equipNow) this.equipArmor(id);
-  }
-
-  /** 갑옷 착용: 겉모습(텍스처)과 최대 체력이 바뀐다 */
-  equipArmor(id, announce = true) {
-    const armor = this.armors[id];
-    if (!armor) return;
+  /** 장비가 바뀐 뒤: 주무기·겉모습·최대 체력 다시 계산 */
+  refreshEquipment(announce = true) {
+    const e = this.equipment;
+    const prevWeapon = this.weaponId;
+    this.weaponId = e.mainWeapon();
+    this.weapon = this.weapons[this.weaponId];
+    this.look = e.look();
+    if (prevWeapon !== this.weaponId) {
+      this.comboIndex = 0;
+      if (this.weapon.view) this.weaponView.setWeapon(this.weaponId);
+      if (announce) spawnFloatingLabel(this.scene, this.x, this.y - 34, this.weapon.name);
+    }
     const oldMax = this.stats.maxHp;
-    this.armorId = id;
-    this.armor = armor;
-    if (this.heroPx) { /* 도트 주인공: 시트는 updateHeroPx에서 갑옷·무기에 맞춰 고름 */ }
-    else if (!this.hero3d) this.visual.setTexture(armor.texture); // 3D 시험 캐릭터는 갑옷 겉모습 미적용
-    this.stats.maxHp = this.data_.maxHp + (armor.maxHpBonus ?? 0);
-    this.stats.hp = Math.max(1, Math.min(this.stats.maxHp, this.stats.hp + (this.stats.maxHp - oldMax)));
-    if (announce) spawnFloatingLabel(this.scene, this.x, this.y - 34, armor.name);
+    this.stats.maxHp = this.data_.maxHp + e.maxHpBonus();
+    this.stats.hp = Math.max(1, Math.min(this.stats.maxHp, this.stats.hp + Math.max(0, this.stats.maxHp - oldMax)));
   }
 
-  /** 지금 장비(무기+갑옷)가 주는 스킬 목록 */
+  /** 무기 단축칸(1·2·3)의 무기를 오른손에. 'next'면 다음 칸 */
+  equipQuick(slot) {
+    const e = this.equipment;
+    if (slot === 'next') {
+      const cur = e.quick.indexOf(e.slots.right);
+      for (let k = 1; k <= 3; k++) { const i = (cur + k + 3) % 3; if (e.quick[i]) { slot = i; break; } }
+      if (slot === 'next') return;
+    }
+    const id = e.quick[slot];
+    if (!id || e.slots.right === id) return;
+    e.equip(id, 'right');
+    this.refreshEquipment();
+  }
+
+  /** 장비 칸에 장착 (장비창에서). slot 없으면 알맞은 칸 */
+  equipItem(id, slot = null) {
+    if (!this.equipment.equip(id, slot)) return false;
+    this.refreshEquipment();
+    return true;
+  }
+
+  unequipSlot(slot) {
+    this.equipment.unequip(slot);
+    this.refreshEquipment();
+  }
+
+  /** 새 장비를 얻는다 (제작 등). equipNow면 바로 장착, 무기는 빈 단축칸에도 넣음 */
+  obtain(id, equipNow) {
+    const e = this.equipment;
+    e.obtain(id);
+    if (e.isWeapon(id) && !e.quick.includes(id)) { const i = e.quick.indexOf(null); if (i >= 0) e.quick[i] = id; }
+    if (equipNow) this.equipItem(id, e.isWeapon(id) ? 'right' : null);
+  }
+
+  /** 지금 장비(주무기 + 방어구·장신구 + 세트 보너스)가 주는 스킬 목록 */
   get skills() {
-    const ids = [...(this.weapon?.skills ?? []), ...(this.armor?.skills ?? [])];
-    return ids.map((id) => ({ id, ...this.skillDb[id] })).filter((s) => s.name);
+    return this.equipment.skillIds().map((id) => ({ id, ...this.skillDb[id] })).filter((s) => s.name);
   }
 
   /** 패시브 스킬 배율의 곱 (예: knockbackMultiplier) */
@@ -481,10 +506,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (want) this.turnTo(Math.atan2(want.y, want.x), this.data_.turnSpeedDegPerSec);
 
     if (cmd.switchWeapon !== null && cmd.switchWeapon !== undefined) {
-      const slot = cmd.switchWeapon === 'next'
-        ? (this.weaponSlot + 1) % this.ownedWeapons.length
-        : cmd.switchWeapon;
-      if (slot !== this.weaponSlot) this.equip(slot);
+      this.equipQuick(cmd.switchWeapon);
     }
 
     if (cmd.roll && this.tryRoll(cmd)) return;
@@ -494,7 +516,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     // 전력질주: Shift를 누른 채 움직이면 (휴대폰은 구르기 버튼 꾹). 기력 소모, 발소리 큼, 웅크림은 풀림
     const sp = this.data_.sprint;
     const wantSprint = moving && cmd.sprint && !this.isSneaking && !this.sprintTired;
-    if (wantSprint && !this.stats.spendStamina(sp.staminaPerSec * this.dt / 1000)) {
+    if (wantSprint && !this.stats.spendStamina(sp.staminaPerSec * this.modifier('sprintStaminaMultiplier') * this.dt / 1000)) {
       this.sprintTired = true;
       spawnFloatingLabel(this.scene, this.x, this.y - 30, '숨이 차다');
     }
@@ -801,10 +823,9 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const meta = this.heroPx;
     const cls = this.weapon && meta.weapons[this.weaponId] ? meta.weapons[this.weaponId].class : 'fist';
     const look = this.look ?? {};
-    const outfit = this.armor?.outfit ?? 'rags';
     const keys = {};
     for (const part of ['head', 'body', 'arms', 'legs']) {
-      const byOutfit = meta.parts[part][look[part] ?? outfit] ?? meta.parts[part].rags;
+      const byOutfit = meta.parts[part][look[part] ?? 'rags'] ?? meta.parts[part].rags;
       Object.assign(keys, byOutfit[cls]);
     }
     if (cls !== 'fist') { keys.wpnB = meta.weapons[this.weaponId].wpnB; keys.wpnF = meta.weapons[this.weaponId].wpnF; }

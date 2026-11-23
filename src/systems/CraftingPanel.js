@@ -4,6 +4,7 @@
  * 규칙(재료 확인·소모)은 Crafting.js, 여기는 보여 주기와 입력만.
  * Godot: CraftingPanel.tscn (Control) — ItemList + RichTextLabel + Button.
  */
+import { SLOT_NAMES } from './Equipment.js';
 const W = 680, H = 400;
 const COL = { bg: 0x16130f, panel: 0x241e17, line: 0x5a4a32, sel: 0x3e3222, ok: '#9adf5a', no: '#d06050', text: '#efe4cc', dim: '#a89a80', gold: '#e8c860' };
 
@@ -92,19 +93,20 @@ export class CraftingPanel {
     const r = this.recipe;
     const info = crafting.resultInfo(r);
     const owned = crafting.isOwned(r, player);
-    const lines = [`${r.result.kind === 'weapon' ? '무기' : '갑옷'} · ${info.name}`, info.description, ''];
+    const kindName = r.result.kind === 'weapon' ? (info.hands === 'two' ? '양손 무기' : '한손 무기') : (SLOT_NAMES[info.slot] ?? '장비');
+    const lines = [`${kindName} · ${info.name}`, info.description, ''];
+    if (info.maxHpBonus) lines.push(`최대 체력 +${info.maxHpBonus}`);
+    if (info.set) { const st = crafting.gear._sets?.[info.set]; if (st) lines.push(`세트: ${st.name} — ${st.bonuses.map((b) => `${b.pieces}부위: ${b.skills.map((id) => skills[id]?.name).join(', ')}`).join(' / ')}`); }
     if (r.result.kind === 'weapon') {
       lines.push(`콤보 데미지: ${info.combo.map((m) => m.damage).join(' / ')}`);
       lines.push(`  (지금 든 ${player.weapon.name}: ${player.weapon.combo.map((m) => m.damage).join(' / ')})`);
-    } else {
-      lines.push(`최대 체력 +${info.maxHpBonus ?? 0}`);
     }
     for (const sid of info.skills ?? []) {
       const s = skills[sid];
       if (s) lines.push(`스킬 「${s.name}」 — ${s.description}`);
     }
     if (owned) {
-      lines.push('', '✔ 이미 가지고 있어요. (무기는 1·2·3 / Q로 바꿔 들기)');
+      lines.push('', '✔ 이미 가지고 있어요. (I: 가방·장비창에서 장착 / 무기는 1·2·3 / Q)');
     } else {
       lines.push('', '필요한 재료');
       for (const m of r.materials) {

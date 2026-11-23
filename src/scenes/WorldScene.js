@@ -157,7 +157,7 @@ export class WorldScene extends window.Phaser.Scene {
     this.inputSystem = new InputSystem(this, () => this.registry.get('touch'));
     this.registry.set('inputSystem', this.inputSystem); // 입력 진단 화면용
     this.recorder = new FrameRecorder(this); // F8: 직전 10초 기록 저장
-    const db = { weapons: this.registry.get('weapons'), armors: this.registry.get('armors'), skills: this.registry.get('skills') };
+    const db = { weapons: this.registry.get('weapons'), gear: this.registry.get('gear'), skills: this.registry.get('skills') };
     this.player = new Player(this, spawn.x, spawn.y, playerData, db, () => this.monsters);
     this.player.getGatherTargets = () => this.gatherables;
     this.player.terrain = this.terrain; // 뛰어내리기·덩굴 오르기 판단용 // 칼로 나무·바위를 칠 수 있음 (조준·락온 대상은 아님)
@@ -230,14 +230,9 @@ export class WorldScene extends window.Phaser.Scene {
     const p = this.player;
     const sp = save.player ?? {};
     if (Number.isFinite(sp.x) && Number.isFinite(sp.y)) p.body.reset(sp.x, sp.y);
-    const weapons = this.registry.get('weapons'), armors = this.registry.get('armors');
-    const ownedW = (sp.ownedWeapons ?? []).filter((id) => weapons[id]?.combo);
-    if (ownedW.length) p.ownedWeapons = ownedW;
-    const ownedA = (sp.ownedArmors ?? []).filter((id) => armors[id]);
-    if (ownedA.length) p.ownedArmors = ownedA;
-    const wi = p.ownedWeapons.indexOf(sp.weapon);
-    p.equip(wi >= 0 ? wi : 0, false);
-    p.equipArmor(armors[sp.armor] ? sp.armor : p.ownedArmors[0], false);
+    if (sp.equipment) p.equipment.load(sp.equipment);
+    else this.migrateOldGear(sp); // 예전 저장(무기 목록 + 갑옷 한 벌)
+    p.refreshEquipment(false);
     p.stats.hp = p.stats.maxHp;
     const inv = this.registry.get('inventory');
     for (const [id, n] of save.inventory ?? []) if (this.registry.get('items').has(id)) inv.add(id, n);
@@ -381,7 +376,9 @@ export class WorldScene extends window.Phaser.Scene {
     inv.add('wood', 2);
     inv.add('tangled_pelt', 4);
     inv.add('hunter_silver', 2);
-    inv.add('hound_pelt', 3);
+    inv.add('hound_pelt', 6);
+    inv.add('beast_hide', 6);
+    inv.add('stone', 2);
     this.banner('재료 받음', '#9adf5a');
   }
 
@@ -399,12 +396,20 @@ export class WorldScene extends window.Phaser.Scene {
     this.newGame();
   }
 
+  /** 예전 저장 형식 → 부위별 장비 (갑옷 한 벌은 같은 세트 네 부위로) */
+  migrateOldGear(sp) {
+    const e = this.player.equipment;
+    const OLD = { swamp_hide_armor: ['swamp_hood', 'swamp_hide_armor', 'swamp_bracers', 'swamp_greaves'],
+                  hunter_coat: ['hunter_hood', 'hunter_coat', 'hunter_gloves', 'hunter_boots'] };
+    for (const id of sp.ownedWeapons ?? []) if (e.isWeapon(id)) { e.obtain(id); const i = e.quick.indexOf(null); if (i >= 0 && !e.quick.includes(id)) e.quick[i] = id; }
+    for (const a of sp.ownedArmors ?? []) for (const id of OLD[a] ?? []) e.obtain(id);
+    if (sp.weapon && e.has(sp.weapon)) e.equip(sp.weapon, 'right');
+    for (const id of OLD[sp.armor] ?? []) e.equip(id);
+  }
+
   devResetGear() {
     const p = this.player;
-    p.ownedWeapons = [...p.data_.weaponSlots];
-    p.ownedArmors = [p.data_.startArmor];
-    p.equip(0, false);
-    p.equipArmor(p.data_.startArmor, false);
+    p.resetGear();
     this.banner('장비 초기화', '#9adf5a');
   }
 

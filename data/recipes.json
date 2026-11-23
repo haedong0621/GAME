@@ -1,5 +1,5 @@
 {
-  "_설명": "제작대에서 만들 수 있는 것. result.kind = weapon | armor, materials = 필요한 재료와 개수",
+  "_설명": "제작대에서 만들 수 있는 것. result.kind = weapon | gear(방어구·장신구), materials = 필요한 재료와 개수",
   "recipes": [
     {
       "id": "fang_sword",
@@ -15,23 +15,6 @@
         {
           "itemId": "wood",
           "amount": 2
-        }
-      ]
-    },
-    {
-      "id": "swamp_hide_armor",
-      "result": {
-        "kind": "armor",
-        "id": "swamp_hide_armor"
-      },
-      "materials": [
-        {
-          "itemId": "beast_hide",
-          "amount": 4
-        },
-        {
-          "itemId": "beast_fang",
-          "amount": 1
         }
       ]
     },
@@ -61,19 +44,164 @@
       ]
     },
     {
+      "id": "swamp_hood",
+      "result": {
+        "kind": "gear",
+        "id": "swamp_hood"
+      },
+      "materials": [
+        {
+          "itemId": "beast_hide",
+          "amount": 1
+        },
+        {
+          "itemId": "beast_fang",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "swamp_hide_armor",
+      "result": {
+        "kind": "gear",
+        "id": "swamp_hide_armor"
+      },
+      "materials": [
+        {
+          "itemId": "beast_hide",
+          "amount": 3
+        }
+      ]
+    },
+    {
+      "id": "swamp_bracers",
+      "result": {
+        "kind": "gear",
+        "id": "swamp_bracers"
+      },
+      "materials": [
+        {
+          "itemId": "beast_hide",
+          "amount": 1
+        },
+        {
+          "itemId": "wood",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "swamp_greaves",
+      "result": {
+        "kind": "gear",
+        "id": "swamp_greaves"
+      },
+      "materials": [
+        {
+          "itemId": "beast_hide",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "hunter_hood",
+      "result": {
+        "kind": "gear",
+        "id": "hunter_hood"
+      },
+      "materials": [
+        {
+          "itemId": "tangled_pelt",
+          "amount": 1
+        },
+        {
+          "itemId": "hound_pelt",
+          "amount": 1
+        }
+      ]
+    },
+    {
       "id": "hunter_coat",
       "result": {
-        "kind": "armor",
+        "kind": "gear",
         "id": "hunter_coat"
       },
       "materials": [
         {
           "itemId": "tangled_pelt",
-          "amount": 3
+          "amount": 2
         },
         {
           "itemId": "hound_pelt",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "hunter_gloves",
+      "result": {
+        "kind": "gear",
+        "id": "hunter_gloves"
+      },
+      "materials": [
+        {
+          "itemId": "tangled_pelt",
+          "amount": 1
+        },
+        {
+          "itemId": "hunter_silver",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "hunter_boots",
+      "result": {
+        "kind": "gear",
+        "id": "hunter_boots"
+      },
+      "materials": [
+        {
+          "itemId": "hound_pelt",
+          "amount": 2
+        },
+        {
+          "itemId": "tangled_pelt",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "hound_fang_necklace",
+      "result": {
+        "kind": "gear",
+        "id": "hound_fang_necklace"
+      },
+      "materials": [
+        {
+          "itemId": "hound_pelt",
           "amount": 3
+        },
+        {
+          "itemId": "wood",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "silver_ring",
+      "result": {
+        "kind": "gear",
+        "id": "silver_ring"
+      },
+      "materials": [
+        {
+          "itemId": "hunter_silver",
+          "amount": 1
+        },
+        {
+          "itemId": "stone",
+          "amount": 2
         }
       ]
     }

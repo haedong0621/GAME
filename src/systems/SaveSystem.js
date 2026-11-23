@@ -123,10 +123,8 @@ export const SaveSystem = {
       player: {
         x: Math.round(player.x),
         y: Math.round(player.y),
-        weapon: player.weaponId,
-        ownedWeapons: [...player.ownedWeapons],
-        armor: player.armorId,
-        ownedArmors: [...player.ownedArmors],
+        weapon: player.weaponId,                  // 불러오기 화면 설명용
+        equipment: player.equipment.toJSON(),     // 가진 장비·장착 칸·무기 단축칸
       },
       inventory: inventory.entries(),
       world: {

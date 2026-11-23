@@ -18,7 +18,7 @@ export class BootScene extends window.Phaser.Scene {
     this.load.json('player', PATHS.player);
     this.load.json('weapons', PATHS.weapons);
     this.load.json('monsters', PATHS.monsters);
-    this.load.json('armors', PATHS.armors);
+    this.load.json('gear', PATHS.gear);
     this.load.json('skills', PATHS.skills);
     this.load.json('recipes', PATHS.recipes);
     this.load.json('gatherables', PATHS.gatherables);
@@ -70,11 +70,11 @@ export class BootScene extends window.Phaser.Scene {
     this.registry.set('playerData', this.cache.json.get('player'));
     this.registry.set('weapons', this.cache.json.get('weapons'));
     this.registry.set('monsters', this.cache.json.get('monsters'));
-    this.registry.set('armors', this.cache.json.get('armors'));
+    this.registry.set('gear', this.cache.json.get('gear'));
     this.registry.set('skills', this.cache.json.get('skills'));
     this.registry.set('gatherables', this.cache.json.get('gatherables'));
     this.registry.set('regionsData', this.cache.json.get('regions'));
-    this.registry.set('crafting', new Crafting(this.cache.json.get('recipes'), this.cache.json.get('weapons'), this.cache.json.get('armors')));
+    this.registry.set('crafting', new Crafting(this.cache.json.get('recipes'), this.cache.json.get('weapons'), this.cache.json.get('gear')));
 
     // 알림용 값은 미리 만들어 둔다: Phaser registry는 "처음" 저장할 때는 changedata 이벤트를 보내지 않음
     this.registry.set('banner', null);

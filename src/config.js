@@ -34,7 +34,7 @@ export const PATHS = {
   player: 'data/player.json',
   weapons: 'data/weapons.json',
   monsters: 'data/monsters.json',
-  armors: 'data/armors.json',
+  gear: 'data/gear.json',
   skills: 'data/skills.json',
   recipes: 'data/recipes.json',
   gatherables: 'data/gatherables.json',

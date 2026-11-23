@@ -121,7 +121,9 @@ export class UIScene extends window.Phaser.Scene {
     const attacking = player.stateName !== 'free' && player.stateName !== 'roll';
     const step = attacking ? `  ${player.comboIndex + 1}/${w.combo.length} ${player.currentMove.name}` : '';
     this.weaponText.setText(`무기: ${w.name}${step}`);
-    this.armorText.setText(`갑옷: ${player.armor.name}`);
+    const worn = player.equipment.wornGear().filter((id) => !id.startsWith('rags_')).length;
+    const sets = player.equipment.setStatus().map((s) => `${s.name} ${s.pieces}부위`);
+    this.armorText.setText(`방어구: ${worn}개${sets.length ? ` · ${sets.join(', ')}` : ''}`);
     const skills = player.skills.map((sk) => sk.name);
     this.skillText.setText(skills.length ? `스킬: ${skills.join(', ')}` : '');
 

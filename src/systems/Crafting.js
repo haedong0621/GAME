@@ -6,24 +6,23 @@ export class Crafting {
   /**
    * @param {{recipes: Array}} recipesJson data/recipes.json
    * @param {object} weapons data/weapons.json
-   * @param {object} armors data/armors.json
+   * @param {object} gear data/gear.json (방어구·장신구)
    */
-  constructor(recipesJson, weapons, armors) {
+  constructor(recipesJson, weapons, gear) {
     this.recipes = recipesJson.recipes;
     this.weapons = weapons;
-    this.armors = armors;
+    this.gear = gear;
   }
 
   /** 결과물 정보 (이름, 설명, 스킬 id 목록) */
   resultInfo(recipe) {
-    const src = recipe.result.kind === 'weapon' ? this.weapons : this.armors;
+    const src = recipe.result.kind === 'weapon' ? this.weapons : this.gear;
     return src[recipe.result.id];
   }
 
   /** 이미 가지고 있는가 */
   isOwned(recipe, player) {
-    const { kind, id } = recipe.result;
-    return kind === 'weapon' ? player.ownedWeapons.includes(id) : player.ownedArmors.includes(id);
+    return player.equipment.has(recipe.result.id);
   }
 
   canCraft(recipe, inventory, player) {
@@ -35,9 +34,7 @@ export class Crafting {
   craft(recipe, inventory, player) {
     if (!this.canCraft(recipe, inventory, player)) return false;
     for (const m of recipe.materials) inventory.remove(m.itemId, m.amount);
-    const { kind, id } = recipe.result;
-    if (kind === 'weapon') player.learnWeapon(id, true);
-    else player.learnArmor(id, true);
+    player.obtain(recipe.result.id, true);
     return true;
   }
 }

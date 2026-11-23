@@ -31,7 +31,6 @@
   "autoAimRange": 110,
   "lockOnRange": 260,
   "reverseAccelMultiplier": 1.8,
-  "startArmor": "rags",
   "stealth": {
     "sneakSpeedMultiplier": 0.45,
     "noise": {
@@ -84,5 +83,9 @@
     "staminaPerSec": 18,
     "recoverAt": 30,
     "turnDegPerSec": 540
-  }
+  },
+  "startGear": [
+    "rags_shirt",
+    "rags_pants"
+  ]
 }

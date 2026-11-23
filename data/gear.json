@@ -1,0 +1,120 @@
+{
+ "_설명": "방어구·장신구. slot = head(머리) | body(몸) | arms(팔) | legs(다리) | ring(반지) | necklace(목걸이). outfit = 겉모습 층(머리·몸·팔·다리 부위 그림, tools/art/pixel_hero.py의 OUTFITS). set = 세트 이름(_sets의 부위 수 보너스). 빈 칸은 기본 모습(누더기)으로 보임",
+ "_sets": {
+  "swamp": {
+   "name": "늪지 짐승",
+   "bonuses": [
+    {
+     "pieces": 2,
+     "skills": [
+      "swamp_toughness"
+     ]
+    }
+   ]
+  },
+  "hunter": {
+   "name": "뒤엉킨 사냥꾼",
+   "bonuses": [
+    {
+     "pieces": 2,
+     "skills": [
+      "hunter_instinct"
+     ]
+    }
+   ]
+  }
+ },
+ "rags_shirt": {
+  "name": "누더기 윗옷",
+  "slot": "body",
+  "outfit": "rags",
+  "maxHpBonus": 0,
+  "description": "떠돌이가 걸친 낡은 옷. 아무것도 막아 주지 않는다."
+ },
+ "rags_pants": {
+  "name": "누더기 바지",
+  "slot": "legs",
+  "outfit": "rags",
+  "maxHpBonus": 0,
+  "description": "무릎이 해진 바지."
+ },
+ "swamp_hood": {
+  "name": "늪짐승 두건",
+  "slot": "head",
+  "outfit": "swamp",
+  "set": "swamp",
+  "maxHpBonus": 6,
+  "description": "늪지 짐승의 머리 가죽. 등뼈 돌기가 솟아 있고, 눈구멍 너머로 노란 빛이 비친다."
+ },
+ "swamp_hide_armor": {
+  "name": "늪짐승 가죽 갑옷",
+  "slot": "body",
+  "outfit": "swamp",
+  "set": "swamp",
+  "maxHpBonus": 12,
+  "description": "늪지 짐승의 질긴 가죽과 등뼈 판으로 엮은 갑옷. 걸치면 늪 냄새가 밴다."
+ },
+ "swamp_bracers": {
+  "name": "늪짐승 팔가죽",
+  "slot": "arms",
+  "outfit": "swamp",
+  "set": "swamp",
+  "maxHpBonus": 6,
+  "description": "어깨에 뼈판을 덧댄 가죽 팔보호구."
+ },
+ "swamp_greaves": {
+  "name": "늪짐승 발톱 장화",
+  "slot": "legs",
+  "outfit": "swamp",
+  "set": "swamp",
+  "maxHpBonus": 6,
+  "description": "발톱이 박힌 가죽 장화와 바지."
+ },
+ "hunter_hood": {
+  "name": "들개 귀 두건",
+  "slot": "head",
+  "outfit": "hunter",
+  "set": "hunter",
+  "maxHpBonus": 4,
+  "description": "들개 머리 가죽으로 만든 두건. 귀가 쫑긋 서 있다."
+ },
+ "hunter_coat": {
+  "name": "들개가죽 사냥꾼 코트",
+  "slot": "body",
+  "outfit": "hunter",
+  "set": "hunter",
+  "maxHpBonus": 8,
+  "description": "사냥꾼의 검붉은 코트에 들개 털 망토를 덧댔다. 은 버클이 달려 있다."
+ },
+ "hunter_gloves": {
+  "name": "사냥꾼 장갑",
+  "slot": "arms",
+  "outfit": "hunter",
+  "set": "hunter",
+  "maxHpBonus": 4,
+  "description": "들개 털을 댄 소매와 손등의 은 장식."
+ },
+ "hunter_boots": {
+  "name": "사냥꾼 장화",
+  "slot": "legs",
+  "outfit": "hunter",
+  "set": "hunter",
+  "maxHpBonus": 4,
+  "description": "소리 없이 걷도록 밑창에 털을 댄 장화."
+ },
+ "hound_fang_necklace": {
+  "name": "들개 송곳니 목걸이",
+  "slot": "necklace",
+  "maxHpBonus": 10,
+  "description": "들개 송곳니를 엮은 목걸이. 이빨이 부딪히는 소리가 묘하게 든든하다."
+ },
+ "silver_ring": {
+  "name": "사냥꾼의 은반지",
+  "slot": "ring",
+  "maxHpBonus": 0,
+  "skills": [
+   "second_wind"
+  ],
+  "description": "사냥꾼의 은장식을 녹여 만든 반지. 끼고 있으면 숨이 덜 찬다."
+ }
+}
