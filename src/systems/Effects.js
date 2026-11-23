@@ -38,3 +38,43 @@ export function spawnDamageNumber(scene, x, y, amount, color = '#ffe08a') {
     onComplete: () => t.destroy(),
   });
 }
+
+/**
+ * 흙먼지 구름: 바닥에서 동그란 먼지가 몇 개 퍼지며 사라진다 (구르기·착지 등).
+ * @param {{x:number,y:number}} dir 움직이는 방향 (먼지는 뒤쪽으로 퍼짐)
+ */
+export function spawnDust(scene, x, y, dir = { x: 0, y: 0 }, count = 4) {
+  for (let i = 0; i < count; i++) {
+    const g = scene.add.graphics().setDepth(y - 1);
+    const r = 2 + Math.random() * 2.5;
+    g.fillStyle(0xc8b896, 0.85).fillCircle(0, 0, r);
+    g.fillStyle(0xe8dcc0, 0.6).fillCircle(-r * 0.3, -r * 0.3, r * 0.5);
+    const ox = (Math.random() - 0.5) * 8, oy = (Math.random() - 0.5) * 3;
+    g.setPosition(x + ox - dir.x * 4, y + oy - dir.y * 2);
+    scene.tweens.add({
+      targets: g,
+      x: g.x - dir.x * (8 + Math.random() * 6) + (Math.random() - 0.5) * 6,
+      y: g.y - dir.y * (4 + Math.random() * 3) - 3 - Math.random() * 3,
+      scale: 1.8 + Math.random() * 0.6, alpha: 0,
+      duration: 420 + Math.random() * 200, ease: 'Quad.out',
+      onComplete: () => g.destroy(),
+    });
+  }
+}
+
+/** 잔상: 지금 모습을 하얗게 복사해 남겼다가 흐려짐 (완벽한 회피 등) */
+export function spawnAfterimage(scene, sprite) {
+  const img = scene.add.image(sprite.x, sprite.y, sprite.texture.key, sprite.frame.name)
+    .setOrigin(sprite.originX, sprite.originY).setFlipX(sprite.flipX).setDepth(sprite.depth - 0.5)
+    .setTintFill(0xd8f0ff).setAlpha(0.75);
+  scene.tweens.add({ targets: img, alpha: 0, scale: 1.15, duration: 500, ease: 'Quad.out', onComplete: () => img.destroy() });
+}
+
+/** 큰 글씨 라벨 (완벽한 회피!, ?! 등) */
+export function spawnBigLabel(scene, x, y, text, color = '#e8f6ff') {
+  const t = scene.add.text(x, y, text, {
+    fontFamily: 'sans-serif', fontSize: '11px', fontStyle: 'bold', color, resolution: 2,
+  }).setOrigin(0.5, 1).setStroke('#101820', 4).setDepth(100001).setScale(0.6);
+  scene.tweens.add({ targets: t, scale: 1, duration: 140, ease: 'Back.out' });
+  scene.tweens.add({ targets: t, y: y - 12, alpha: 0, delay: 600, duration: 400, onComplete: () => t.destroy() });
+}

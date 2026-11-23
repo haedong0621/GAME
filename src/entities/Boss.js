@@ -14,6 +14,7 @@ const State = {
   ACTIVE: 'active',     // 공격 판정
   RECOVERY: 'recovery', // 공격 후 빈틈 — 때릴 기회
   RETURN: 'return',     // 놓쳐서 집으로 돌아감 (경계: 의심)
+  STAGGER: 'stagger',   // 완벽한 회피를 당해 휘청 (?!) — 큰 빈틈
   DEAD: 'dead',
 };
 
@@ -180,6 +181,11 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
         }
         break;
 
+      case State.STAGGER:
+        this.setVelocity(0, 0);
+        if (this.stateTime <= 0) { this.cooldown = this.data_.attackCooldownMs; this.enter(State.CHASE); }
+        break;
+
       case State.RETURN: {
         if (this.updateSenses(dt, ctx)) break;
         const hx = this.home.x - this.x, hy = this.home.y - this.y;
@@ -295,8 +301,16 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     if (this.hitPlayerThisAttack) return;
     const p = this.getPlayer();
     if (findHits(circle, [p]).length === 0) return;
-    const result = p.receiveHit(this.attack.damage, this.x, this.y - CHEST);
+    const result = p.receiveHit(this.attack.damage, this.x, this.y - CHEST, { knockdown: !!this.attack.knockdown, source: this });
     if (result !== 'ignored') this.hitPlayerThisAttack = true; // 회피했어도 이번 공격은 끝
+  }
+
+  /** 완벽한 회피를 당함: 하던 공격을 끊고 잠깐 휘청 (?!) */
+  stagger(ms = this.data_.staggerMs ?? 800) {
+    if (this.state === State.DEAD) return;
+    this.enter(State.STAGGER);
+    this.stateTime = ms;
+    this.telegraph.clear();
   }
 
   enter(state) {
@@ -356,7 +370,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     const v = this.visual;
     v.clearTint();
     if (this.state === State.WINDUP) v.setTint(0xffa080);
-    else if (this.state === State.RECOVERY) v.setTint(0xb0b8c0); // 빈틈: 살짝 창백
+    else if (this.state === State.RECOVERY || this.state === State.STAGGER) v.setTint(0xb0b8c0); // 빈틈: 살짝 창백
     else if (this.currentPhase().name) v.setTint(0xffc8b8);   // 분노 단계
   }
 
@@ -417,7 +431,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     const dead = this.state === State.DEAD;
     const top = this.y - this.data_.hurtbox.height - 6;
     this.icon.setPosition(this.x, top - (this.awareness === Awareness.UNAWARE ? 0 : 8)).setDepth(this.depth + 2)
-      .setText(!dead && this.awareness === Awareness.SUSPICIOUS ? '?' : '');
+      .setText(dead ? '' : this.state === State.STAGGER ? '?!' : this.awareness === Awareness.SUSPICIOUS ? '?' : '')
+      .setColor(this.state === State.STAGGER ? '#9fdcff' : '#ffe060');
     const g = this.hpBarSmall;
     if (!dead && this.awareness !== Awareness.ALERT && this.meter.value > 0.02) {
       g.setDepth(this.depth + 1);

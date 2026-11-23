@@ -14,6 +14,7 @@ const State = {
   RECOVERY: 'recovery',
   HURT: 'hurt',
   RETURN: 'return',           // 포기하고 집으로
+  STAGGER: 'stagger',         // 완벽한 회피를 당해 휘청 (?!)
   DEAD: 'dead',
 };
 
@@ -194,7 +195,7 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
         if (!this.hitPlayer) {
           const c = { x: this.x + this.attackDir.x * 12, y: this.y - CHEST + this.attackDir.y * 8, radius: a.radius };
           if (findHits(c, [p]).length) {
-            const r = p.receiveHit(a.damage, this.x, this.y - CHEST);
+            const r = p.receiveHit(a.damage, this.x, this.y - CHEST, { knockdown: !!a.knockdown, source: this });
             if (r !== 'ignored') this.hitPlayer = true;
           }
         }
@@ -202,6 +203,10 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
         break;
       }
       case State.RECOVERY:
+        this.setVelocity(0, 0);
+        if (this.stateTime <= 0) { this.cooldown = this.data_.attack.cooldownMs; this.enter(State.CHASE); }
+        break;
+      case State.STAGGER:
         this.setVelocity(0, 0);
         if (this.stateTime <= 0) { this.cooldown = this.data_.attack.cooldownMs; this.enter(State.CHASE); }
         break;
@@ -267,6 +272,13 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     this.facing = { x: dir.x, y: dir.y };
   }
 
+  /** 완벽한 회피를 당함: 공격을 끊고 잠깐 휘청 (?!) */
+  stagger(ms = this.data_.staggerMs ?? 700) {
+    if (this.state === State.DEAD) return;
+    this.enter(State.STAGGER);
+    this.stateTime = ms;
+  }
+
   enter(state) {
     this.state = state;
     const a = this.data_.attack;
@@ -327,8 +339,8 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     const level = this.meter.level;
     const top = this.y - this.data_.hurtbox.height - 4;
     this.icon.setPosition(this.x, top).setDepth(this.depth + 2)
-      .setText(level === Level.ALERT ? '!' : level === Level.SUSPICIOUS ? '?' : '')
-      .setColor(level === Level.ALERT ? '#ff6040' : '#ffe060');
+      .setText(this.state === State.STAGGER ? '?!' : level === Level.ALERT ? '!' : level === Level.SUSPICIOUS ? '?' : '')
+      .setColor(this.state === State.STAGGER ? '#9fdcff' : level === Level.ALERT ? '#ff6040' : '#ffe060');
 
     const g = this.gfx;
     g.clear();

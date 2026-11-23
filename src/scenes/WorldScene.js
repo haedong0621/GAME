@@ -136,6 +136,13 @@ export class WorldScene extends window.Phaser.Scene {
     this.spawnPoint = spawn; // 저장소를 못 쓰는 환경에서만 쓰는 부활 지점
     if (save) this.applySave(save);
     this.player.onDeath = () => this.onPlayerDeath();
+    this.player.onPerfectDodge = (source) => this.onPerfectDodge(source);
+
+    // 슬로모션: 이 씬의 시간 배율. 물리(화면 박자 방식)에 넘기는 시간도 같이 줄인다
+    this.timeScale = 1;
+    const world = this.physics.world;
+    const physicsUpdate = world.update.bind(world);
+    world.update = (t, d) => physicsUpdate(t, d * this.timeScale);
     this.player.noiseBus = this.noiseBus;
 
     this.physics.add.collider(this.player, blockers);
@@ -225,8 +232,26 @@ export class WorldScene extends window.Phaser.Scene {
     SaveSystem.reloadInto('new', '처음부터 시작');
   }
 
-  update(_time, delta) {
-    this.playTimeMs += delta;
+  /** 완벽한 회피: 잠깐 슬로모션 + 번쩍 + 카메라 살짝 당김, 공격한 몬스터는 휘청(?!) */
+  onPerfectDodge(source) {
+    const pd = this.player.data_.perfectDodge;
+    source?.stagger?.();
+    this.setSlowMotion(pd.slowFactor);
+    const cam = this.cameras.main;
+    cam.flash(120, 210, 235, 255, false);
+    this.tweens.add({ targets: cam, zoom: cam.zoom * 1.06, duration: 90, yoyo: true, ease: 'Quad.out' });
+    window.setTimeout(() => this.setSlowMotion(1), pd.slowRealMs); // 실제 시간 기준으로 복귀
+  }
+
+  setSlowMotion(factor) {
+    this.timeScale = factor;
+    this.time.timeScale = factor;
+    this.tweens.timeScale = factor;
+  }
+
+  update(_time, realDelta) {
+    this.playTimeMs += realDelta;
+    const delta = realDelta * this.timeScale; // 게임 속 시간 (슬로모션 반영)
     const cmd = this.inputSystem.getCommand();
 
     // 상호작용: 가장 가까운 대상이 범위 안이면 안내 표시, 누르면 열기

@@ -1,7 +1,7 @@
 import { applyYSort } from '../systems/YSort.js';
 import { Stats } from '../systems/Stats.js';
 import { findHits } from '../systems/Combat.js';
-import { spawnDamageNumber, spawnSlash, spawnFloatingLabel } from '../systems/Effects.js';
+import { spawnDamageNumber, spawnSlash, spawnFloatingLabel, spawnDust, spawnAfterimage, spawnBigLabel } from '../systems/Effects.js';
 import { WeaponView } from './WeaponView.js';
 
 /** 플레이어 상태 이름 (Godot에서는 enum State) */
@@ -11,7 +11,8 @@ const State = {
   ACTIVE: 'active',     // 공격 판정 중
   RECOVERY: 'recovery', // 후딜레이 (chainAfterMs 이후에만 다음 타·구르기로 연결 가능)
   ROLL: 'roll',         // 구르기
-  HURT: 'hurt',         // 맞고 밀려남 (행동 불가)
+  HURT: 'hurt',         // 맞고 밀려남 (행동 불가) — 약한 공격
+  KNOCKDOWN: 'knockdown', // 날아가 넘어졌다 일어남 (무적, 행동 불가) — 강한 공격
   DEAD: 'dead',         // 쓰러짐 → 잠시 뒤 부활
 };
 
@@ -115,11 +116,19 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
    * 적의 공격을 받는다.
    * @returns {'hit'|'dodged'|'blocked'|'ignored'} 맞음 / 구르기 무적으로 피함 / 테스트 무적 / 무시(이미 쓰러짐·피격 무적)
    */
-  receiveHit(damage, fromX, fromY) {
-    if (this.isDead || this.invulnMs > 0) return 'ignored';
+  receiveHit(damage, fromX, fromY, opts = {}) {
+    if (this.isDead || this.invulnMs > 0 || this.state === State.KNOCKDOWN) return 'ignored';
     if (this.godMode) { spawnFloatingLabel(this.scene, this.x, this.y - 30, '무적'); return 'blocked'; } // 'ignored'가 아니면 그 공격은 한 번만 판정
     if (this.isInvincible) {
-      spawnFloatingLabel(this.scene, this.x, this.y - 30, '회피!');
+      // 구르기 시작 직후(perfectWindowMs 안)에 피하면 완벽한 회피
+      const rolled = this.data_.roll.durationMs - this.stateTime;
+      if (rolled <= (this.data_.roll.perfectWindowMs ?? 0)) {
+        spawnAfterimage(this.scene, this.visual);
+        spawnBigLabel(this.scene, this.x, this.y - 34, '완벽한 회피!');
+        this.onPerfectDodge?.(opts.source);
+      } else {
+        spawnFloatingLabel(this.scene, this.x, this.y - 30, '회피!');
+      }
       return 'dodged';
     }
     this.stats.takeDamage(damage);
@@ -136,6 +145,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (this.stats.isDead) {
       this.enter(State.DEAD);
       this.onDeath?.();
+    } else if (opts.knockdown) {
+      // 강한 공격: 공격한 쪽을 바라본 채 뒤로 날아가 넘어짐
+      this.setFacingAngle(Math.atan2(-this.knock.y, -this.knock.x));
+      this.enter(State.KNOCKDOWN);
     } else {
       this.enter(State.HURT);
     }
@@ -229,7 +242,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const wantsMove = cmd.move.x !== 0 || cmd.move.y !== 0;
     this.moveBlockedBy = !wantsMove ? null
       : this.hitstopMs > 0 ? '히트스톱'
-      : ({ windup: '공격 예비동작', active: '공격 중', recovery: '공격 후딜', roll: '구르기', hurt: '피격', dead: '쓰러짐' })[this.state] ?? null;
+      : ({ windup: '공격 예비동작', active: '공격 중', recovery: '공격 후딜', roll: '구르기', hurt: '피격', knockdown: '넘어짐', dead: '쓰러짐' })[this.state] ?? null;
 
     if (this.hitstopMs > 0) {
       // 멈칫: 시간이 흐르지 않는다. 입력만 예약해 둔다.
@@ -273,6 +286,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         break;
       case State.ROLL:
         this.setVelocity(this.rollDir.x * this.data_.roll.speed, this.rollDir.y * this.data_.roll.speed);
+        this.dustMs -= dt;
+        if (this.dustMs <= 0) { this.dustMs = 90; spawnDust(this.scene, this.x, this.y, this.rollDir, 2); }
         if (this.stateTime <= 0) this.enter(State.FREE);
         break;
       case State.HURT: {
@@ -283,6 +298,23 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         if (this.stateTime <= 0) {
           const next = this.queued;
           this.queued = null;
+          this.enter(State.FREE);
+          if (next === 'roll') this.tryRoll(cmd);
+          else if (next === 'attack') this.tryAttack(0, cmd);
+        }
+        break;
+      }
+      case State.KNOCKDOWN: {
+        const kd = this.data_.knockdown;
+        const t = this.knockdownTotal - this.stateTime; // 넘어진 뒤 지난 시간
+        const air = Math.max(0, 1 - t / kd.airMs);
+        this.setVelocity(this.knock.x * kd.launchSpeed * air, this.knock.y * kd.launchSpeed * air);
+        if (!this.landed && t >= kd.airMs) { this.landed = true; spawnDust(this.scene, this.x, this.y, this.knock, 6); this.scene.cameras.main.shake(120, 0.004); }
+        this.bufferInput(cmd);
+        if (this.stateTime <= 0) {
+          const next = this.queued;
+          this.queued = null;
+          this.invulnMs = 250; // 일어난 직후 잠깐 무적
           this.enter(State.FREE);
           if (next === 'roll') this.tryRoll(cmd);
           else if (next === 'attack') this.tryAttack(0, cmd);
@@ -491,7 +523,13 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         this.stateTime = m.recoveryMs;
         this.makeNoise('attack'); // 휘두르는 소리는 칼이 지나간 뒤에 퍼진다 (기습 데미지가 먼저 들어가도록)
         break;
-      case State.ROLL: this.stateTime = this.data_.roll.durationMs; break;
+      case State.ROLL: this.stateTime = this.data_.roll.durationMs; this.dustMs = 0; spawnDust(this.scene, this.x, this.y, this.rollDir, 3); break;
+      case State.KNOCKDOWN: {
+        const kd = this.data_.knockdown;
+        this.knockdownTotal = kd.airMs + kd.downMs + kd.getUpMs;
+        this.stateTime = this.knockdownTotal; this.comboIndex = 0; this.landed = false;
+        break;
+      }
       case State.HURT: this.stateTime = this.data_.hurtMs; this.comboIndex = 0; break;
       case State.DEAD: this.stateTime = 0; this.comboIndex = 0; break;
       default:
@@ -628,6 +666,15 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       }
       case State.ROLL: anim = 'roll'; frame = Math.floor(prog(this.data_.roll.durationMs) * cls.anims.roll.frames); break;
       case State.HURT: anim = 'hurt'; frame = Math.floor(prog(this.data_.hurtMs) * cls.anims.hurt.frames); break;
+      case State.KNOCKDOWN: {
+        // 공중(0~1) → 떨어져 누움(2~3) → 일어남(4~5)
+        const kd = this.data_.knockdown, t = this.knockdownTotal - this.stateTime;
+        anim = 'knockdown';
+        if (t < kd.airMs) frame = t < kd.airMs * 0.5 ? 0 : 1;
+        else if (t < kd.airMs + kd.downMs) frame = t < kd.airMs + 120 ? 2 : 3;
+        else frame = t < kd.airMs + kd.downMs + kd.getUpMs * 0.55 ? 4 : 5;
+        break;
+      }
       case State.DEAD:
         anim = 'death';
         this.deathClock = (this.deathClock ?? 0) + dt;
@@ -667,8 +714,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       squash = 1 + ((1 - m.crouch) * 0.6 + 0.04) * (1 - t);
     } else if (this.state === State.ROLL) {
       squash = 0.8;
-    } else if (this.state === State.HURT) {
-      lean = -dir * 12;
+    } else if (this.state === State.HURT || this.state === State.KNOCKDOWN) {
+      lean = -dir * (this.state === State.KNOCKDOWN ? 70 : 12);
     } else if (this.isSneaking) {
       squash = 0.8; // 웅크림
     }
