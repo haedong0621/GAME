@@ -77,6 +77,12 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.attack = null;
     this.attackDir = { x: -1, y: 0 };
     this.hitPlayerThisAttack = false;
+    /** 공격별 개별 쿨타임 (울부짖기처럼 자주 쓰면 안 되는 기술) */
+    this.attackCd = {};
+    /** 울부짖어 불러낸 들개들 */
+    this.summons = [];
+    /** 도약 중 공중 높이 (그림만 위로) */
+    this.airZ = 0;
 
     applyYSort(this);
   }
@@ -121,6 +127,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     if (this.state === State.DEAD) return; // 독으로 쓰러졌을 수 있음
     this.stateTime -= dt;
     this.cooldown -= dt;
+    for (const k in this.attackCd) this.attackCd[k] -= dt;
 
     const p = this.getPlayer();
     const dx = p.x - this.x, dy = p.y - this.y;
@@ -158,13 +165,22 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
         const a = this.attack;
         const t = 1 - this.stateTime / this.windupTotal;
         // 돌진은 예고 동작 초반엔 플레이어를 따라 조준하다가, aimLockAt 이후 방향 고정
-        if (a.type === 'charge' && t < (a.aimLockAt ?? 0)) { this.attackDir = toPlayer; this.face(toPlayer); }
+        if ((a.type === 'charge' || a.type === 'leap') && t < (a.aimLockAt ?? 0)) {
+          this.attackDir = toPlayer; this.face(toPlayer);
+          if (a.type === 'leap') {
+            const d = Math.min(dist, a.maxRange);
+            this.leapTarget = { x: this.x + toPlayer.x * d, y: this.y + toPlayer.y * d };
+          }
+        }
         if (this.stateTime <= 0) this.enter(State.ACTIVE);
         break;
       }
 
       case State.ACTIVE: {
         const a = this.attack;
+        if (a.type === 'combo') { this.updateCombo(dt, p); break; }
+        if (a.type === 'leap') { this.updateLeap(); break; }
+        if (a.type === 'summon') { this.setVelocity(0, 0); if (this.stateTime <= 0) this.enter(State.RECOVERY); break; }
         if (a.type === 'charge') {
           this.setVelocity(this.attackDir.x * a.speed, this.attackDir.y * a.speed);
           this.checkHit({ x: this.x, y: this.y - CHEST, radius: a.width / 2 });
@@ -280,7 +296,9 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
 
   /** 거리에 맞는 공격 중 가중치(weight)로 무작위 선택 */
   pickAttack(dist) {
-    const options = this.data_.attacks.filter((a) => dist >= a.minRange && dist <= a.maxRange);
+    const options = this.data_.attacks.filter((a) => dist >= a.minRange && dist <= a.maxRange
+      && !((this.attackCd[a.id] ?? 0) > 0)
+      && !(a.type === 'summon' && this.summons.filter((m) => m.isHittable).length >= (a.maxAlive ?? 3)));
     if (options.length === 0) return null;
     let r = Math.random() * options.reduce((s, a) => s + a.weight, 0);
     for (const a of options) { r -= a.weight; if (r <= 0) return a; }
@@ -289,6 +307,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
 
   startAttack(atk, dir) {
     this.attack = atk;
+    if (atk.cooldownMs) this.attackCd[atk.id] = atk.cooldownMs;
+    if (atk.type === 'leap') this.leapTarget = { x: this.x + dir.x * 120, y: this.y + dir.y * 120 };
     this.attackDir = { ...dir };
     this.hitPlayerThisAttack = false;
     this.mobsHitThisCharge = new Set();
@@ -303,12 +323,72 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     };
   }
 
-  checkHit(circle) {
+  checkHit(circle, spec = this.attack) {
     if (this.hitPlayerThisAttack) return;
     const p = this.getPlayer();
     if (findHits(circle, [p]).length === 0) return;
-    const result = p.receiveHit(this.attack.damage, this.x, this.y - CHEST, { knockdown: !!this.attack.knockdown, source: this });
+    const result = p.receiveHit(spec.damage, this.x, this.y - CHEST, { knockdown: !!spec.knockdown, source: this });
     if (result !== 'ignored') this.hitPlayerThisAttack = true; // 회피했어도 이번 공격은 끝
+  }
+
+  /**
+   * 연속 베기(type: combo): hits 목록을 차례로. 각 타는 gapMs(다음 타 예고 — 그 사이 플레이어 쪽으로 다시 조준) 후 activeMs 동안 판정.
+   * 한 타를 피해도 다음 타가 따라온다 → 구르기 타이밍을 여러 번 맞춰야 함.
+   */
+  startComboHit(i) {
+    this.comboIdx = i;
+    this.curHit = this.attack.hits[i];
+    this.comboGap = this.curHit.gapMs;
+    this.comboActive = this.curHit.activeMs;
+    this.hitPlayerThisAttack = false;
+  }
+
+  updateCombo(dt, p) {
+    const h = this.curHit;
+    if (this.comboGap > 0) {
+      this.comboGap -= dt;
+      this.setVelocity(0, 0);
+      const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy) || 1;
+      if (this.comboGap > h.gapMs * 0.4) { this.attackDir = { x: dx / d, y: dy / d }; this.face(this.attackDir); } // 앞쪽 60% 동안만 따라 돌아봄
+      return;
+    }
+    this.comboActive -= dt;
+    const lunge = this.comboActive > h.activeMs / 2 ? h.lunge : 0;
+    this.setVelocity(this.attackDir.x * lunge, this.attackDir.y * lunge);
+    this.checkHit(this.circleArea(h), h);
+    if (this.comboActive > 0) return;
+    if (this.comboIdx + 1 < this.attack.hits.length) this.startComboHit(this.comboIdx + 1);
+    else this.enter(State.RECOVERY);
+  }
+
+  /** 도약 덮치기(type: leap): 정해 둔 착지점으로 날아감 (나무·물 위로 넘어감), 착지 순간 원형 판정 + 넘어뜨림 */
+  updateLeap() {
+    const a = this.attack;
+    const t = 1 - Math.max(0, this.stateTime) / a.activeMs;
+    const tx = this.leapFrom.x + (this.leapTarget.x - this.leapFrom.x) * t;
+    const ty = this.leapFrom.y + (this.leapTarget.y - this.leapFrom.y) * t;
+    this.body.reset(tx, ty);
+    this.airZ = a.height * 4 * t * (1 - t);
+    if (this.stateTime > 0) return;
+    this.airZ = 0;
+    this.scene.cameras.main.shake(220, 0.008);
+    this.checkHit({ x: this.leapTarget.x, y: this.leapTarget.y - 8, radius: a.radius });
+    this.enter(State.RECOVERY);
+  }
+
+  /** 울부짖기(type: summon): 주변에 들개를 불러낸다. 불러낸 들개는 바로 플레이어를 쫓는다 */
+  doSummon() {
+    const a = this.attack;
+    this.scene.cameras.main.shake(500, 0.005);
+    spawnFloatingLabel(this.scene, this.x, this.y - this.data_.hurtbox.height - 18, '아우우우—');
+    const alive = this.summons.filter((m) => m.isHittable).length;
+    const n = Math.min(a.count, (a.maxAlive ?? 3) - alive);
+    for (let i = 0; i < n; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const m = this.ctx?.summon?.(a.summonId, this.x + Math.cos(ang) * 70, this.y + Math.sin(ang) * 50);
+      if (m) this.summons.push(m);
+    }
+    this.summons = this.summons.filter((m) => m.isHittable);
   }
 
   /** 완벽한 회피를 당함: 하던 공격을 끊고 잠깐 휘청 (?!) */
@@ -320,6 +400,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   }
 
   enter(state) {
+    // 도약 중이었다면 착지 처리 (휘청 등으로 끊겨도 충돌을 되돌림)
+    if (this.leaping) { this.leaping = false; this.airZ = 0; this.body.checkCollision.none = false; }
     this.state = state;
     const a = this.attack;
     switch (state) {
@@ -328,7 +410,12 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
         this.windupTotal = a.windupMs * this.currentPhase().windupMultiplier;
         this.stateTime = this.windupTotal;
         break;
-      case State.ACTIVE: this.stateTime = a.activeMs; break;
+      case State.ACTIVE:
+        this.stateTime = a.activeMs ?? 0;
+        if (a.type === 'combo') this.startComboHit(0);
+        if (a.type === 'leap') { this.leaping = true; this.leapFrom = { x: this.x, y: this.y }; this.body.checkCollision.none = true; }
+        if (a.type === 'summon') this.doSummon();
+        break;
       case State.RECOVERY: this.stateTime = a.recoveryMs; break;
       default: this.stateTime = 0;
     }
@@ -384,7 +471,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   syncVisual() {
     applyYSort(this);
     const v = this.visual;
-    v.setPosition(this.x, this.y).setDepth(this.depth);
+    v.setPosition(this.x, this.y - this.airZ).setDepth(this.depth);
     if (this.sprite) {
       this.updatePixelFrame();
     } else {
@@ -412,6 +499,29 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     const alpha = this.state === State.ACTIVE ? 0.55 : 0.12 + 0.3 * t;
     g.setDepth(-0.5); // 바닥 바로 위 (모든 물체보다 뒤)
 
+    if (a.type === 'summon') return;
+    if (a.type === 'leap') {
+      // 착지점 표시 (예고 중엔 따라다니다가 고정)
+      const c = this.leapTarget ?? { x: this.x, y: this.y };
+      const tt = this.state === State.ACTIVE ? 1 - Math.max(0, this.stateTime) / a.activeMs : t;
+      const al = this.state === State.ACTIVE ? 0.3 + 0.35 * tt : alpha;
+      g.fillStyle(0xd03020, al).fillEllipse(c.x, c.y, a.radius * 2, a.radius * 1.4);
+      g.lineStyle(1, 0xff6040, 0.7).strokeEllipse(c.x, c.y, a.radius * 2, a.radius * 1.4);
+      g.fillStyle(0xff5030, al * 0.8).fillEllipse(c.x, c.y, a.radius * 2 * tt, a.radius * 1.4 * tt);
+      return;
+    }
+    if (a.type === 'combo') {
+      // 지금(또는 다음) 타의 범위. 예고 중엔 첫 타, 타 사이엔 다음 타가 차오름
+      const h = this.state === State.WINDUP ? a.hits[0] : this.curHit;
+      const inGap = this.state === State.ACTIVE && this.comboGap > 0;
+      const tt = this.state === State.WINDUP ? t : inGap ? 1 - this.comboGap / h.gapMs : 1;
+      const al = this.state === State.ACTIVE && !inGap ? 0.55 : 0.15 + 0.3 * tt;
+      const c = this.circleArea(h), gy = c.y + CHEST * 0.6;
+      g.fillStyle(0xd03020, al).fillEllipse(c.x, gy, c.radius * 2, c.radius * 1.4);
+      g.lineStyle(1, 0xff6040, 0.7).strokeEllipse(c.x, gy, c.radius * 2, c.radius * 1.4);
+      g.fillStyle(0xff5030, al * 0.8).fillEllipse(c.x, gy, c.radius * 2 * tt, c.radius * 1.4 * tt);
+      return;
+    }
     if (a.type === 'charge') {
       const len = (a.speed * a.activeMs) / 1000;
       const d = this.attackDir, px = -d.y, py = d.x, w = a.width / 2;
@@ -445,7 +555,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     const prog = (total) => Math.min(0.999, Math.max(0, 1 - this.stateTime / total));
     const moving = Math.hypot(this.body.velocity.x, this.body.velocity.y) > 8;
     let anim = 'idle', frame = Math.floor(this.animClock / 600) % 2, face = this.facing;
-    const atk = this.attack?.id;
+    const atk = this.attack?.anim ?? this.attack?.id;
+    const type = this.attack?.type;
     switch (this.state) {
       case State.CHASE: case State.RETURN:
         if (moving) { anim = 'walk'; frame = Math.floor(this.animClock / 170) % sp.frames('walk'); }
@@ -454,9 +565,20 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
       case State.WINDUP: anim = atk; frame = prog(this.windupTotal) < 0.5 ? 0 : 1; face = this.attackDir; break;
       case State.ACTIVE:
         anim = atk; face = this.attackDir;
-        frame = atk === 'charge' ? 2 + Math.floor(this.animClock / 70) % 4 : 2;
+        if (type === 'charge') frame = 2 + Math.floor(this.animClock / 70) % 4;
+        else if (type === 'combo') frame = 2 + this.comboIdx - (this.comboGap > 0 && this.comboIdx > 0 ? 1 : 0); // [예고0, 예고1, 1타, 2타, 3타, 회복]
+        else if (type === 'leap') frame = 2;                                                                   // [예고0, 예고1, 공중, 착지, 회복]
+        else if (type === 'summon') frame = Math.floor(this.animClock / 150) % 2;
+        else frame = 2;
         break;
-      case State.RECOVERY: anim = atk; face = this.attackDir; frame = atk === 'charge' ? 6 : 3; break;
+      case State.RECOVERY: {
+        anim = atk; face = this.attackDir;
+        const n = sp.frames(atk);
+        if (type === 'leap') frame = prog(this.attack.recoveryMs) < 0.5 ? 3 : 4;
+        else if (type === 'summon') frame = Math.floor(this.animClock / 150) % 2;
+        else frame = n - 1;
+        break;
+      }
       case State.STAGGER: anim = 'stagger'; frame = Math.floor(this.animClock / 120) % 2; break;
       case State.DEAD: anim = 'death'; this.deathClock = (this.deathClock ?? 0) + dt; frame = Math.floor(this.deathClock / 220); break;
     }

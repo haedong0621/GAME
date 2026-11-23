@@ -271,6 +271,7 @@ export class WorldScene extends window.Phaser.Scene {
     const ctx = {
       player: this.player, env: this.env, noises: this.noiseBus.list, mobs: this.mobs,
       stealth: this.player.data_.stealth, showCones: this.player.isSneaking, coneGfx: this.coneGfx,
+      summon: (id, x, y) => this.summonMob(id, x, y),
     };
     for (const m of this.monsters) m.update?.(delta, ctx); // 보스·잡몹 AI, 상태 이상(독) 등
     this.noiseBus.clear();
@@ -284,10 +285,39 @@ export class WorldScene extends window.Phaser.Scene {
     this.registry.set('activeBoss', this.bosses.find((b) => b.isAlert) ?? null);
   }
 
+  /**
+   * 보스가 불러낸 잡몹 (예: 뒤엉킨 사냥꾼의 울부짖기 → 들개). 바로 플레이어를 쫓고, 죽어도 다시 나타나지 않는다.
+   * Godot: 보스가 signal summon(id, pos) → 월드가 Mob.tscn 인스턴스를 add_child.
+   */
+  summonMob(id, x, y) {
+    const data = this.registry.get('monsters')?.[id];
+    if (!data) return null;
+    const mob = new Mob(this, x, y, id, { ...data, respawnMs: 0 }, (m) => this.onMobDefeated(m));
+    mob.summoned = true;
+    this.mobs.push(mob);
+    this.monsters.push(mob);
+    mob.alert(false);
+    return mob;
+  }
+
+  /** 플레이어와 가장 가까운 보스 (테스트 도구용) */
+  nearestBoss() {
+    let best = null, bd = Infinity;
+    for (const b of this.bosses) {
+      const d = Math.hypot(b.home.x - this.player.x, b.home.y - this.player.y);
+      if (d < bd) { bd = d; best = b; }
+    }
+    return best;
+  }
+
   // ---------- 테스트 모드(?dev=1) 동작 ----------
+  /** 누를 때마다 다음 보스 앞으로 (보스가 여럿이면 번갈아) */
   devTeleportToBoss() {
-    const b = this.bosses[0];
-    if (b) this.player.body.reset(b.x - 110, b.y + 10);
+    if (!this.bosses.length) return;
+    this.devBossIdx = ((this.devBossIdx ?? -1) + 1) % this.bosses.length;
+    const b = this.bosses[this.devBossIdx];
+    this.player.body.reset(b.home.x - 110, b.home.y + 10);
+    this.banner(b.displayName, '#e8c860');
   }
 
   devTeleportToHounds() {
@@ -302,12 +332,12 @@ export class WorldScene extends window.Phaser.Scene {
   }
 
   devBossHp(ratio) {
-    const b = this.bosses[0];
+    const b = this.nearestBoss();
     if (b && !b.isDeadState) b.stats.hp = Math.max(1, Math.round(b.stats.maxHp * ratio));
   }
 
   devReviveBoss() {
-    const b = this.bosses[0];
+    const b = this.nearestBoss();
     if (b && b.isDeadState) b.revive();
   }
 
@@ -316,6 +346,9 @@ export class WorldScene extends window.Phaser.Scene {
     inv.add('beast_hide', 4);
     inv.add('beast_fang', 3);
     inv.add('wood', 2);
+    inv.add('tangled_pelt', 4);
+    inv.add('hunter_silver', 2);
+    inv.add('hound_pelt', 3);
     this.banner('재료 받음', '#9adf5a');
   }
 
