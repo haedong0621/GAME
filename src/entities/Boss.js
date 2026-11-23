@@ -313,6 +313,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.attackDir = { ...dir };
     this.hitPlayerThisAttack = false;
     this.mobsHitThisCharge = new Set();
+    this.mobsHit = new Set();
     this.enter(State.WINDUP);
   }
 
@@ -335,9 +336,22 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     return { kind: 'rect', x: o.x, y: o.y, dx: d.x, dy: d.y, len: (a.speed * a.activeMs) / 1000, w: a.width / 2 };
   }
 
+  /**
+   * 범위 안의 잡몹도 맞는다 (같은 발밑 기준). 자기가 불러낸 들개도 예외 없음 → 보스 공격 쪽으로 잡몹을 끌고 가 정리시키는 전략.
+   * 한 번의 공격(연속 베기는 한 타)마다 같은 잡몹은 한 번만.
+   */
+  hitMobsIn(shape, spec) {
+    for (const m of this.ctx?.mobs ?? []) {
+      if (!m.isHittable || this.mobsHit.has(m) || !groundShapeContains(shape, m.x, m.y)) continue;
+      this.mobsHit.add(m);
+      m.receiveHit(spec.mobDamage ?? spec.damage, this.x, this.y, spec.knockdown ? 340 : 240);
+    }
+  }
+
   /** 플레이어 발밑이 바닥 범위 안이면 맞음 */
   checkHit(shape, spec = this.attack) {
     this.lastHitShape = shape;
+    if (spec.type !== 'charge') this.hitMobsIn(shape, spec); // 돌진은 chaseThroughMobs가 따로 처리
     if (this.hitPlayerThisAttack) return;
     const p = this.getPlayer();
     if (p.isDead || !groundShapeContains(shape, p.x, p.y)) return;
@@ -355,6 +369,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.comboGap = this.curHit.gapMs;
     this.comboActive = this.curHit.activeMs;
     this.hitPlayerThisAttack = false;
+    this.mobsHit = new Set();
   }
 
   updateCombo(dt, p) {
