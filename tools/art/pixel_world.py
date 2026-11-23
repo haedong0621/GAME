@@ -623,6 +623,191 @@ def kind_of(gid):
     if 21 <= gid <= 36: return 'water'
     return 'grass'
 
+# ---------------- 지역(바이옴)별 바닥 ----------------
+# 지역 번호: 0 들머리 풀밭(기본) 1 마른 들판 2 늪지 3 어두운 숲 4 사냥꾼의 들판 5 바위 언덕
+BIOME_G = {
+    0: dict(G),
+    1: {'base': (108, 106, 60), 'dark': (88, 86, 48), 'deep': (70, 68, 40), 'light': (132, 126, 74), 'tuft': (156, 146, 86)},
+    2: {'base': (60, 66, 44), 'dark': (48, 54, 36), 'deep': (38, 42, 30), 'light': (74, 82, 54), 'tuft': (90, 104, 62)},
+    3: {'base': (46, 56, 38), 'dark': (36, 44, 30), 'deep': (28, 34, 24), 'light': (58, 70, 44), 'tuft': (72, 88, 52)},
+    4: {'base': (74, 90, 52), 'dark': (60, 74, 44), 'deep': (46, 58, 36), 'light': (92, 108, 62), 'tuft': (112, 126, 72)},
+    5: {'base': (98, 96, 84), 'dark': (80, 78, 68), 'deep': (62, 60, 54), 'light': (120, 116, 102), 'tuft': (88, 108, 62)},
+}
+BIOME_NAMES = ['meadow', 'dry', 'swamp', 'forest', 'hunter', 'rocky']
+
+def use_biome(b):
+    G.clear(); G.update(BIOME_G[b])
+
+def biome_tile(b, v, seed):
+    """지역 b의 바닥 한 칸 (변형 v). 기본 풀 그림에 지역별 무늬를 얹는다"""
+    use_biome(b)
+    rnd = random.Random(seed * 31 + b)
+    if b == 5:
+        img = Image.new('RGB', (T, T)); noise_fill(img, (0, 0, T, T), G['base'], [(G['dark'], 90), (G['light'], 50), (G['deep'], 30)], seed)
+        for i in range(4 + v % 3): pebble(img, rnd.randrange(2, T - 5), rnd.randrange(3, T - 4), big=rnd.random() < 0.35)
+        if v % 3 == 0:                                                  # 바위 틈 풀포기
+            use_biome(5); blade_tuft(img, rnd.randrange(5, T - 5), rnd.randrange(8, T - 3), rnd, 3)
+    else:
+        img = grass(1 if v in (1, 5) else 0, seed)
+    px = img.load()
+    if b == 1:                                                          # 마른 들판: 맨흙 자국 + 마른 풀
+        if v % 2 == 0:
+            cx, cy, r = rnd.randrange(8, 24), rnd.randrange(8, 24), rnd.randrange(3, 6)
+            for y in range(T):
+                for x in range(T):
+                    if (x - cx) ** 2 + ((y - cy) * 1.4) ** 2 < r * r + rnd.random() * 6: px[x, y] = D['base'] if rnd.random() < 0.7 else D['dark']
+        for _ in range(4): blade_tuft(img, rnd.randrange(4, T - 4), rnd.randrange(7, T - 3), rnd, 5)
+    elif b == 2:                                                        # 늪지: 진흙 웅덩이·물기
+        if v % 3 == 0:
+            cx, cy, r = rnd.randrange(9, 23), rnd.randrange(10, 22), rnd.randrange(4, 7)
+            for y in range(T):
+                for x in range(T):
+                    d = (x - cx) ** 2 + ((y - cy) * 1.6) ** 2
+                    if d < r * r: px[x, y] = (40, 46, 38) if d < (r - 2) ** 2 else (66, 60, 42)
+            for k in range(3): px[cx - 2 + k, cy - 1] = (96, 112, 104)          # 물빛 반짝
+        for _ in range(10): px[rnd.randrange(T), rnd.randrange(T)] = (70, 62, 42)
+    elif b == 3:                                                        # 숲 바닥: 낙엽·잔가지·이끼
+        for _ in range(18):
+            x, y = rnd.randrange(1, T - 2), rnd.randrange(1, T - 1)
+            c = rnd.choice(((106, 78, 46), (128, 96, 56), (84, 60, 36), (96, 70, 40)))
+            px[x, y] = c; px[x + 1, y] = tuple(int(q * 0.8) for q in c)
+        if v % 4 == 1:
+            x, y = rnd.randrange(4, T - 10), rnd.randrange(6, T - 6)
+            for k in range(7): put(img, x + k, y + (k // 3), (70, 52, 34))
+        if v % 5 == 2:                                                  # 작은 버섯
+            x, y = rnd.randrange(5, T - 5), rnd.randrange(8, T - 4)
+            put(img, x, y, (220, 210, 190)); put(img, x - 1, y - 1, (170, 60, 50)); put(img, x, y - 1, (200, 80, 60)); put(img, x + 1, y - 1, (150, 50, 44))
+    elif b == 4:                                                        # 사냥꾼의 들판: 짓밟힌 풀·발자국 흙·뼛조각
+        if v % 2 == 1:
+            for k in range(rnd.randint(3, 5)):
+                x, y = rnd.randrange(3, T - 4), rnd.randrange(3, T - 3)
+                for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)): put(img, x + dx, y + dy, D['dark'])
+        if v % 5 == 3:
+            x, y = rnd.randrange(5, T - 8), rnd.randrange(6, T - 5)
+            for k in range(5): put(img, x + k, y, (214, 206, 182))
+            put(img, x, y - 1, (214, 206, 182)); put(img, x + 4, y + 1, (214, 206, 182)); put(img, x + 2, y + 1, (150, 144, 128))
+    use_biome(0)
+    return img
+
+def biome_terrain(b, kind, mask, seed):
+    """흙길·물 칸: 바깥 풀 부분을 그 지역 바닥색으로"""
+    use_biome(b)
+    img = terrain(kind, mask, seed)
+    use_biome(0)
+    return img
+
+# ---------------- 지역별 소품 (셀 셰이딩, 덜 3D스럽게) ----------------
+PINE = [(22, 38, 30), (32, 54, 40), (46, 72, 50), (64, 94, 62)]
+
+def pine(seed):
+    """침엽수: 층층이 쌓인 삼각 잎 (왼쪽 밝게), 좁고 길게"""
+    rnd = random.Random(seed)
+    Wd, Ht = 44, 84
+    img = Image.new('RGBA', (Wd, Ht), (0, 0, 0, 0))
+    cx = Wd // 2
+    cylinder(img, cx, 62, 80, 2.5, 3.5, BARK, rnd, grooves=False)
+    tiers = [(8, 9), (18, 13), (30, 16), (44, 19), (58, 21)]
+    for i, (ty, hw) in enumerate(tiers):
+        hw += rnd.randint(-1, 1)
+        for y in range(ty - 2, ty + 14):
+            t = (y - (ty - 2)) / 16
+            half = hw * t
+            for x in range(int(cx - half), int(cx + half) + 1):
+                jag = (x * 7 + y * 3 + seed) % 5 == 0 and y > ty + 10
+                if jag: continue
+                rel = (x - (cx - half)) / max(1, 2 * half)
+                c = PINE[3] if rel < 0.22 and t > 0.3 else PINE[2] if rel < 0.55 else PINE[1]
+                if y > ty + 11: c = PINE[0] if rel > 0.4 else PINE[1]       # 층 밑단 그늘
+                put(img, x, y, c + (255,))
+    put(img, cx, 5, PINE[2] + (255,)); put(img, cx, 6, PINE[2] + (255,))
+    return shadow(outline(img), cx, 80, 13, 3)
+
+def dead_tree(seed):
+    """늪의 죽은 나무: 잎 없이 꺾인 가지"""
+    rnd = random.Random(seed)
+    Wd, Ht = 52, 78
+    img = Image.new('RGBA', (Wd, Ht), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    DT = [(44, 40, 36), (68, 62, 54), (92, 86, 74), (116, 108, 92)]
+    cx = Wd // 2
+    cylinder(img, lambda y: cx + (74 - y) * 0.08, 26, 74, 3.0, 5.0, DT, rnd)
+    def branch(x, y, ang, L, w):
+        if L < 4: return
+        x2, y2 = x + math.cos(ang) * L, y + math.sin(ang) * L
+        d.line([x, y, x2, y2], fill=DT[1], width=w); d.line([x - 1, y, x2 - 1, y2], fill=DT[3], width=1)
+        branch(x2, y2, ang + rnd.uniform(-0.6, -0.2), L * 0.6, max(1, w - 1))
+        if rnd.random() < 0.7: branch(x2, y2, ang + rnd.uniform(0.2, 0.6), L * 0.55, max(1, w - 1))
+    branch(cx + 1, 30, -math.pi / 2 - 0.3, 14, 3); branch(cx, 40, -math.pi / 2 + 0.9, 12, 2); branch(cx, 46, -math.pi / 2 - 1.0, 10, 2)
+    for _ in range(6):                                              # 늘어진 이끼
+        x, y = rnd.randrange(10, Wd - 10), rnd.randrange(14, 40)
+        if img.getpixel((x, y))[3]:
+            for k in range(rnd.randint(2, 5)): put(img, x, y + k, (70, 92, 54, 255))
+    return shadow(outline(img), cx, 74, 12, 3)
+
+def decor(kind):
+    """깔기만 하는 소품 (막지 않음)"""
+    rnd = random.Random(hash(kind) % 1000)
+    if kind == 'mushrooms':
+        img = Image.new('RGBA', (18, 14), (0, 0, 0, 0))
+        for x, y, r in ((5, 8, 3), (11, 6, 4), (14, 10, 2)):
+            for k in range(y, 13): put(img, x, k, (220, 210, 190, 255))
+            for dx in range(-r, r + 1):
+                put(img, x + dx, y, ((200, 80, 60) if dx < r // 2 else (150, 50, 44)) + (255,))
+                if abs(dx) < r: put(img, x + dx, y - 1, ((220, 110, 80) if dx < 0 else (180, 64, 52)) + (255,))
+            put(img, x - 1, y - 1, (240, 220, 200, 255))
+        return shadow(outline(img), 9, 13, 7, 1, alpha=60)
+    if kind == 'tallgrass':
+        img = Image.new('RGBA', (26, 22), (0, 0, 0, 0))
+        C = [(88, 86, 48), (132, 126, 74), (168, 158, 94)]
+        for i in range(11):
+            x = 3 + i * 2 + rnd.randint(-1, 1); h = rnd.randint(10, 19); lean = rnd.choice((-1, 0, 1))
+            for k in range(h): put(img, x + (lean if k > h * 0.6 else 0), 20 - k, (C[0] if k < 4 else C[1] if k < h - 3 else C[2]) + (255,))
+        return shadow(outline(img), 13, 20, 11, 2, alpha=60)
+    if kind == 'reeds':
+        img = Image.new('RGBA', (22, 28), (0, 0, 0, 0))
+        for i in range(7):
+            x = 3 + i * 2 + rnd.randint(-1, 1); h = rnd.randint(14, 24)
+            for k in range(h): put(img, x, 26 - k, ((54, 74, 44) if k < h - 5 else (84, 108, 60)) + (255,))
+            if i % 2 == 0:
+                for k in range(4): put(img, x, 26 - h + k, (110, 78, 48, 255)); put(img, x + 1, 26 - h + k, (86, 60, 38, 255))
+        return shadow(outline(img), 11, 26, 9, 2, alpha=60)
+    if kind == 'bones':
+        img = Image.new('RGBA', (26, 14), (0, 0, 0, 0))
+        B = [(150, 144, 126), (200, 194, 172), (230, 224, 204)]
+        d = ImageDraw.Draw(img)
+        d.ellipse([3, 3, 10, 9], fill=B[1]); d.ellipse([4, 3, 8, 6], fill=B[2])      # 머리뼈
+        put(img, 5, 6, (40, 34, 30, 255)); put(img, 8, 6, (40, 34, 30, 255))
+        d.line([12, 8, 22, 5], fill=B[1], width=2); d.line([12, 7, 22, 4], fill=B[2])
+        d.line([14, 11, 21, 11], fill=B[0], width=1)
+        for x in (12, 22): d.ellipse([x - 1, 3 + (x == 22) * -0, x + 1, 9], fill=B[1])
+        return shadow(outline(img), 13, 12, 11, 2, alpha=60)
+    if kind == 'campfire':
+        img = Image.new('RGBA', (30, 20), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+        for i in range(8):                                          # 돌 둘레
+            a = i / 8 * math.pi * 2
+            x, y = 15 + math.cos(a) * 11, 11 + math.sin(a) * 6
+            d.ellipse([x - 2, y - 2, x + 2, y + 1], fill=(120, 116, 106)); put(img, int(x - 1), int(y - 2), (160, 156, 144, 255))
+        d.ellipse([8, 7, 22, 15], fill=(36, 30, 28))                  # 재
+        d.line([9, 12, 21, 9], fill=(70, 46, 30), width=2); d.line([10, 9, 20, 13], fill=(56, 38, 26), width=2)  # 탄 장작
+        for x, y in ((14, 10), (17, 11)): put(img, x, y, (190, 90, 40, 255))
+        return shadow(outline(img), 15, 17, 12, 2, alpha=60)
+    if kind == 'tent':
+        img = Image.new('RGBA', (52, 42), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+        d.line([8, 38, 26, 6], fill=(70, 50, 34), width=2); d.line([44, 38, 26, 6], fill=(56, 40, 28), width=2)   # 장대
+        d.polygon([(26, 8), (8, 38), (24, 38)], fill=(122, 98, 70))                  # 가죽 (왼쪽 밝음)
+        d.polygon([(26, 8), (24, 38), (40, 38), (34, 22)], fill=(92, 72, 52))        # 찢어져 늘어진 쪽
+        d.polygon([(34, 22), (40, 38), (46, 36)], fill=(76, 58, 42))
+        for y in range(12, 38, 5): d.line([20 - (y - 12) // 3, y, 25, y], fill=(104, 82, 58))   # 꿰맨 자국
+        d.polygon([(24, 38), (30, 38), (27, 24)], fill=(30, 24, 22))                 # 입구 어둠
+        return shadow(outline(img), 26, 38, 20, 3)
+    raise ValueError(kind)
+
+def biome_props():
+    for i in range(2): pine(60 + i * 9).save(os.path.join(TILES_DIR, f'pine{i}.png'))
+    dead_tree(5).save(os.path.join(TILES_DIR, 'deadtree0.png'))
+    for k in ('mushrooms', 'tallgrass', 'reeds', 'bones', 'campfire', 'tent'):
+        decor(k).save(os.path.join(TILES_DIR, f'decor_{k}.png'))
+
+
 def height_marks():
     """Tiled에서 높이를 칠할 때 보는 표시 타일 (게임에선 안 그림): 1=절벽 고지대, 2=낮은 턱 고지대, 3=계단 자리, 4=비탈 고지대"""
     img = Image.new('RGBA', (4 * T, T), (0, 0, 0, 0))
@@ -630,6 +815,15 @@ def height_marks():
     for i, c in enumerate(((200, 80, 60, 110), (220, 180, 60, 110), (80, 160, 220, 130), (90, 200, 90, 110))):
         d.rectangle([i * T, 0, i * T + T - 1, T - 1], fill=c, outline=c[:3] + (220,))
     img.save(os.path.join(TILES_DIR, 'height_marks.png'))
+
+def region_marks():
+    """Tiled에서 지역을 칠할 때 보는 표시 타일 (게임에선 안 그림): 1 마른 들판 2 늪지 3 어두운 숲 4 사냥꾼의 들판 5 바위 언덕 (안 칠하면 0 들머리 풀밭)"""
+    img = Image.new('RGBA', (5 * T, T), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for i, c in enumerate(((210, 190, 90, 90), (90, 120, 70, 110), (40, 70, 50, 130), (170, 110, 70, 100), (150, 150, 150, 110))):
+        d.rectangle([i * T, 0, i * T + T - 1, T - 1], fill=c, outline=c[:3] + (220,))
+        d.text((i * T + 12, 10), str(i + 1), fill=(255, 255, 255, 230))
+    img.save(os.path.join(TILES_DIR, 'region_marks.png'))
 
 def heights_of(m):
     """맵의 height 레이어 → 2차원 높이값 (0 낮은 땅, 1 절벽 고지대, 2 낮은 턱 고지대, 3 오르막)"""
@@ -666,6 +860,7 @@ def remap():
     layer['data'] = new
     n, cols = 76, 8
     size = (cols * T, math.ceil(n / cols) * T)
+    old_ts = m['tilesets']
     hts = next((t for t in m['tilesets'] if t['name'] == 'height_marks'), None)
     hl = next((l for l in m['layers'] if l['name'] == 'height'), None)
     m['tilesets'] = [{
@@ -680,15 +875,32 @@ def remap():
     }]
     if hl and hts:
         hl['data'] = [(g - hts['firstgid'] + n + 1) if g >= hts['firstgid'] else 0 for g in hl['data']]
+    # 지역 레이어 + 표시 타일셋 (높이 표시 다음 번호)
+    rts = next((t for t in old_ts if t['name'] == 'region_marks'), None)
+    rl = next((l for l in m['layers'] if l['name'] == 'region'), None)
+    rfirst = n + 1 + 4
+    m['tilesets'].append({'firstgid': rfirst, 'name': 'region_marks', 'image': '../assets/tiles/region_marks.png',
+                          'imagewidth': 5 * T, 'imageheight': T, 'tilewidth': T, 'tileheight': T,
+                          'tilecount': 5, 'columns': 5, 'margin': 0, 'spacing': 0})
+    if not rl:
+        rl = {'id': max(l['id'] for l in m['layers']) + 1, 'name': 'region', 'type': 'tilelayer', 'width': Wm, 'height': Hm,
+              'x': 0, 'y': 0, 'opacity': 0.5, 'visible': False, 'data': [0] * (Wm * Hm)}
+        m['layers'].insert(1, rl)
+    elif rts:
+        rl['data'] = [(g - rts['firstgid'] + rfirst) if g >= rts['firstgid'] else 0 for g in rl['data']]
     m['layers'] = [l for l in m['layers'] if l['name'] != 'cliff_rim']   # 예전 칸 단위 덧그림 레이어 제거
     json.dump(m, open(MAP, 'w'), indent=1)
     print('map remapped', Wm, Hm)
     import terrain_bake
     terrain_bake.bake()
+    import decor_scatter
+    decor_scatter.scatter()
 
 if __name__ == '__main__':
     print('tiles', tileset())
     props()
     gatherables()
+    biome_props()
     height_marks()
+    region_marks()
     if '--remap' in sys.argv: remap()
