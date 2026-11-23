@@ -4,7 +4,8 @@
     "description": "떠돌이가 걸친 낡은 옷. 아무것도 막아 주지 않는다.",
     "maxHpBonus": 0,
     "texture": "player",
-    "skills": []
+    "skills": [],
+    "outfit": "rags"
   },
   "swamp_hide_armor": {
     "name": "늪짐승 가죽 갑옷",
@@ -13,6 +14,7 @@
     "texture": "player-swamp",
     "skills": [
       "swamp_toughness"
-    ]
+    ],
+    "outfit": "swamp"
   }
 }

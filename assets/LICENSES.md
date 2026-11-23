@@ -6,3 +6,4 @@
 |---|---|---|---|---|
 | `assets/tiles/placeholder_tiles.png` | Claude가 스크립트로 직접 생성 (임시 그래픽) | 이 프로젝트 | 자체 제작 (제한 없음) | 진짜 타일셋이 오면 교체 |
 | `assets/characters/hero3d_s.png`, `hero3d_l.png` (+ `.json`) | KayKit Adventurers Character Pack 1.0 — Rogue_Hooded 3D 모델·애니메이션을 Blender로 렌더 후 도트 가공 (`tools/art/`) — https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 | Kay Lousberg (kaylousberg.com) | CC0 1.0 | 비주얼 방향 검증용 시험 에셋 |
+| `assets/characters/hero_rags.png`, `hero_swamp.png`, `hero_px.json` | `tools/art/pixel_hero.py`로 Claude가 부위별 도트를 직접 찍어 생성 (2D 도트 방향 시험) | 이 프로젝트 | 자체 제작 (제한 없음) | Core Keeper식 4방향·부위 겹치기 |

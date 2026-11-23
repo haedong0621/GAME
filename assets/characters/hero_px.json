@@ -1,0 +1,65 @@
+{
+ "frameWidth": 32,
+ "frameHeight": 40,
+ "columns": 4,
+ "origin": {
+  "x": 0.5,
+  "y": 0.975
+ },
+ "directions": [
+  "down",
+  "up",
+  "side"
+ ],
+ "flipLeft": true,
+ "anims": {
+  "idle": {
+   "row": 0,
+   "frames": 2
+  },
+  "walk": {
+   "row": 3,
+   "frames": 4
+  },
+  "attack": {
+   "row": 6,
+   "frames": 3
+  },
+  "roll": {
+   "row": 9,
+   "frames": 4
+  },
+  "hurt": {
+   "row": 12,
+   "frames": 1
+  },
+  "death": {
+   "row": 15,
+   "frames": 3
+  }
+ },
+ "outfits": {
+  "rags": {
+   "name": "누더기 옷",
+   "texture": "hero_rags"
+  },
+  "swamp": {
+   "name": "늪짐승 가죽 갑옷",
+   "texture": "hero_swamp"
+  }
+ },
+ "hand": {
+  "down": [
+   22,
+   30
+  ],
+  "up": [
+   9,
+   30
+  ],
+  "side": [
+   17,
+   31
+  ]
+ }
+}
