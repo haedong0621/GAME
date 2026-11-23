@@ -5,7 +5,7 @@
   "staminaRegenPerSec": 35,
   "staminaRegenDelayMs": 600,
   "roll": {
-    "speed": 300,
+    "speed": 240,
     "durationMs": 320,
     "invincibleMs": 220,
     "staminaCost": 25,
@@ -57,6 +57,9 @@
   },
   "perfectDodge": {
     "slowFactor": 0.3,
-    "slowRealMs": 450
+    "slowRealMs": 450,
+    "rollBrake": 0.2,
+    "counterWindowMs": 900,
+    "counterDamageMultiplier": 1.5
   }
 }

@@ -125,6 +125,9 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
       if (rolled <= (this.data_.roll.perfectWindowMs ?? 0)) {
         spawnAfterimage(this.scene, this.visual);
         spawnBigLabel(this.scene, this.x, this.y - 34, '완벽한 회피!');
+        const pd = this.data_.perfectDodge;
+        this.rollBrake = pd.rollBrake;          // 남은 구르기를 확 줄여 몬스터 옆에 멈춤
+        this.counterMs = pd.counterWindowMs;    // 반격 기회: 이 시간 안의 첫 공격은 구르기를 끊고 나가며 강해짐
         this.onPerfectDodge?.(opts.source);
       } else {
         spawnFloatingLabel(this.scene, this.x, this.y - 30, '회피!');
@@ -236,6 +239,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
     this.stats.update(dt, this.state === State.FREE && !sneakMoving);
     if (this.invulnMs > 0) this.invulnMs -= dt;
+    if (this.counterMs > 0) this.counterMs -= dt;
     this.dt = dt;
     this.updateLock(cmd);
     // 진단용: 이동 입력이 있는데 못 움직이는 이유 (HUD 입력 진단 화면에 표시)
@@ -284,12 +288,16 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         this.bufferInput(cmd);
         this.updateRecovery(cmd);
         break;
-      case State.ROLL:
-        this.setVelocity(this.rollDir.x * this.data_.roll.speed, this.rollDir.y * this.data_.roll.speed);
+      case State.ROLL: {
+        // 완벽한 회피 직후: 공격을 누르면 구르기를 끊고 바로 반격
+        if (cmd.attack && this.counterMs > 0 && this.tryAttack(0, cmd)) break;
+        const rs = this.data_.roll.speed * (this.rollBrake ?? 1);
+        this.setVelocity(this.rollDir.x * rs, this.rollDir.y * rs);
         this.dustMs -= dt;
         if (this.dustMs <= 0) { this.dustMs = 90; spawnDust(this.scene, this.x, this.y, this.rollDir, 2); }
-        if (this.stateTime <= 0) this.enter(State.FREE);
+        if (this.stateTime <= 0) { this.setVelocity(0, 0); this.enter(State.FREE); } // 구르기가 끝나면 미끄러지지 않고 그 자리에
         break;
+      }
       case State.HURT: {
         const k = Math.max(0, this.stateTime / this.data_.hurtMs) * this.data_.knockbackSpeed * this.modifier('knockbackMultiplier');
         this.setVelocity(this.knock.x * k, this.knock.y * k);
@@ -490,6 +498,9 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (!move || !this.stats.spendStamina(move.staminaCost)) return false;
     const dir = this.attackDir(cmd);
     this.setFacingAngle(this.snapAttack(Math.atan2(dir.y, dir.x))); // 공격은 조준한 쪽으로 즉시 돌아서 시작
+    // 반격 기회 안의 첫 공격은 "반격"
+    this.counterSwing = index === 0 && this.counterMs > 0;
+    if (this.counterSwing) this.counterMs = 0;
     this.comboIndex = index;
     this.weaponView.beginWindup();
     this.enter(State.WINDUP);
@@ -521,9 +532,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         break;
       case State.RECOVERY:
         this.stateTime = m.recoveryMs;
+        this.counterSwing = false;
         this.makeNoise('attack'); // 휘두르는 소리는 칼이 지나간 뒤에 퍼진다 (기습 데미지가 먼저 들어가도록)
         break;
-      case State.ROLL: this.stateTime = this.data_.roll.durationMs; this.dustMs = 0; spawnDust(this.scene, this.x, this.y, this.rollDir, 3); break;
+      case State.ROLL: this.stateTime = this.data_.roll.durationMs; this.dustMs = 0; this.rollBrake = 1; spawnDust(this.scene, this.x, this.y, this.rollDir, 3); break;
       case State.KNOCKDOWN: {
         const kd = this.data_.knockdown;
         this.knockdownTotal = kd.airMs + kd.downMs + kd.getUpMs;
@@ -557,8 +569,10 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     for (const target of hits) {
       if (this.hitThisSwing.has(target)) continue; // 한 번 휘두를 때 같은 대상은 한 번만
       this.hitThisSwing.add(target);
-      const dealt = target.takeDamage(m.damage, { fromX: this.x, fromY: this.y });
-      spawnDamageNumber(this.scene, target.x, target.getHurtbox().y - 10, dealt);
+      const dmg = this.counterSwing ? Math.round(m.damage * this.data_.perfectDodge.counterDamageMultiplier) : m.damage;
+      const dealt = target.takeDamage(dmg, { fromX: this.x, fromY: this.y });
+      spawnDamageNumber(this.scene, target.x, target.getHurtbox().y - 10, dealt, this.counterSwing ? '#9fdcff' : undefined);
+      if (this.counterSwing) spawnBigLabel(this.scene, target.x, target.getHurtbox().y - 18, '반격!', '#9fdcff');
       // 적중 시 발동 스킬 (예: 독니 → 독)
       for (const s of this.skills) {
         if (s.type === 'onHitPoison' && target.status && target.isHittable) target.status.applyPoison(s);
