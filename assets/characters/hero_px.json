@@ -72,7 +72,7 @@
     },
     "hurt": {
      "row": 25,
-     "frames": 3
+     "frames": 5
     },
     "death": {
      "row": 30,
@@ -117,7 +117,7 @@
     },
     "hurt": {
      "row": 25,
-     "frames": 3
+     "frames": 5
     },
     "death": {
      "row": 30,

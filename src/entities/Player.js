@@ -124,7 +124,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     }
     this.stats.takeDamage(damage);
     this.invulnMs = this.data_.hitInvulnMs;
-    this.hitstopMs = 0;
+    this.hitstopMs = this.data_.hurtFreezeMs ?? 0; // 맞는 순간 잠깐 멈칫 (충격이 눈에 들어오게)
     this.queued = null;
     const dx = this.x - fromX, dy = this.y - fromY, d = Math.hypot(dx, dy) || 1;
     this.knock = { x: dx / d, y: dy / d };

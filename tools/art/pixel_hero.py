@@ -359,7 +359,8 @@ def P(**k):
                 fl=(0, 0, 0), fr=(0, 0, 0),          # 왼발·오른발 위치 조정 (x, y앞, z위)
                 off=(0, 0, 0),                        # 왼손(빈손) 위치 조정
                 w=dict(a=40, e=-55, r=3, z=0),        # 칼: 바라보는 방향 기준 각도 a, 위로 든 각도 e, 어깨에서 손까지 r, 손 높이 z
-                smear=None, weapon=True, rot=0, tuck=False)
+                smear=None, weapon=True, rot=0, tuck=False,
+                tumble=(False, 1.0), bounce=0, dust=0)            # 구르기: 앞뒤로 고꾸라짐(뒤집기, 세로 납작), 튀기, 흙먼지 크기
     base.update(k)
     return base
 
@@ -383,13 +384,17 @@ COMMON = {
            P(crouch=3, lean=22, head=1, fl=(0, 0, 1), fr=(0, 0, 0), bob=-1, off=(0, 3, 1), w=W(55, -35, 4))],
  # 구르기: 숙임 → 공처럼 말아 넣고 실제로 한 바퀴 회전 → 펴며 일어남
  'roll': [P(crouch=3, lean=30, head=2, fl=(0, 2, 0), off=(0, 4, 2), w=W(30, -60, 2)),
-          P(tuck=True, rot=60, weapon=False), P(tuck=True, rot=150, weapon=False),
-          P(tuck=True, rot=240, weapon=False), P(tuck=True, rot=320, weapon=False),
+          P(tuck=True, rot=60, tumble=(False, 0.85), bounce=0, dust=1, weapon=False),
+          P(tuck=True, rot=150, tumble=(False, 0.45), bounce=1, dust=2, weapon=False),
+          P(tuck=True, rot=240, tumble=(True, 0.85), bounce=0, dust=3, weapon=False),
+          P(tuck=True, rot=320, tumble=(True, 0.45), bounce=1, dust=2, weapon=False),
           P(crouch=2, lean=15, head=1, fr=(0, 2, 0), off=(0, 2, 0), w=W(40, -55, 3))],
  # 피격: 머리·상체가 뒤로 확 젖혀지고 팔이 튕김 → 뒷걸음 → 버팀
- 'hurt': [P(lean=-28, head=-1, lunge=-1, fr=(0, -2, 0), off=(-3, -2, 5), w=W(115, 25, 4, 2)),
-          P(lean=-20, crouch=2, lunge=-3, fl=(0, -4, 0), off=(-2, -1, 3), w=W(95, 10, 4)),
-          P(lean=-6, crouch=1, lunge=-2, off=(-1, 0, 0), w=W(60, -35, 3))],
+ 'hurt': [P(lean=-30, head=-2, lunge=-1, fr=(0, -2, 0), off=(-3, -2, 6), w=W(120, 30, 4, 3)),      # 충격: 고개·상체 확 젖힘, 팔 튕김
+          P(lean=-34, head=-2, lunge=-3, crouch=1, fl=(0, -3, 0), off=(-3, -3, 5), w=W(125, 25, 4, 2)), # 밀려남
+          P(lean=-22, crouch=3, lunge=-4, fl=(0, -4, 0), fr=(0, -1, 0), off=(-2, -1, 2), w=W(100, 5, 4)), # 휘청 (무릎 꺾임)
+          P(lean=-8, crouch=2, lunge=-3, fl=(0, -3, 0), off=(-1, 1, 0), w=W(70, -25, 3)),           # 버팀
+          P(lean=-2, crouch=1, lunge=-2, w=W(50, -45, 3))],                                          # 자세 회복
  # 쓰러짐: 휘청 → 무릎 꿇음 → 칼 떨굼 → 앞으로 쓰러짐 → 누움
  'death': [P(lean=-15, head=-1, lunge=-1, w=W(70, -30, 3)),
            P(crouch=6, lean=10, head=1, fl=(0, -4, 0), fr=(0, 2, 0), w=W(90, -60, 3)),
@@ -665,9 +670,32 @@ def draw(outfit_key, weapon_key, view, pose):
     for _, _, fn in front: fn()
     if not w_behind: weapon()
 
-    if pose['rot']:
-        img = rotsprite(img, pose['rot'] if view not in ('up', 'upside') else -pose['rot'], (CX, FOOT_Y - 8 if pose['tuck'] else FOOT_Y - 2))
-        if not pose['tuck'] and pose['rot'] >= 90:
+    if pose['tuck']:
+        # 구르기 공: 옆·대각선은 화면 안에서 회전, 아래·위는 앞으로 고꾸라짐(뒤집기 + 세로 납작). 항상 바닥에 붙임
+        if view in ('down', 'up'):
+            bb = img.getbbox()
+            ball = img.crop(bb)
+            flip, sc = pose['tumble']
+            if flip: ball = ball.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+            ball = ball.resize((ball.width, max(3, round(ball.height * sc))), Image.NEAREST)
+        else:
+            r = rotsprite(img, pose['rot'], (CX, FOOT_Y - 8))
+            ball = r.crop(r.getbbox())
+        img = Image.new('RGBA', (F, F), (0, 0, 0, 0))
+        img.alpha_composite(ball, (CX - ball.width // 2, FOOT_Y + 1 - ball.height - pose['bounce']))
+        if pose['dust']:
+            # 흙먼지: 구르는 반대쪽(뒤) 바닥에
+            back = V.ground((0, -1, 0))
+            for i in range(pose['dust'] + 1):
+                dx = CX + back[0] * (6 + i * 3)
+                dy = FOOT_Y - 1 + back[1] * SQUASH * (6 + i * 3) - (i % 2)
+                c = (150, 138, 116, 230) if i < pose['dust'] else (120, 110, 94, 160)
+                for ox, oy in ((0, 0), (1, 0), (0, -1)) if i < 2 else ((0, 0),):
+                    X, Y = int(dx + ox), int(dy + oy)
+                    if 0 <= X < F and 0 <= Y < F and img.getpixel((X, Y))[3] == 0: img.putpixel((X, Y), c)
+    elif pose['rot']:
+        img = rotsprite(img, pose['rot'] if view not in ('up', 'upside') else -pose['rot'], (CX, FOOT_Y - 2))
+        if pose['rot'] >= 90:
             # 누운 몸은 바닥에 붙이기
             bb = img.getbbox()
             if bb:

@@ -19,7 +19,7 @@
     "height": 24
   },
   "hitInvulnMs": 650,
-  "hurtMs": 300,
+  "hurtMs": 450,
   "knockbackSpeed": 230,
   "respawnDelayMs": 2500,
   "accel": 1500,
@@ -46,5 +46,6 @@
     "sneakVisibility": 0.55,
     "darkVisionMultiplier": 0.5,
     "sneakStaminaPerSec": 8
-  }
+  },
+  "hurtFreezeMs": 80
 }
