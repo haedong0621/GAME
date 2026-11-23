@@ -85,6 +85,9 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     this.hero3d = scene.registry.get('hero3d');
     this.animClock = 0; // 걷기·대기 프레임 진행용
     if (this.hero3d) this.visual.setTexture('hero3d', 0).setOrigin(this.hero3d.origin.x, this.hero3d.origin.y);
+    /** 2D 도트 주인공 메타 (Core Keeper식 4방향, 갑옷별 시트) */
+    this.heroPx = scene.registry.get('heroPx');
+    if (this.heroPx) this.visual.setOrigin(this.heroPx.origin.x, this.heroPx.origin.y);
 
     this.weaponView = new WeaponView(scene);
     this.fx = scene.add.graphics(); // 바라보는 방향 표시 등
@@ -184,7 +187,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const oldMax = this.stats.maxHp;
     this.armorId = id;
     this.armor = armor;
-    if (!this.hero3d) this.visual.setTexture(armor.texture); // 3D 시험 캐릭터는 갑옷 겉모습 미적용
+    if (this.heroPx) this.visual.setTexture(`hero_${armor.outfit ?? 'rags'}`, 0); // 갑옷마다 같은 배치의 도트 시트
+    else if (!this.hero3d) this.visual.setTexture(armor.texture); // 3D 시험 캐릭터는 갑옷 겉모습 미적용
     this.stats.maxHp = this.data_.maxHp + (armor.maxHpBonus ?? 0);
     this.stats.hp = Math.max(1, Math.min(this.stats.maxHp, this.stats.hp + (this.stats.maxHp - oldMax)));
     if (announce) spawnFloatingLabel(this.scene, this.x, this.y - 34, armor.name);
@@ -567,7 +571,51 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     if (this.state !== State.ROLL && this.state !== State.DEAD) v.setAlpha(this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0 ? 0.45 : 1);
   }
 
+  /**
+   * 2D 도트 주인공 (Core Keeper식): 방향 3개(아래·위·옆, 왼쪽은 뒤집기) × 동작 프레임.
+   * 무기는 따로 그려서 360도 회전 (WeaponView) — 몸은 4방향, 조준은 자유.
+   * Godot: AnimatedSprite2D(SpriteFrames "동작_방향") + flip_h, 무기는 별도 Sprite2D.
+   */
+  updateHeroPx() {
+    const meta = this.heroPx;
+    const v = this.visual;
+    const deg = this.facingAngle * 180 / Math.PI;
+    const dir = deg > 45 && deg < 135 ? 0 : deg < -45 && deg > -135 ? 1 : 2; // 0=아래 1=위 2=옆
+    const dt = this.inHitstop ? 0 : this.dt;
+    const prog = (total) => Math.min(0.999, Math.max(0, 1 - this.stateTime / total));
+    let anim = 'idle', frame = 0;
+    switch (this.state) {
+      case State.FREE: {
+        const sp = Math.hypot(this.body.velocity.x, this.body.velocity.y);
+        anim = sp > 15 ? 'walk' : 'idle';
+        this.animClock += dt * (anim === 'walk' ? Math.max(0.6, sp / 140) : 1);
+        const per = anim === 'walk' ? 130 : 450; // 걷기 약 8프레임/초, 대기 숨쉬기 느리게
+        frame = Math.floor(this.animClock / per) % meta.anims[anim].frames;
+        break;
+      }
+      case State.WINDUP: anim = 'attack'; frame = 0; break;
+      case State.ACTIVE: anim = 'attack'; frame = 1; break;
+      case State.RECOVERY: anim = 'attack'; frame = prog(this.currentMove.recoveryMs) < 0.5 ? 1 : 2; break;
+      case State.ROLL: anim = 'roll'; frame = Math.floor(prog(this.data_.roll.durationMs) * 4); break;
+      case State.HURT: anim = 'hurt'; frame = 0; break;
+      case State.DEAD:
+        anim = 'death';
+        this.deathClock = (this.deathClock ?? 0) + dt;
+        frame = Math.min(2, Math.floor(this.deathClock / 220));
+        break;
+    }
+    if (this.state !== State.DEAD) this.deathClock = 0;
+    const a = meta.anims[anim];
+    v.setFrame((a.row + dir) * meta.columns + Math.min(frame, a.frames - 1));
+    v.setPosition(this.x, this.y).setDepth(this.depth).setAngle(0).setScale(1);
+    if (dir === 2) v.setFlipX(this.facing.x < 0); else v.setFlipX(false);
+    if (this.state === State.WINDUP) v.setTint(0xffe0b0);
+    else if (this.state !== State.HURT) v.clearTint();
+    if (this.state !== State.ROLL && this.state !== State.DEAD) v.setAlpha(this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0 ? 0.45 : 1);
+  }
+
   updatePose() {
+    if (this.heroPx) { this.updateHeroPx(); return; }
     if (this.hero3d) { this.updateHero3d(); return; }
     const v = this.visual;
     v.setPosition(this.x, this.y).setDepth(this.depth);

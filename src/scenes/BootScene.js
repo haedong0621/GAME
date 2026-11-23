@@ -1,4 +1,4 @@
-import { PATHS, HERO_STYLE, HERO_FRAME } from '../config.js';
+import { PATHS, HERO_STYLE, HERO_FRAME, HERO_PX } from '../config.js';
 import { createPlaceholderArt } from '../systems/PlaceholderArt.js';
 import { ItemDatabase } from '../systems/ItemDatabase.js';
 import { Inventory } from '../systems/Inventory.js';
@@ -22,6 +22,11 @@ export class BootScene extends window.Phaser.Scene {
     this.load.json('skills', PATHS.skills);
     this.load.json('recipes', PATHS.recipes);
     this.load.tilemapTiledJSON('world', PATHS.worldMap);
+    if (HERO_PX) {
+      // 2D 도트 주인공: 갑옷(outfit)마다 같은 배치의 시트 (tools/art/pixel_hero.py)
+      this.load.json('heroPxMeta', 'assets/characters/hero_px.json');
+      for (const o of ['rags', 'swamp']) this.load.spritesheet(`hero_${o}`, `assets/characters/hero_${o}.png`, { frameWidth: 32, frameHeight: 40 });
+    }
     if (HERO_STYLE) {
       // 3D 렌더 → 도트 스프라이트 시트 (시험)
       this.load.json('hero3dMeta', `assets/characters/hero3d_${HERO_STYLE}.json`);
@@ -57,6 +62,7 @@ export class BootScene extends window.Phaser.Scene {
 
     this.registry.set('loadSlot', null);
     this.registry.set('hero3d', HERO_STYLE ? this.cache.json.get('hero3dMeta') : null);
+    this.registry.set('heroPx', HERO_PX ? this.cache.json.get('heroPxMeta') : null);
 
     this.scene.start('Title'); // 시작 화면 → 이어하기/불러오기/새로 시작 → World + UI
   }
