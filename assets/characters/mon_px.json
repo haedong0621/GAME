@@ -1,0 +1,125 @@
+{
+ "dirs": {
+  "down": [
+   "down",
+   false
+  ],
+  "downright": [
+   "downside",
+   false
+  ],
+  "right": [
+   "side",
+   false
+  ],
+  "upright": [
+   "upside",
+   false
+  ],
+  "up": [
+   "up",
+   false
+  ],
+  "upleft": [
+   "upside",
+   true
+  ],
+  "left": [
+   "side",
+   true
+  ],
+  "downleft": [
+   "downside",
+   true
+  ]
+ },
+ "views": [
+  "down",
+  "downside",
+  "side",
+  "upside",
+  "up"
+ ],
+ "kinds": {
+  "hound": {
+   "key": "mon_hound",
+   "frameWidth": 48,
+   "frameHeight": 48,
+   "columns": 4,
+   "origin": {
+    "x": 0.5,
+    "y": 0.8333
+   },
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 2
+    },
+    "run": {
+     "row": 5,
+     "frames": 4
+    },
+    "bite": {
+     "row": 10,
+     "frames": 4
+    },
+    "hurt": {
+     "row": 15,
+     "frames": 2
+    },
+    "stagger": {
+     "row": 20,
+     "frames": 2
+    },
+    "death": {
+     "row": 25,
+     "frames": 3
+    }
+   }
+  },
+  "swamp": {
+   "key": "mon_swamp",
+   "frameWidth": 128,
+   "frameHeight": 128,
+   "columns": 7,
+   "origin": {
+    "x": 0.5,
+    "y": 0.7969
+   },
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 2
+    },
+    "walk": {
+     "row": 5,
+     "frames": 4
+    },
+    "roar": {
+     "row": 10,
+     "frames": 2
+    },
+    "swipe": {
+     "row": 15,
+     "frames": 4
+    },
+    "slam": {
+     "row": 20,
+     "frames": 4
+    },
+    "charge": {
+     "row": 25,
+     "frames": 7
+    },
+    "stagger": {
+     "row": 30,
+     "frames": 2
+    },
+    "death": {
+     "row": 35,
+     "frames": 3
+    }
+   }
+  }
+ }
+}

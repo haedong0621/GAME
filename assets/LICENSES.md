@@ -7,3 +7,4 @@
 | `assets/tiles/placeholder_tiles.png` | Claude가 스크립트로 직접 생성 (임시 그래픽) | 이 프로젝트 | 자체 제작 (제한 없음) | 진짜 타일셋이 오면 교체 |
 | `assets/characters/hero3d_s.png`, `hero3d_l.png` (+ `.json`) | KayKit Adventurers Character Pack 1.0 — Rogue_Hooded 3D 모델·애니메이션을 Blender로 렌더 후 도트 가공 (`tools/art/`) — https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 | Kay Lousberg (kaylousberg.com) | CC0 1.0 | 비주얼 방향 검증용 시험 에셋 |
 | `assets/characters/hero_<갑옷>_<무기>.png` (6장), `hero_px.json` | `tools/art/pixel_hero.py`로 Claude가 부위별 도트와 규칙 기반 무기·잔상을 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 3/4 탑뷰 8방향, 칼 포함 공격 모션 |
+| `assets/characters/mon_hound.png`, `mon_swamp.png`, `mon_px.json` | `tools/art/pixel_monsters.py`로 Claude가 네 발 관절 뼈대·도형으로 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 들개, 늪지 짐승 (5방향 + 뒤집기) |
