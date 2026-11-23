@@ -608,9 +608,11 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     switch (this.state) {
       case State.FREE: {
         const sp = Math.hypot(this.body.velocity.x, this.body.velocity.y);
-        anim = sp > 15 ? 'walk' : 'idle';
-        this.animClock += dt * (anim === 'walk' ? Math.max(0.6, sp / 140) : 1);
-        frame = Math.floor(this.animClock / (anim === 'walk' ? 130 : 450)) % cls.anims[anim].frames;
+        const moving = sp > 15;
+        anim = this.isSneaking ? (moving ? 'sneak' : 'sneak_idle') : (moving ? 'walk' : 'idle');
+        this.animClock += dt * (moving ? Math.max(0.6, sp / 140) : 1);
+        const per = { walk: 130, sneak: 110, idle: 450, sneak_idle: 600 }[anim]; // 웅크려 걷기는 느린 속도에 맞춰 보폭 자주
+        frame = Math.floor(this.animClock / per) % cls.anims[anim].frames;
         break;
       }
       case State.WINDUP: case State.ACTIVE: case State.RECOVERY: {
@@ -624,12 +626,12 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
         else { const t = prog(m.recoveryMs); frame = t < 0.4 ? impact : t < 0.75 ? follow : rest; }
         break;
       }
-      case State.ROLL: anim = 'roll'; frame = Math.floor(prog(this.data_.roll.durationMs) * 4); break;
-      case State.HURT: anim = 'hurt'; frame = 0; break;
+      case State.ROLL: anim = 'roll'; frame = Math.floor(prog(this.data_.roll.durationMs) * cls.anims.roll.frames); break;
+      case State.HURT: anim = 'hurt'; frame = Math.floor(prog(this.data_.hurtMs) * cls.anims.hurt.frames); break;
       case State.DEAD:
         anim = 'death';
         this.deathClock = (this.deathClock ?? 0) + dt;
-        frame = Math.min(2, Math.floor(this.deathClock / 220));
+        frame = Math.floor(this.deathClock / 170);
         break;
     }
     if (this.state !== State.DEAD) this.deathClock = 0;

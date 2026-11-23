@@ -20,8 +20,10 @@ export const DEBUG = new URLSearchParams(window.location.search).has('debug');
  */
 const heroParam = new URLSearchParams(window.location.search).get('hero');
 export const HERO_STYLE = heroParam === 's' || heroParam === 'l' ? heroParam : null;
-/** 2D 도트 주인공 시험 (Core Keeper식, 부위별 겹치기): ?hero=px */
-export const HERO_PX = heroParam === 'px';
+/**
+ * 2D 도트 주인공 (기본): 3/4 탑뷰 8방향, 칼 포함 모션. 예전 임시 캐릭터는 ?hero=old
+ */
+export const HERO_PX = !HERO_STYLE && heroParam !== 'old';
 export const HERO_FRAME = { s: 64, l: 96 };
 
 export const FORCE_TOUCH = new URLSearchParams(window.location.search).has('touch');
