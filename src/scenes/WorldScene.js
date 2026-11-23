@@ -26,7 +26,7 @@ export class WorldScene extends window.Phaser.Scene {
   create() {
     // ---- 맵과 바닥
     const map = this.make.tilemap({ key: 'world' });
-    const tileset = map.addTilesetImage('placeholder_tiles', 'placeholder_tiles');
+    const tileset = map.addTilesetImage('world_tiles', 'world_tiles');
     const ground = map.createLayer('ground', tileset, 0, 0);
     ground.setDepth(GROUND_DEPTH);
     ground.setCollisionByProperty({ collides: true }); // 물 등 막힌 타일

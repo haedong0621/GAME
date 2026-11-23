@@ -45,7 +45,9 @@ export class BootScene extends window.Phaser.Scene {
       const f = HERO_FRAME[HERO_STYLE];
       this.load.spritesheet('hero3d', `assets/characters/hero3d_${HERO_STYLE}.png`, { frameWidth: f, frameHeight: f });
     }
-    this.load.image('placeholder_tiles', PATHS.placeholderTiles);
+    this.load.image('world_tiles', PATHS.worldTiles);
+    // 배경 소품 도트 (tools/art/pixel_world.py)
+    for (const k of ['tree0', 'tree1', 'tree2', 'bush', 'workbench', 'dummy']) this.load.image(k, `assets/tiles/${k}.png`);
   }
 
   create() {

@@ -38,5 +38,5 @@ export const PATHS = {
   skills: 'data/skills.json',
   recipes: 'data/recipes.json',
   worldMap: 'maps/world.tmj',
-  placeholderTiles: 'assets/tiles/placeholder_tiles.png',
+  worldTiles: 'assets/tiles/world_tiles.png',
 };

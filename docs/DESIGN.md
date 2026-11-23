@@ -9,7 +9,7 @@
 - **좌표/정렬** — 세워진 물체의 위치 = 발밑 좌표, origin (0.5, 1) → Godot Sprite2D `offset.y = -높이/2`(또는 `centered=false`+offset)로 노드 위치를 발밑에 맞춤
 - **Y-sort** — 매 프레임 `depth = 발밑 y`, 바닥 타일은 depth -1 → Godot `y_sort_enabled = true`인 부모 노드 아래에 캐릭터·나무를 둠, 바닥 TileMapLayer는 그 밖(아래)에
 - **데이터** — 콘텐츠는 `data/*.json`, 시작 시 한 번 읽어 캐시 → Godot Autoload `GameData.gd`가 `FileAccess` + `JSON.parse_string`으로 읽음
-- **맵** — Tiled `.tmj`, 타일셋 임베드, 오브젝트는 Object Layer `objects`에 `type`+속성 → Godot에서는 YATI(Tiled 임포터) 애드온으로 가져오거나 TileMapLayer로 다시 그림; 오브젝트는 `type`별로 씬 인스턴스 생성
+- **맵** — Tiled `.tmj`, 타일셋 `world_tiles` 임베드(풀 4 + 흙길·물 경계 각 16, 물은 `collides`, 경계는 이웃 마스크로 `tools/art/pixel_world.py --remap`이 매김), 오브젝트는 Object Layer `objects`에 `type`+속성 → Godot에서는 YATI(Tiled 임포터) 애드온으로 가져오거나 TileMapLayer로 다시 그림; 오브젝트는 `type`별로 씬 인스턴스 생성
 
 ## 시스템 목록
 - **부팅/로딩** (`scenes/BootScene.js`) — JSON·맵·타일셋을 미리 로드하고 임시 그래픽 생성 후 시작 화면(Title) → World+UI 씬 → Godot 메인 씬 `_ready()`에서 Autoload 초기화 후 `World.tscn` 로드

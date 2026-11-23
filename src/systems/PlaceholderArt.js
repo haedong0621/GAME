@@ -1,6 +1,7 @@
 /**
  * 진짜 에셋이 오기 전까지 쓰는 임시 그래픽을 코드로 그린다.
- * 진짜 에셋이 생기면 BootScene에서 같은 텍스처 키('player', 'tree', 'item-<id>')로 불러오고
+ * 진짜 에셋이 생기면 BootScene에서 같은 텍스처 키('player', 'item-<id>' 등)로 불러오고
+ * (나무·풀숲·제작대·허수아비는 이미 도트 PNG로 교체됨: tools/art/pixel_world.py)
  * 여기서 해당 부분만 빼면 된다. (Godot 이식 대상 아님)
  */
 export function createPlaceholderArt(scene, items, weapons) {
@@ -31,36 +32,6 @@ export function createPlaceholderArt(scene, items, weapons) {
   g.fillStyle(0xd8e36a).fillRect(18, 9, 2, 2);                               // 노란 눈빛
   g.generateTexture('player-swamp', 32, 32);
 
-  // ---- 제작대 40×30, 발은 맨 아래 가운데
-  g.clear();
-  g.fillStyle(0x000000, 0.28).fillEllipse(20, 28, 36, 6);
-  g.fillStyle(0x3e2c1c).fillRect(5, 16, 4, 12).fillRect(31, 16, 4, 12);    // 다리
-  g.fillStyle(0x6b4a2b).fillRect(2, 12, 36, 6);                             // 상판
-  g.fillStyle(0x8a6238).fillRect(2, 12, 36, 2);
-  g.fillStyle(0x5a5f66).fillRect(22, 6, 12, 6).fillRect(25, 4, 6, 2);       // 모루
-  g.fillStyle(0x9aa0a6).fillRect(7, 8, 2, 5).fillRect(5, 7, 6, 2);          // 망치
-  g.generateTexture('workbench', 40, 30);
-
-  // ---- 나무 48×72, 밑동은 맨 아래 가운데
-  g.clear();
-  g.fillStyle(0x000000, 0.25).fillEllipse(24, 69, 30, 8);
-  g.fillStyle(0x6b4a2b).fillRect(19, 44, 10, 26);           // 줄기
-  g.fillStyle(0x2e6b34).fillCircle(24, 26, 20);             // 잎(어두운)
-  g.fillStyle(0x3f8a45).fillCircle(20, 22, 15);
-  g.fillStyle(0x5aa85c).fillCircle(17, 17, 7);              // 하이라이트
-  g.generateTexture('tree', 48, 72);
-
-  // ---- 연습용 허수아비 32×40, 발은 맨 아래 가운데
-  g.clear();
-  g.fillStyle(0x000000, 0.25).fillEllipse(16, 38, 18, 5);
-  g.fillStyle(0x4a3826).fillRect(14, 14, 4, 26);             // 기둥
-  g.fillStyle(0x4a3826).fillRect(4, 16, 24, 3);              // 팔 막대
-  g.fillStyle(0x8a7448).fillRoundedRect(8, 12, 16, 16, 3);   // 짚 몸통
-  g.fillStyle(0x6e5a36).fillRect(8, 20, 16, 2);              // 묶은 끈
-  g.fillStyle(0x9a8656).fillCircle(16, 7, 6);                // 머리
-  g.fillStyle(0x3a2a1a).fillRect(13, 6, 2, 2).fillRect(18, 6, 2, 2);
-  g.generateTexture('dummy', 32, 40);
-
   // ---- 보스: 늪지 짐승 64×56, 오른쪽을 봄, 발은 맨 아래 가운데
   g.clear();
   g.fillStyle(0x000000, 0.3).fillEllipse(32, 52, 50, 10);                       // 그림자
@@ -87,15 +58,6 @@ export function createPlaceholderArt(scene, items, weapons) {
   g.fillStyle(0xe0c050).fillRect(22, 6, 2, 1);                                 // 눈
   g.fillStyle(0x8a7a6a).fillRect(9, 7, 6, 1);                                  // 갈비뼈 드러난 털
   g.generateTexture('hound', 28, 20);
-
-  // ---- 풀숲 34×22, 밑동은 맨 아래 가운데
-  g.clear();
-  g.fillStyle(0x000000, 0.22).fillEllipse(17, 20, 30, 5);
-  g.fillStyle(0x24452a).fillEllipse(10, 14, 16, 12).fillEllipse(24, 14, 16, 12);
-  g.fillStyle(0x2f5a34).fillEllipse(17, 10, 20, 14);
-  g.fillStyle(0x3d6e40).fillEllipse(13, 8, 8, 6).fillEllipse(22, 9, 7, 5);
-  g.fillStyle(0x24452a).fillTriangle(4, 16, 6, 6, 9, 16).fillTriangle(26, 16, 29, 7, 31, 16);
-  g.generateTexture('bush', 34, 22);
 
   // ---- 무기: weapons.json의 view 값으로 칼 모양. 손잡이가 왼쪽, 칼끝이 오른쪽(0도 방향)
   const hex = (s) => window.Phaser.Display.Color.HexStringToColor(s).color;

@@ -6,7 +6,8 @@ import { applyYSort } from '../systems/YSort.js';
  */
 export class Tree {
   constructor(scene, x, y) {
-    this.sprite = scene.add.image(x, y, 'tree').setOrigin(0.5, 1);
+    const variant = Math.abs(Math.round(x * 7 + y * 13)) % 3; // 위치로 정해지는 나무 모양 (항상 같은 나무는 같은 모양)
+    this.sprite = scene.add.image(x, y, `tree${variant}`).setOrigin(0.5, 1);
     applyYSort(this.sprite); // 움직이지 않으니 한 번만
 
     /** 줄기 충돌 영역 (static group에 넣으면 고정 물리 몸체가 된다) */
