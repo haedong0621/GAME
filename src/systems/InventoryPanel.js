@@ -1,7 +1,8 @@
 /**
  * 가방·장비창 (UI 씬 위, I키 / 휴대폰 [가방]). 열려 있는 동안 월드는 멈춘다.
  * 왼쪽: 장비 8칸 + 지금 입은 모습 / 오른쪽: 가방(탭: 전체·장비·재료·음식) + 설명 + 버튼(장착·해제·먹기·단축칸 1·2·3)
- * 조작: 마우스/터치로 고르기 · ←↑→↓ 가방에서 고르기 · Enter 장착/먹기 · 1·2·3 무기 단축칸 · Tab 탭 바꾸기 · Esc/I 닫기
+ * 조작: 클릭 고르기 · 우클릭 바로 장착/해제/먹기 · 끌어다 놓기(가방 → 장비칸 = 장착, 장비칸 → 가방 = 해제, 손 → 다른 손)
+ *       · 휠 가방 스크롤 · ←↑→↓ 고르기 · Enter 장착/먹기 · 1·2·3 무기 단축칸 · Tab 탭 · Esc/I 닫기
  * 규칙은 Equipment.js(장비)·Inventory.js(가방), 여기는 보여 주기와 입력만.
  * Godot: InventoryPanel.tscn (Control) — GridContainer + TextureRect 칸 + RichTextLabel.
  */
@@ -29,7 +30,7 @@ export class InventoryPanel {
     const dim = scene.add.rectangle(cx, cy, scene.scale.width, scene.scale.height, 0x000000, 0.55).setInteractive();
     this.root.add([dim, scene.add.rectangle(cx, cy, W, H, COL.bg, 0.97).setStrokeStyle(2, COL.line)]);
     this.root.add(scene.add.text(this.x0 + 18, this.y0 + 12, '가방 · 장비', { fontFamily: 'serif', fontSize: '22px', fontStyle: 'bold', color: COL.gold }));
-    this.root.add(scene.add.text(this.x0 + W - 18, this.y0 + 18, 'Esc / I 닫기', { fontFamily: 'sans-serif', fontSize: '12px', color: COL.dim }).setOrigin(1, 0));
+    this.root.add(scene.add.text(this.x0 + W - 18, this.y0 + 18, '우클릭 바로 장착·해제·먹기 · 끌어다 장비칸에 놓기 · Esc / I 닫기', { fontFamily: 'sans-serif', fontSize: '12px', color: COL.dim }).setOrigin(1, 0));
 
     // ---- 장비칸 + 모습
     this.slotCells = {};
@@ -37,7 +38,12 @@ export class InventoryPanel {
     for (const s of SLOTS) {
       const [c, r] = SLOT_POS[s];
       const x = ex + c * 200, y = ey + r * 66;
-      this.slotCells[s] = this.cell(x, y, () => { this.sel = { kind: 'slot', slot: s }; this.render(); });
+      this.slotCells[s] = this.cell(x, y, (p) => {
+        const id = this.ctx.player.equipment.slots[s];
+        if (p.rightButtonDown()) { if (id) { this.ctx.player.unequipSlot(s === 'left' && this.ctx.player.equipment.twoHanded ? 'right' : s); this.changed(); } return; }
+        this.sel = { kind: 'slot', slot: s }; this.render();
+        if (id) this.dragStart = { from: 'slot', slot: s, id, x: p.x, y: p.y };
+      });
       this.root.add(scene.add.text(x + CELL / 2, y + CELL + 1, SLOT_NAMES[s], { fontFamily: 'sans-serif', fontSize: '11px', color: COL.dim }).setOrigin(0.5, 0));
     }
     this.doll = scene.add.container(ex + 125, ey + 200);
@@ -58,8 +64,14 @@ export class InventoryPanel {
     this.bagCells = [];
     for (let i = 0; i < COLS * ROWS; i++) {
       const x = bx + (i % COLS) * (CELL + GAP), y = by + 34 + Math.floor(i / COLS) * (CELL + GAP);
-      this.bagCells.push(this.cell(x, y, () => { this.sel = { kind: 'bag', index: this.scroll * COLS + i }; this.render(); }));
+      this.bagCells.push(this.cell(x, y, (p) => {
+        const idx = this.scroll * COLS + i, it = this.list()[idx];
+        if (p.rightButtonDown()) { if (it) this.quickUse(it.id); return; }
+        this.sel = { kind: 'bag', index: idx }; this.render();
+        if (it && this.ctx.player.equipment.def(it.id)) this.dragStart = { from: 'bag', id: it.id, x: p.x, y: p.y };
+      }));
     }
+    this.bagArea = { x: bx, y: by + 34, w: COLS * (CELL + GAP), h: ROWS * (CELL + GAP) };
     this.scrollText = scene.add.text(bx + COLS * (CELL + GAP) - GAP, by + 4, '', { fontFamily: 'sans-serif', fontSize: '12px', color: COL.dim }).setOrigin(1, 0);
     this.root.add(this.scrollText);
 
@@ -86,14 +98,78 @@ export class InventoryPanel {
       if (q !== undefined) { const id = this.selectedId(); if (id && this.isWeapon(id)) this.setQuick(id, q); }
     };
     this.keyTimer = setTimeout(() => window.addEventListener('keydown', this.onKey), 0);
+
+    // 끌어다 놓기
+    this.onMove = (p) => {
+      const d = this.dragStart;
+      if (!d || !p.isDown) return;
+      if (!this.ghost && Math.hypot(p.x - d.x, p.y - d.y) > 6) {
+        this.ghost = scene.add.container(p.x, p.y).setDepth(120).setAlpha(0.85);
+        this.drawIcon(this.ghost, d.id);
+        this.root.add(this.ghost);
+      }
+      this.ghost?.setPosition(p.x, p.y);
+    };
+    this.onUp = (p) => {
+      const d = this.dragStart;
+      this.dragStart = null;
+      if (!this.ghost) return;
+      this.ghost.destroy(); this.ghost = null;
+      const pl = this.ctx.player;
+      const target = SLOTS.find((s) => this.slotCells[s].bg.getBounds().contains(p.x, p.y));
+      const a = this.bagArea;
+      const overBag = p.x >= a.x && p.x <= a.x + a.w && p.y >= a.y && p.y <= a.y + a.h;
+      if (target) {
+        if (d.from === 'slot' && d.slot === target) return;
+        if (!pl.equipment.slotsFor(d.id).includes(target)) { this.flash(`${SLOT_NAMES[target]} 칸에는 넣을 수 없어요`); return; }
+        pl.equipItem(d.id, target);
+        this.sel = { kind: 'slot', slot: target };
+        this.changed();
+      } else if (overBag && d.from === 'slot') {
+        pl.unequipSlot(d.slot);
+        this.changed();
+      }
+    };
+    // 휠: 가방 위에서 스크롤
+    this.onWheel = (p, _o, _dx, dy) => {
+      const a = this.bagArea;
+      if (p.x < a.x || p.x > a.x + a.w || p.y < a.y || p.y > a.y + a.h) return;
+      const maxScroll = Math.max(0, Math.ceil(this.list().length / COLS) - ROWS);
+      this.scroll = Math.max(0, Math.min(maxScroll, this.scroll + Math.sign(dy)));
+      this.render(false);
+    };
+    scene.input.on('pointermove', this.onMove);
+    scene.input.on('pointerup', this.onUp);
+    scene.input.on('wheel', this.onWheel);
     this.render();
   }
 
+  /** 우클릭: 장비 = 착용(이미 입었으면 해제), 음식 = 먹기 */
+  quickUse(id) {
+    const pl = this.ctx.player, e = pl.equipment;
+    if (e.def(id)) {
+      const where = Object.entries(e.slots).find(([, v]) => v === id)?.[0];
+      if (where) pl.unequipSlot(where);
+      else pl.equipItem(id, this.isWeapon(id) ? 'right' : null);
+    } else if (this.ctx.items.get(id)?.heal) this.ctx.eat(id);
+    this.changed();
+  }
+
+  changed() { this.ctx.onChanged?.(); this.render(); }
+
+  /** 짧은 안내 글 (설명 칸 위에 잠깐) */
+  flash(text) {
+    const t = this.scene.add.text(this.bagArea.x + this.bagArea.w / 2, this.bagArea.y + this.bagArea.h / 2, text, {
+      fontFamily: 'sans-serif', fontSize: '14px', color: '#ffd0a0', backgroundColor: '#000000cc', padding: { x: 10, y: 5 } }).setOrigin(0.5).setDepth(130);
+    this.root.add(t);
+    this.scene.tweens.add({ targets: t, alpha: 0, delay: 900, duration: 300, onComplete: () => t.destroy() });
+  }
+
   // ---------- 그리기 도구 ----------
-  cell(x, y, onClick) {
+  cell(x, y, onDown) {
     const s = this.scene;
     const bg = s.add.rectangle(x + CELL / 2, y + CELL / 2, CELL, CELL, COL.panel).setStrokeStyle(1, COL.line).setInteractive({ useHandCursor: true });
-    bg.on('pointerdown', onClick);
+    bg.on('pointerdown', (p) => onDown(p));
     const icon = s.add.container(x + CELL / 2, y + CELL / 2);
     const count = s.add.text(x + CELL - 3, y + CELL - 2, '', { fontFamily: 'sans-serif', fontSize: '11px', color: COL.text, stroke: '#000', strokeThickness: 3 }).setOrigin(1, 1);
     const tag = s.add.text(x + 3, y + 2, '', { fontFamily: 'sans-serif', fontSize: '10px', color: COL.ok, stroke: '#000', strokeThickness: 3 });
@@ -206,7 +282,8 @@ export class InventoryPanel {
   }
 
   // ---------- 화면 갱신 ----------
-  render() {
+  /** @param {boolean} follow 고른 칸이 보이게 스크롤을 맞출지 (휠로 움직일 땐 false) */
+  render(follow = true) {
     const { player, skills, items } = this.ctx;
     const e = player.equipment;
     const list = this.list();
@@ -223,7 +300,7 @@ export class InventoryPanel {
       c.bg.setStrokeStyle(this.sel.kind === 'slot' && this.sel.slot === s ? 2 : 1, this.sel.kind === 'slot' && this.sel.slot === s ? COL.sel : COL.line);
     }
     // 가방 (선택이 보이게 스크롤)
-    if (this.sel.kind === 'bag') {
+    if (this.sel.kind === 'bag' && follow) {
       const row = Math.floor(this.sel.index / COLS);
       if (row < this.scroll) this.scroll = row;
       if (row >= this.scroll + ROWS) this.scroll = row - ROWS + 1;
@@ -296,6 +373,9 @@ export class InventoryPanel {
   close() {
     clearTimeout(this.keyTimer);
     window.removeEventListener('keydown', this.onKey);
+    this.scene.input.off('pointermove', this.onMove);
+    this.scene.input.off('pointerup', this.onUp);
+    this.scene.input.off('wheel', this.onWheel);
     this.root.destroy(true);
     this.ctx.onClose?.();
   }
