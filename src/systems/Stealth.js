@@ -39,6 +39,13 @@ export class StealthEnv {
   isDark(x, y) {
     return this.darkZones.some((z) => x >= z.x && x <= z.x + z.width && y >= z.y && y <= z.y + z.height);
   }
+
+  /** 시야 거리 배율: 어두운 구역 × 밤 정도 (월드가 매 프레임 nightFactor를 넣어 줌) */
+  visionMultiplier(x, y, stealth) {
+    const dark = this.isDark(x, y) ? stealth.darkVisionMultiplier : 1;
+    const night = 1 - (this.nightFactor ?? 0) * (1 - (this.nightVisionMultiplier ?? 1));
+    return dark * night;
+  }
 }
 
 /**
@@ -54,7 +61,7 @@ export function visibility(observer, perception, target, env, stealth) {
   if (target.isDead) return 0;
   const dx = target.x - observer.x, dy = target.y - observer.y;
   const d = Math.hypot(dx, dy);
-  const range = perception.visionRange * (env.isDark(target.x, target.y) ? stealth.darkVisionMultiplier : 1);
+  const range = perception.visionRange * env.visionMultiplier(target.x, target.y, stealth);
   if (d > range) return 0;
 
   // 바로 옆(closeSenseRadius 안)은 등 뒤라도 느낀다. 그 밖은 시야 부채꼴 안이어야 보인다.

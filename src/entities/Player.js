@@ -249,7 +249,16 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
 
   /** 패시브 스킬 배율의 곱 (예: knockbackMultiplier) */
   modifier(key) {
-    return this.skills.reduce((acc, s) => acc * (s[key] ?? 1), 1);
+    return this.skills.reduce((acc, s) => acc * (s[key] ?? 1), 1) * (this.needs?.modifier(key) ?? 1);
+  }
+
+  /** 생존 게이지 효과를 최대 체력·기력에 반영 (배고프면 기력 최대치↓, 피곤하면 체력 최대치↓) */
+  applyNeeds() {
+    const s = this.stats;
+    s.maxStamina = Math.round(this.data_.maxStamina * this.modifier('maxStaminaMultiplier'));
+    s.maxHp = Math.round((this.data_.maxHp + this.equipment.maxHpBonus()) * this.modifier('maxHpMultiplier'));
+    s.stamina = Math.min(s.stamina, s.maxStamina);
+    s.hp = Math.min(s.hp, s.maxHp);
   }
 
   // ---------- 매 프레임 ----------
@@ -268,7 +277,8 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const sneakMoving = this.isSneaking && moving;
     if (sneakMoving) this.stats.stamina = Math.max(0, this.stats.stamina - this.data_.stealth.sneakStaminaPerSec * (dt / 1000));
 
-    this.stats.update(dt, this.state === State.FREE && !sneakMoving);
+    this.applyNeeds();
+    this.stats.update(dt, this.state === State.FREE && !sneakMoving, this.modifier('staminaRegenMultiplier'));
     if (this.invulnMs > 0) this.invulnMs -= dt;
     if (this.counterMs > 0) this.counterMs -= dt;
     this.dt = dt;

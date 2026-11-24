@@ -25,6 +25,15 @@ export class UIScene extends window.Phaser.Scene {
     const small = { ...style, fontSize: '13px' };
     const isTouch = FORCE_TOUCH || this.sys.game.device.input.touch;
 
+    // 낮밤 색: 화면 전체에 곱하기(MULTIPLY)로 덮음 — HUD보다 아래 (월드만 물듦)
+    this.dayNight = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xffffff).setOrigin(0, 0).setDepth(-100)
+      .setBlendMode(window.Phaser.BlendModes.MULTIPLY);
+    // 시계 (오른쪽 위)
+    this.clockText = this.add.text(this.scale.width - 12, isTouch ? 84 : 40, '', { ...small, color: '#e8dcc0', backgroundColor: '#00000066', padding: { x: 6, y: 2 } })
+      .setOrigin(1, 0);
+    // 생존 게이지 (체력·기력 바 오른쪽): 배고픔·목마름·피로 + 걸린 상태
+    this.needText = this.add.text(222, 8, '', { ...small, fontSize: '12px', lineSpacing: 1 }).setShadow(1, 1, '#000', 0);
+
     // 체력·기력 바
     this.add.text(12, 10, '체력', small).setShadow(1, 1, '#000', 0);
     this.add.text(12, 28, '기력', small).setShadow(1, 1, '#000', 0);
@@ -97,6 +106,7 @@ export class UIScene extends window.Phaser.Scene {
           this.showBanner(`${info.name} 제작!`, '#e8c860');
         },
         onNewGame: () => this.scene.get('World').newGame(),
+        onRest: () => this.scene.get('World').restUntilMorning(),
         onClose: () => { this.panel = null; this.registry.set('panelOpen', false); this.scene.resume('World'); },
       });
     });
@@ -128,6 +138,22 @@ export class UIScene extends window.Phaser.Scene {
     g.clear();
     this.drawBar(g, 50, 13, s.hp / s.maxHp, 0xb23a2e);
     this.drawBar(g, 50, 31, s.stamina / s.maxStamina, s.regenCooldown > 0 ? 0x8f8a4a : 0xd9c25a);
+
+    // 낮밤 색 · 시계 · 생존 게이지
+    const clock = this.registry.get('clock'), needs = this.registry.get('needs');
+    if (clock) {
+      const c = clock.tint();
+      this.dayNight.setFillStyle((c.r << 16) | (c.g << 8) | c.b);
+      this.clockText.setText(clock.label());
+    }
+    if (needs) {
+      const mini = (x, y, v, col) => { g.fillStyle(0x000000, 0.6).fillRect(x - 1, y - 1, 52, 6); g.fillStyle(v <= 25 ? 0xd06050 : col).fillRect(x, y, 50 * v / 100, 4); };
+      mini(262, 12, needs.hunger, 0xc8925a); mini(262, 26, needs.thirst, 0x5aa8d8); mini(262, 40, needs.rest, 0x9a8ad0);
+      const conds = needs.conditions().map((x) => (x.good ? `+${x.name}` : `!${x.name}`)).join(' ');
+      this.needText.setText(`배\n목\n잠`);
+      this.condText ??= this.add.text(318, 8, '', { fontFamily: 'sans-serif', fontSize: '12px', color: '#ffd0a0' }).setShadow(1, 1, '#000', 0);
+      this.condText.setText(conds);
+    }
 
     this.drawBossBar(this.registry.get('activeBoss'));
 

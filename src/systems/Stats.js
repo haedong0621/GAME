@@ -42,14 +42,14 @@ export class Stats {
     this.stamina = this.maxStamina;
   }
 
-  /** @param {number} dtMs @param {boolean} canRegen 행동 중에는 회복하지 않음 */
-  update(dtMs, canRegen) {
+  /** @param {number} dtMs @param {boolean} canRegen 행동 중에는 회복하지 않음 @param {number} regenMult 회복 배율 (배고픔·목마름 등) */
+  update(dtMs, canRegen, regenMult = 1) {
     if (this.regenCooldown > 0) {
       this.regenCooldown -= dtMs;
       return;
     }
     if (canRegen) {
-      this.stamina = Math.min(this.maxStamina, this.stamina + (this.regenPerSec * dtMs) / 1000);
+      this.stamina = Math.min(this.maxStamina, this.stamina + (this.regenPerSec * regenMult * dtMs) / 1000);
     }
   }
 }

@@ -1,0 +1,23 @@
+{
+  "_설명": "세계 규칙. time = 게임 시계(현실 1초 = 게임 minutesPerRealSecond분), colors = [시각, 화면에 곱할 색] (밤은 어둡고 푸르게, 노을은 주황). night = 밤 정도에 따라 적 시야 배율·몬스터 피해 배율. needs = 생존 게이지(강도 B: 죽지 않음) — 1시간마다 줄어드는 양, 잠잘 때 줄어드는 비율, 상태별 효과(below 이하 / above 이상이면)",
+  "time": {
+    "minutesPerRealSecond": 1,
+    "startDay": 1,
+    "startHour": 8,
+    "colors": [[0, "#56669a"], [4.5, "#56669a"], [6, "#cfb0c0"], [7.5, "#ffffff"], [16.5, "#ffffff"], [18, "#ffc898"], [19.5, "#a084a8"], [21, "#56669a"]]
+  },
+  "night": { "visionMultiplier": 0.6, "monsterDamageMultiplier": 1.25 },
+  "needs": {
+    "decayPerHour": { "hunger": 4, "thirst": 6, "rest": 4 },
+    "sleepDecayMultiplier": 0.3,
+    "wellRestedHours": 8,
+    "wakeHour": 6,
+    "effects": {
+      "hungry": { "below": 25, "maxStaminaMultiplier": 0.75 },
+      "wellFed": { "above": 80, "staminaRegenMultiplier": 1.2 },
+      "thirsty": { "below": 25, "staminaRegenMultiplier": 0.6 },
+      "tired": { "below": 20, "maxHpMultiplier": 0.8, "rollStaminaMultiplier": 1.25 },
+      "wellRested": { "staminaRegenMultiplier": 1.15 }
+    }
+  }
+}

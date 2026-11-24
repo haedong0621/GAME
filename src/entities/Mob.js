@@ -200,7 +200,7 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
         if (!this.hitPlayer) {
           const c = { x: this.x + this.attackDir.x * 12, y: this.y - CHEST + this.attackDir.y * 8, radius: a.radius };
           if (findHits(c, [p]).length) {
-            const r = p.receiveHit(a.damage, this.x, this.y - CHEST, { knockdown: !!a.knockdown, source: this });
+            const r = p.receiveHit(Math.round(a.damage * (this.scene.monsterDamageMultiplier?.() ?? 1)), this.x, this.y - CHEST, { knockdown: !!a.knockdown, source: this });
             if (r !== 'ignored') this.hitPlayer = true;
           }
         }
@@ -309,7 +309,7 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     else this.scene.tweens.add({ targets: this.visual, alpha: 0, angle: this.facing.x < 0 ? -90 : 90, duration: 700, delay: 300 });
     this.onDefeated(this);
     if (this.data_.respawnMs) {
-      this.respawnTimer = this.scene.time.delayedCall(this.data_.respawnMs, () => this.revive());
+      this.respawnTimer = this.scene.clock.after(this.data_.respawnMs, () => this.revive());
     }
   }
 
@@ -389,7 +389,7 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     // 웅크리는 동안: 시야 부채꼴을 희미하게 보여 줌 (몰래 다니기 쉬우라고)
     if (ctx?.showCones && level !== Level.ALERT) {
       const pr = this.data_.perception;
-      const range = pr.visionRange * (ctx.env.isDark(this.x, this.y) ? ctx.stealth.darkVisionMultiplier : 1);
+      const range = pr.visionRange * ctx.env.visionMultiplier(this.x, this.y, ctx.stealth);
       const ang = Math.atan2(this.facing.y, this.facing.x), half = (pr.visionAngleDeg / 2) * Math.PI / 180;
       const gc = ctx.coneGfx;
       gc.fillStyle(level === Level.SUSPICIOUS ? 0xffd040 : 0xffffff, 0.07);

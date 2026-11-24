@@ -11,6 +11,8 @@ import { Bush } from '../entities/Bush.js';
 import { NoiseBus, StealthEnv, Level } from '../systems/Stealth.js';
 import { spawnFloatingLabel } from '../systems/Effects.js';
 import { Terrain } from '../systems/Terrain.js';
+import { GameClock } from '../systems/GameClock.js';
+import { Needs } from '../systems/Needs.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH, applyYSort } from '../systems/YSort.js';
@@ -26,10 +28,19 @@ export class WorldScene extends window.Phaser.Scene {
   }
 
   create() {
+    // ---- 게임 시계·생존 게이지 (다시 자라기·재등장 타이머도 이 시계로)
+    const rules = this.registry.get('worldRules');
+    this.rules = rules;
+    this.clock = new GameClock(rules.time);
+    this.needs = new Needs(rules.needs);
+    this.registry.set('clock', this.clock);
+    this.registry.set('needs', this.needs);
+
     // ---- 맵과 바닥
     const map = this.make.tilemap({ key: 'world' });
     const tileset = map.addTilesetImage('world_tiles', 'world_tiles');
     const ground = map.createLayer('ground', tileset, 0, 0);
+    this.groundLayer = ground;
     ground.setDepth(GROUND_DEPTH);
     ground.setCollisionByProperty({ collides: true }); // 물 등 막힌 타일
     ground.setVisible(false); // 그림은 굽기 도구가 만든 바닥 한 장(지역별 바닥 + 흙길·물 + 절벽)이 대신함 — 타일은 충돌용
@@ -160,7 +171,8 @@ export class WorldScene extends window.Phaser.Scene {
     const db = { weapons: this.registry.get('weapons'), gear: this.registry.get('gear'), skills: this.registry.get('skills') };
     this.player = new Player(this, spawn.x, spawn.y, playerData, db, () => this.monsters);
     this.player.getGatherTargets = () => this.gatherables;
-    this.player.terrain = this.terrain; // 뛰어내리기·덩굴 오르기 판단용 // 칼로 나무·바위를 칠 수 있음 (조준·락온 대상은 아님)
+    this.player.terrain = this.terrain; // 뛰어내리기·덩굴 오르기 판단용
+    this.player.needs = this.needs;     // 생존 게이지 효과 (배율) // 칼로 나무·바위를 칠 수 있음 (조준·락온 대상은 아님)
     this.registry.set('player', this.player); // HUD가 체력·스태미나를 읽음
 
     this.spawnPoint = spawn; // 저장소를 못 쓰는 환경에서만 쓰는 부활 지점
@@ -203,13 +215,16 @@ export class WorldScene extends window.Phaser.Scene {
    * @param {'manual'|'auto'} slot @param {string} location 저장 화면에 보일 장소 이름
    */
   saveGame(slot = 'manual', location = this.lastBaseName ?? '거점') {
-    const ok = SaveSystem.save(slot, SaveSystem.snapshot({
+    const snap = SaveSystem.snapshot({
       player: this.player,
       inventory: this.registry.get('inventory'),
       collectedPickups: this.collectedPickups,
       playTimeMs: this.playTimeMs,
       location,
-    }));
+    });
+    snap.world.clock = this.clock.toJSON();   // 날짜·시각
+    snap.player.needs = this.needs.toJSON();  // 배고픔·목마름·피로
+    const ok = SaveSystem.save(slot, snap);
     const label = slot === 'auto' ? `자동 저장 — ${location}` : '저장됨';
     this.banner(ok ? label : '저장 실패 (브라우저 저장소를 쓸 수 없음)', ok ? '#9adf5a' : '#d06050');
     return ok;
@@ -230,6 +245,8 @@ export class WorldScene extends window.Phaser.Scene {
     const p = this.player;
     const sp = save.player ?? {};
     if (Number.isFinite(sp.x) && Number.isFinite(sp.y)) p.body.reset(sp.x, sp.y);
+    this.clock.load(save.world?.clock);
+    this.needs.load(sp.needs);
     if (sp.equipment) p.equipment.load(sp.equipment);
     else this.migrateOldGear(sp); // 예전 저장(무기 목록 + 갑옷 한 벌)
     p.refreshEquipment(false);
@@ -273,6 +290,12 @@ export class WorldScene extends window.Phaser.Scene {
   update(_time, realDelta) {
     this.playTimeMs += realDelta;
     const delta = realDelta * this.timeScale; // 게임 속 시간 (슬로모션 반영)
+    // 게임 시계·생존 게이지·밤 정도
+    const before = this.clock.minutes;
+    this.clock.update(delta);
+    this.needs.tick(this.clock.minutes - before);
+    this.env.nightFactor = this.clock.nightFactor;
+    this.env.nightVisionMultiplier = this.rules.night.visionMultiplier;
     const cmd = this.inputSystem.getCommand();
 
     // 상호작용: 가장 가까운 대상이 범위 안이면 안내 표시, 누르면 열기
@@ -281,6 +304,11 @@ export class WorldScene extends window.Phaser.Scene {
     if (cmd.useItem) this.eatBestFood();
     if (cmd.openInventory && this.player.stateName === 'free') { this.openPanel('inventory'); return; }
     if (cmd.interact && near && this.player.stateName === 'free') {
+      if (near.isDrink) {
+        // 물가에서 마시기: 쪼그려 떠 마시는 모션 (줍기 모션 재사용)
+        this.player.startGather(near, () => { this.needs.drink(); spawnFloatingLabel(this, this.player.x, this.player.y - 34, '꿀꺽꿀꺽 — 목마름 해소'); });
+        return;
+      }
       if (near.isPickup || near.isGatherable) {
         // 줍기·채집: 쪼그려 집는 모션 중간에 손에 들어옴 (주변 아이템은 한 번에)
         this.player.startGather(near, () => (near.isGatherable ? near.gatherInteract() : this.pickUpNear()));
@@ -414,6 +442,41 @@ export class WorldScene extends window.Phaser.Scene {
     this.banner('장비 초기화', '#9adf5a');
   }
 
+  /** 플레이어 발밑 근처(22px)의 물 칸 (물 마시기용) */
+  waterNear() {
+    const layer = this.groundLayer;
+    for (const [dx, dy] of [[0, 14], [0, -14], [14, 0], [-14, 0], [0, 22], [0, -22], [22, 0], [-22, 0]]) {
+      const t = layer.getTileAtWorldXY(this.player.x + dx, this.player.y + dy);
+      if (t && t.properties?.collides) return { x: this.player.x + dx, y: this.player.y + dy };
+    }
+    return null;
+  }
+
+  /** 밤에는 몬스터가 더 아프게 때림 (data/world.json night) */
+  monsterDamageMultiplier() {
+    return 1 + (this.rules.night.monsterDamageMultiplier - 1) * this.clock.nightFactor;
+  }
+
+  /** 거점에서 아침까지 쉬기: 화면이 어두워졌다 밝아지며 시간이 흐름 (배고픔·목마름은 조금 줄고, 피로는 가득, 체력·기력 회복) */
+  restUntilMorning(onDone) {
+    const cam = this.cameras.main;
+    cam.fadeOut(500, 0, 0, 0);
+    cam.once('camerafadeoutcomplete', () => {
+      const mins = this.clock.minutesUntil(this.rules.needs.wakeHour);
+      this.needs.tick(mins, true);
+      this.clock.advance(mins);
+      this.needs.sleep();
+      const pl = this.player;
+      pl.refreshEquipment(false);
+      pl.applyNeeds();
+      pl.stats.hp = pl.stats.maxHp; pl.stats.stamina = pl.stats.maxStamina;
+      cam.fadeIn(700, 0, 0, 0);
+      this.banner(`아침이 밝았다 — ${this.clock.day}일째 (푹 잠)`, '#ffe8a0');
+      this.saveGame('manual', this.lastBaseName ?? '거점');
+      onDone?.();
+    });
+  }
+
   /** 다른 지역에 들어서면 이름을 띄운다 (data/regions.json). 경계에서 왔다 갔다 해도 2.5초에 한 번만 */
   checkRegion() {
     const r = this.terrain.regionAt(this.player.x, this.player.y);
@@ -439,6 +502,11 @@ export class WorldScene extends window.Phaser.Scene {
     for (const it of this.interactables) consider(it, it.interactRadius);
     for (const g of this.gatherables) if (g.canInteract) consider(g, g.interactRadius);
     for (const p of this.pickups.getChildren()) if (p.active && p.body?.enable) consider(p, R);
+    // 아무것도 없고 물가 바로 옆이면: 물 마시기 (목마를 때만 안내)
+    if (!best && this.needs.thirst < 95) {
+      const spot = this.waterNear();
+      if (spot) best = { ...spot, isDrink: true, label: '물 마시기' };
+    }
     if (best?.isPickup) {
       const n = this.pickupsNear().length;
       const nm = this.player.equipment.def(best.itemId)?.name ?? this.registry.get('items').get(best.itemId)?.name ?? best.itemId;
@@ -466,7 +534,7 @@ export class WorldScene extends window.Phaser.Scene {
       i++;
       if (p.mapId !== null) {
         const { x, homeY, itemId, amount, mapId, respawnMs } = p;
-        this.time.delayedCall(respawnMs ?? 180000, () => {
+        this.clock.after(respawnMs ?? 180000, () => {
           const n = new ItemPickup(this, x, homeY, itemId, amount, mapId);
           n.respawnMs = respawnMs;
           this.pickups.add(n);
@@ -507,7 +575,7 @@ export class WorldScene extends window.Phaser.Scene {
     const pl = this.player;
     if (pl.isDead) return;
     const s = pl.stats;
-    if (s.hp >= s.maxHp) { spawnFloatingLabel(this, pl.x, pl.y - 34, '배부름'); return; }
+    if (s.hp >= s.maxHp && this.needs.hunger >= 95) { spawnFloatingLabel(this, pl.x, pl.y - 34, '배부름'); return; }
     const items = this.registry.get('items');
     const inv = this.registry.get('inventory');
     const foods = items.ids().map((id) => ({ id, ...items.get(id) })).filter((it) => it.heal && inv.count(it.id) > 0).sort((a, b) => a.heal - b.heal);
@@ -521,6 +589,7 @@ export class WorldScene extends window.Phaser.Scene {
     if (!f?.heal || inv.count(id) <= 0) return false;
     inv.remove(id, 1);
     const healed = pl.stats.heal(f.heal);
+    if (f.food) this.needs.eat(f.food);
     spawnFloatingLabel(this, pl.x, pl.y - 34, `${f.name} +${healed}`);
     return true;
   }

@@ -355,7 +355,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     if (this.hitPlayerThisAttack) return;
     const p = this.getPlayer();
     if (p.isDead || !groundShapeContains(shape, p.x, p.y)) return;
-    const result = p.receiveHit(spec.damage, this.x, this.y - CHEST, { knockdown: !!spec.knockdown, source: this });
+    const dmg = Math.round(spec.damage * (this.scene.monsterDamageMultiplier?.() ?? 1)); // 밤엔 더 사나움
+    const result = p.receiveHit(dmg, this.x, this.y - CHEST, { knockdown: !!spec.knockdown, source: this });
     if (result !== 'ignored') this.hitPlayerThisAttack = true; // 회피했어도 이번 공격은 끝
   }
 
@@ -465,7 +466,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.onDefeated(this);
 
     if (this.data_.respawnMs) {
-      this.respawnTimer = this.scene.time.delayedCall(this.data_.respawnMs, () => this.revive());
+      this.respawnTimer = this.scene.clock.after(this.data_.respawnMs, () => this.revive()); // 게임 시계 기준 (자면 그만큼 지남)
     }
   }
 
@@ -651,7 +652,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     }
     if (dead || !ctx?.showCones || this.awareness === Awareness.ALERT) return;
     const pr = this.data_.perception;
-    const range = pr.visionRange * (ctx.env.isDark(this.x, this.y) ? ctx.stealth.darkVisionMultiplier : 1);
+    const range = pr.visionRange * ctx.env.visionMultiplier(this.x, this.y, ctx.stealth);
     const ang = Math.atan2(this.facing.y, this.facing.x), half = (pr.visionAngleDeg / 2) * Math.PI / 180;
     const gc = ctx.coneGfx;
     gc.fillStyle(level === Level.SUSPICIOUS ? 0xffb040 : 0xff8060, 0.09);

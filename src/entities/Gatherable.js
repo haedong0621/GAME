@@ -78,7 +78,7 @@ export class Gatherable {
     this.dropItems(this.x + side * 14, this.y + 6, drops);
     const word = { tree: '쿵!', rock: '와르르' }[this.kind];
     if (word) spawnFloatingLabel(this.scene, this.x, this.y - 30, word);
-    this.respawnTimer = this.scene.time.delayedCall(this.def.respawnMs, () => this.regrow());
+    this.respawnTimer = this.scene.clock.after(this.def.respawnMs, () => this.regrow()); // 게임 시계 기준
   }
 
   regrow() {

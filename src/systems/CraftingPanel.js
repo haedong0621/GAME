@@ -89,6 +89,8 @@ export class CraftingPanel {
     // 버튼
     this.craftBtn = this.button(this.x0 + W - 210, this.y0 + H - 50, 110, '제작', () => this.craft());
     this.closeBtn = this.button(this.x0 + W - 90, this.y0 + H - 50, 70, '닫기', () => this.close());
+    // 거점에서 쉬기: 아침까지 시간이 흐르고 피로·체력·기력이 가득 (배고픔·목마름은 조금 줄어듦)
+    if (ctx.onRest) this.restBtn = this.button(this.x0 + 290, this.y0 + H - 50, 150, '아침까지 쉬기 (Z)', () => { this.close(); ctx.onRest(); });
     const ng = scene.add.text(this.x0 + W - 20, this.y0 + 18, '처음부터 다시', { fontFamily: 'sans-serif', fontSize: '12px', color: '#8a7a64' })
       .setOrigin(1, 0).setInteractive({ useHandCursor: true });
     ng.on('pointerdown', () => { if (window.confirm('저장을 지우고 처음부터 시작할까요? 되돌릴 수 없어요.')) ctx.onNewGame?.(); });
@@ -102,6 +104,7 @@ export class CraftingPanel {
       else if (['ArrowLeft', 'KeyA'].includes(e.code)) this.shiftTab(-1);
       else if (['ArrowRight', 'KeyD', 'Tab'].includes(e.code)) { e.preventDefault(); this.shiftTab(1); }
       else if (e.code === 'KeyF') this.toggleFilter();
+      else if (e.code === 'KeyZ' && this.ctx.onRest) { this.close(); this.ctx.onRest(); }
       else if (['Enter', 'Space', 'KeyJ'].includes(e.code)) { e.preventDefault(); this.craft(); }
       else if (['Escape', 'KeyE'].includes(e.code)) { e.preventDefault(); this.close(); }
     };
