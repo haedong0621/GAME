@@ -8,16 +8,21 @@ import { applyYSort } from '../systems/YSort.js';
  * Godot: Npc.tscn = Node2D(층 Sprite2D들) + StaticBody2D(또는 CharacterBody2D) + Area2D(대화 범위) + Label.
  */
 export class Npc {
-  /** @param {string} id npcs.json 이름 @param {object} def npcs.json[id] */
-  constructor(scene, x, y, id, def) {
+  /**
+   * @param {string} id npcs.json 이름 @param {object} def npcs.json[id] (또는 쓰러진 사람: {name, outfit})
+   * @param {{dead?:boolean, facing?:number}} opts dead = 쓰러진 모습(맨손 죽음 동작 마지막 장면, 대화 안 됨)
+   */
+  constructor(scene, x, y, id, def, opts = {}) {
     this.scene = scene;
     this.id = id;
     this.def = def;
     this.x = x; this.y = y;
     this.label = `${def.name}와(과) 대화`;
     this.interactRadius = 34;
-    this.isNpc = true;
-    this.facing = Math.PI / 2;
+    this.dead = !!opts.dead;
+    this.isNpc = !this.dead;
+    this.hidden = false;
+    this.facing = opts.facing ?? Math.PI / 2;
     this.anim = 'idle';
     this.moving = false;      // true면 바깥이 facing을 정함 (플레이어 쪽을 안 봄)
     this.clock = Math.random() * 1000;
@@ -31,13 +36,22 @@ export class Npc {
         this.layers[k] = scene.add.image(x, y, key, 0).setOrigin(meta.origin.x, meta.origin.y);
       }
     }
-    this.nameText = scene.add.text(x, y - 40, def.name, { fontFamily: 'sans-serif', fontSize: '10px', color: '#f2e6c8', stroke: '#14110d', strokeThickness: 3, resolution: 2 })
+    this.nameText = scene.add.text(x, y - 40, this.dead ? '' : def.name, { fontFamily: 'sans-serif', fontSize: '10px', color: '#f2e6c8', stroke: '#14110d', strokeThickness: 3, resolution: 2 })
       .setOrigin(0.5, 1);
     this.mark = scene.add.text(x, y - 50, '', { fontFamily: 'sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#ffe060', stroke: '#14110d', strokeThickness: 3, resolution: 2 })
       .setOrigin(0.5, 1);
     this.bubble = null;
     this.blocker = scene.add.zone(x, y - 4, 14, 8);
     this.update(0, null, null);
+  }
+
+  /** 보이기·숨기기 (깃발로 나타나고 사라지는 사람) — 숨으면 대화도 안 됨 */
+  setShown(on) {
+    this.hidden = !on;
+    for (const img of Object.values(this.layers)) img.setVisible(on);
+    this.nameText.setVisible(on && !this.bubble);
+    this.mark.setVisible(on);
+    if (!on) { this.bubble?.destroy(); this.bubble = null; }
   }
 
   /** 발밑 위치 옮기기 (그림·이름·말풍선은 update에서 따라옴) */
@@ -56,7 +70,8 @@ export class Npc {
   /** @param {number} dt @param {{x,y}} player @param {string} mark '!' | '?' | '' */
   update(dt, player, mark) {
     this.clock += dt;
-    if (!this.moving && player && Math.hypot(player.x - this.x, player.y - this.y) < 90) this.facing = Math.atan2(player.y - this.y, player.x - this.x);
+    if (this.hidden) return;
+    if (!this.moving && !this.dead && player && Math.hypot(player.x - this.x, player.y - this.y) < 90) this.facing = Math.atan2(player.y - this.y, player.x - this.x);
     const meta = this.meta;
     const depth = this.y;
     if (meta) {
@@ -65,13 +80,13 @@ export class Npc {
       const deg = this.facing * 180 / Math.PI;
       const [view, flip] = meta.dirs[DIR8[((Math.round(deg / 45) % 8) + 8) % 8]];
       const vi = meta.views.indexOf(view);
-      const a = cls.anims[this.anim] ?? cls.anims.idle;
+      const a = cls.anims[this.dead ? 'death' : this.anim] ?? cls.anims.idle;
       const frameMs = this.anim === 'run' ? 110 : this.anim === 'walk' ? 160 : 600;
-      const fi = (a.row + vi) * cls.columns + (Math.floor(this.clock / frameMs) % a.frames);
+      const fi = (a.row + vi) * cls.columns + (this.dead ? a.frames - 1 : Math.floor(this.clock / frameMs) % a.frames);
       meta.layerOrder[view].forEach((k, i) => {
         const img = this.layers[k];
         if (!img) return;
-        img.setPosition(this.x, this.y).setFrame(fi).setFlipX(flip).setDepth(depth + i * 0.001);
+        img.setPosition(this.x, this.y).setFrame(fi).setFlipX(flip).setDepth((this.dead ? depth - 20 : depth) + i * 0.001);
       });
     } else applyYSort(this);
     this.nameText.setPosition(this.x, this.y - 40).setDepth(depth + 1).setVisible(!this.bubble); // 말하는 동안은 이름 대신 말풍선

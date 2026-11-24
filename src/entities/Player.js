@@ -151,7 +151,12 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     this.visual.setTintFill(0xff4030);
     this.scene.time.delayedCall(90, () => this.visual.clearTint());
 
-    if (this.stats.isDead) {
+    if (this.stats.isDead && this.deathGuard?.()) {
+      // 이야기상 죽으면 안 되는 순간 (강제 패배): 체력 1로 버티고 넘어짐 — 그 뒤는 연출이 맡음
+      this.stats.hp = 1;
+      this.setFacingAngle(Math.atan2(-this.knock.y, -this.knock.x));
+      this.enter(State.KNOCKDOWN);
+    } else if (this.stats.isDead) {
       this.enter(State.DEAD);
       this.onDeath?.();
     } else if (opts.knockdown) {

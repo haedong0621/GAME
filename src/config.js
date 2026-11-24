@@ -42,6 +42,7 @@ export const PATHS = {
   world: 'data/world.json',
   npcs: 'data/npcs.json',
   dialogues: 'data/dialogues.json',
+  cutscenes: 'data/cutscenes.json',
   quests: 'data/quests.json',
   worldMap: 'maps/world.tmj',
   worldTerrain: 'maps/world_terrain.json',

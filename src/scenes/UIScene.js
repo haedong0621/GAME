@@ -1,3 +1,4 @@
+import { CinemaOverlay } from '../systems/CinemaOverlay.js';
 import { DEBUG, FORCE_TOUCH } from '../config.js';
 import { TouchControls } from '../systems/TouchControls.js';
 import { InputDebugPanel } from '../systems/InputDebugPanel.js';
@@ -89,6 +90,8 @@ export class UIScene extends window.Phaser.Scene {
       fontFamily: 'sans-serif', fontSize: '16px', color: '#f2e6c8', backgroundColor: '#000000aa', padding: { x: 10, y: 5 },
     }).setOrigin(0.5);
     this.isTouch = isTouch;
+    // 연출 화면 (검은 띠·대사·검은 화면 글·조작 안내)
+    this.cinema = new CinemaOverlay(this);
 
     // 월드가 패널 열기를 요청하면 (월드는 이미 멈춘 상태)
     this.registry.events.on('changedata-openPanel', (_p, req) => {

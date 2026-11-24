@@ -17,6 +17,10 @@ import { WorldMap } from '../systems/WorldMap.js';
 import { QuestLog } from '../systems/QuestLog.js';
 import { Npc } from '../entities/Npc.js';
 import { Companion } from '../entities/Companion.js';
+import { Fire } from '../entities/Fire.js';
+import { Cutscene } from '../systems/Cutscene.js';
+import { CutsceneDirector } from '../systems/CutsceneDirector.js';
+import { testCondition } from '../systems/Conditions.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH, applyYSort } from '../systems/YSort.js';
@@ -44,6 +48,8 @@ export class WorldScene extends window.Phaser.Scene {
     this.companions = {}; // npcId → Companion (동료가 될 수 있는 NPC)
     this.questLog = new QuestLog(this.registry.get('quests'), { inventory: this.registry.get('inventory'), onEvent: (t, q, extra) => this.onQuestEvent(t, q, extra) });
     this.registry.set('questLog', this.questLog);
+    // 가방이 바뀌면 "아이템 가지기" 목표를 다시 봄 (보고가 필요 없는 단계는 바로 넘어감)
+    this.registry.get('inventory').onChange(() => { for (const id of this.questLog.active()) this.questLog.autoAdvance(id); });
 
     // ---- 맵과 바닥
     const map = this.make.tilemap({ key: 'world' });
@@ -63,6 +69,16 @@ export class WorldScene extends window.Phaser.Scene {
     // ---- 맵 오브젝트 → 엔티티
     const objects = map.getObjectLayer('objects')?.objects ?? [];
     const blockers = this.physics.add.staticGroup(); // 나무 줄기, 몬스터 발밑 등 길을 막는 것
+    this.blockersGroup = blockers;
+    // 이야기 연출용: 깃발에 따라 보이고 숨는 것(showIf/hideIf), 깃발로 그림이 바뀌는 건물, 위치 표시, 연출 구역, 이야기 경계
+    this.flagged = [];      // {showIf, hideIf, setShown(on)}
+    this.altSprites = [];   // {img, sprite, alt, flag}
+    this.markers = {};      // 이름 → {x, y}
+    this.triggers = [];     // {x, y, width, height, cutscene}
+    this.bounds = [];       // {x, y, width, height, flag, until, message}
+    this.corpses = [];
+    this.fires = [];
+    const flagProps = (obj, def = {}) => ({ showIf: getProperty(obj, 'showIf') ?? def.showIf, hideIf: getProperty(obj, 'hideIf') ?? def.hideIf });
     const pickups = this.physics.add.group({ allowGravity: false, immovable: true });
     this.pickups = pickups;
     const items = this.registry.get('items');
@@ -101,6 +117,8 @@ export class WorldScene extends window.Phaser.Scene {
           // 건물·큰 소품 (집, 우물, 물레방앗간, 감시탑, 제단): 발밑(blockW×blockH)만 막고 그림은 세워서 Y정렬
           const img = this.add.image(obj.x, obj.y, getProperty(obj, 'sprite')).setOrigin(0.5, 1);
           applyYSort(img);
+          // altSprite + altFlag: 깃발이 서면 그림이 바뀜 (예: 불탄 집)
+          if (getProperty(obj, 'altFlag')) this.altSprites.push({ img, sprite: getProperty(obj, 'sprite'), alt: getProperty(obj, 'altSprite'), flag: getProperty(obj, 'altFlag') });
           const bw = getProperty(obj, 'blockW', 40), bh = getProperty(obj, 'blockH', 14);
           blockers.add(this.add.zone(obj.x, obj.y - bh / 2 - 4, bw, bh));
           break;
@@ -114,6 +132,7 @@ export class WorldScene extends window.Phaser.Scene {
           const kind = getProperty(obj, 'kind');
           const img = this.add.image(obj.x, obj.y, this.textures.exists(`decor_${kind}`) ? `decor_${kind}` : kind).setOrigin(0.5, 1);
           applyYSort(img);
+          if (getProperty(obj, 'showIf') || getProperty(obj, 'hideIf')) this.flagged.push({ ...flagProps(obj), setShown: (on) => img.setVisible(on) });
           if (kind === 'tent') blockers.add(this.add.zone(obj.x, obj.y - 6, 34, 12));
           break;
         }
@@ -133,8 +152,35 @@ export class WorldScene extends window.Phaser.Scene {
           } else blockers.add(npc.blocker);
           this.npcs.push(npc);
           this.interactables.push(npc);
+          this.flagged.push({ ...flagProps(obj, def), setShown: (on) => { npc.setShown(on); if (!on) npc.blocker.body && (npc.blocker.body.enable = false); else if (npc.blocker.body) npc.blocker.body.enable = true; } });
           break;
         }
+        case 'corpse': {
+          // 쓰러진 사람 (이야기 연출): NPC 옷 그림의 죽음 동작 마지막 장면
+          const c = new Npc(this, obj.x, obj.y, obj.name, { name: obj.name, outfit: getProperty(obj, 'outfit', 'villager') },
+            { dead: true, facing: (getProperty(obj, 'facing', 90) * Math.PI) / 180 });
+          c.name = obj.name;
+          this.corpses.push(c);
+          this.flagged.push({ ...flagProps(obj), setShown: (on) => c.setShown(on) });
+          break;
+        }
+        case 'fire': {
+          const f = new Fire(this, obj.x, obj.y, getProperty(obj, 'kind', 'fire'), getProperty(obj, 'size', 1));
+          this.fires.push(f);
+          this.flagged.push({ ...flagProps(obj), setShown: (on) => f.setShown(on) });
+          break;
+        }
+        case 'marker':
+          this.markers[obj.name] = { x: obj.x, y: obj.y };
+          break;
+        case 'trigger':
+          // 연출 구역: 들어서면 연출(data/cutscenes.json)을 조건이 맞을 때 한 번 재생
+          this.triggers.push({ x: obj.x, y: obj.y, width: obj.width, height: obj.height, cutscene: getProperty(obj, 'cutscene') });
+          break;
+        case 'bounds':
+          // 이야기 경계: flag가 서 있고(없으면 항상) until이 아직 안 섰을 때, 밖으로 못 나감 + 안내
+          this.bounds.push({ x: obj.x, y: obj.y, width: obj.width, height: obj.height, flag: getProperty(obj, 'flag'), until: getProperty(obj, 'until'), message: getProperty(obj, 'message', '지금은 갈 수 없다.') });
+          break;
         case 'place':
           places.push({ name: obj.name, x: obj.x, y: obj.y, kind: getProperty(obj, 'kind', 'area') });
           break;
@@ -257,6 +303,29 @@ export class WorldScene extends window.Phaser.Scene {
     cam.setZoom(WORLD_ZOOM);
     cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     cam.startFollow(this.player, true, 0.12, 0.12);
+
+    // ---- 이야기 연출 (프롤로그 등)
+    this.director = new CutsceneDirector(this);
+    this.cutscene = null;
+    this.cutsceneLive = new Set();
+    this.pendingCutscenes = this.pendingCutscenes ?? [];
+    this.cutsceneActions = this.makeCutsceneActions();
+    // 강제 패배: 트롤에게 쓰러지는 순간 죽지 않고 연출로 (마을이 불타는 중 + 아직 구출 전)
+    this.player.deathGuard = () => {
+      const f = this.questLog.flags;
+      if (!f.village_burning || f.rescued) return false;
+      this.playCutscene('defeat');
+      return true;
+    };
+    // 시험용: ?skipPrologue=1 이면 새 게임을 프롤로그 끝난 상태(물레방앗간, 아버지의 도끼)로 시작
+    if (!save && new URLSearchParams(window.location.search).has('skipPrologue')) {
+      Object.assign(this.questLog.flags, { prologue_done: true, village_burning: true, rescued: true });
+      this.questLog.state.prologue = { stage: 4, kills: {}, reached: true, done: true };
+      this.player.obtain('father_axe', true);
+      const m = this.markers.wake_spot; if (m) this.player.body.reset(m.x, m.y);
+    }
+    this.refreshFlags();
+    if (!save) this.playCutscene('intro'); // 새 게임 = 프롤로그부터 (조건: 프롤로그 안 받음)
   }
 
   // ---------- 저장 ----------
@@ -301,6 +370,8 @@ export class WorldScene extends window.Phaser.Scene {
     this.clock.load(save.world?.clock);
     this.worldMap.load(save.world?.explored);
     this.questLog.load(save.quests);
+    // 프롤로그가 생기기 전 저장: 프롤로그는 끝난 것으로 (고향은 이미 잿더미, 토브와 함께)
+    if (!this.questLog.state.prologue) Object.assign(this.questLog.flags, { prologue_done: true, village_burning: true, rescued: true });
     // 진행 중인 단계가 몬스터를 불러냈었다면 다시 불러냄 (예: 촌장의 수탉)
     for (const id of this.questLog.active()) for (const a of this.questLog.stageDef(id)?.onStart ?? []) if (this.questLog.status(id) === 'active') this.onQuestEvent('stageAction', this.questLog.def(id), a);
     this.needs.load(sp.needs);
@@ -332,6 +403,7 @@ export class WorldScene extends window.Phaser.Scene {
   onPerfectDodge(source) {
     const pd = this.player.data_.perfectDodge;
     source?.stagger?.();
+    if (source?.data_?.tutorialDodge && !this.questLog.flags.tut_counter) { this.questLog.setFlag('tut_counter'); this.hint('완벽한 회피! 지금 반격하자 (왼쪽 클릭 / J)', 3000); }
     this.setSlowMotion(pd.slowFactor);
     const cam = this.cameras.main;
     cam.flash(120, 210, 235, 255, false);
@@ -354,6 +426,9 @@ export class WorldScene extends window.Phaser.Scene {
     this.needs.tick(this.clock.minutes - before);
     this.env.nightFactor = this.clock.nightFactor;
     this.env.nightVisionMultiplier = this.rules.night.visionMultiplier;
+    // 기다리던 연출 (UI가 준비되면)
+    if (!this.cutscene && this.pendingCutscenes.length && this.scene.get('UI')?.cinema) this.playCutscene(this.pendingCutscenes.shift());
+    if (this.cutscene) { this.updateCutscene(delta); return; }
     const cmd = this.inputSystem.getCommand();
 
     // 상호작용: 가장 가까운 대상이 범위 안이면 안내 표시, 누르면 열기
@@ -371,7 +446,7 @@ export class WorldScene extends window.Phaser.Scene {
       healPlayer: (n) => this.companionHeal(n),
     };
     cctx.night = this.clock.nightFactor;
-    for (const c of Object.values(this.companions)) c.update(delta, cctx);
+    for (const c of Object.values(this.companions)) if (!c.npc.hidden) c.update(delta, cctx);
     for (const n of this.npcs) n.update(delta, this.player, this.npcMark(n.id));
     this.reachCheckMs = (this.reachCheckMs ?? 0) - delta;
     if (this.reachCheckMs <= 0) { this.reachCheckMs = 400; this.questLog.checkReach(this.player.x, this.player.y, this.worldMap.places); }
@@ -395,14 +470,17 @@ export class WorldScene extends window.Phaser.Scene {
     this.player.update(cmd, delta);
     this.checkAutosave();
     this.checkRegion();
+    this.checkTriggers();
+    this.checkBounds();
+    // 강제 패배가 너무 길어지지 않게 (계속 피하기만 해도 결국 쓰러짐)
+    if (this.questLog.flags.troll_fight && !this.questLog.flags.rescued) {
+      this.trollFightMs = (this.trollFightMs ?? 0) + delta;
+      if (this.trollFightMs > 50000) this.playCutscene('defeat');
+    }
 
     // 몬스터: 플레이어가 이번 프레임에 낸 소리와 환경을 보고 판단
     this.coneGfx.clear();
-    const ctx = {
-      player: this.player, env: this.env, noises: this.noiseBus.list, mobs: this.mobs,
-      stealth: this.player.data_.stealth, showCones: this.player.isSneaking, coneGfx: this.coneGfx,
-      summon: (id, x, y) => this.summonMob(id, x, y),
-    };
+    const ctx = this.monsterCtx();
     for (const m of this.monsters) m.update?.(delta, ctx); // 보스·잡몹 AI, 상태 이상(독) 등
     this.noiseBus.clear();
 
@@ -536,7 +614,17 @@ export class WorldScene extends window.Phaser.Scene {
     if (a.startQuest) q.start(a.startQuest);
     if (a.advanceQuest) q.advance(a.advanceQuest);
     if (a.give) inv.add(a.give[0], a.give[1]);
-    if (a.setFlag) q.flags[a.setFlag] = true;
+    if (a.setFlag) q.setFlag(a.setFlag);
+    if (a.clearFlag) q.setFlag(a.clearFlag, false);
+    if (a.gear) {
+      // 장비 얻기 (equip: 바로 들기)
+      this.player.obtain(a.gear, !!a.equip);
+      this.player.refreshEquipment?.(false);
+      this.banner(`${this.player.equipment.def(a.gear)?.name ?? a.gear} 얻음`, '#ffe08a');
+    }
+    if (a.spawn) { const at = a.at ? this.markers[a.at] : a; if (at) this.spawnMonster(a.spawn, at.x, at.y); }
+    if (a.cutscene) this.playCutscene(a.cutscene);
+    if (a.hint) this.hint(a.hint, a.ms);
     if (a.companion) {
       // 동료 명령: follow(따라와) · wait(기다려) · home(거점에 가 있어)
       const c = Object.values(this.companions)[0];
@@ -548,25 +636,178 @@ export class WorldScene extends window.Phaser.Scene {
   /** 퀘스트 알림·보상·몬스터 불러내기 */
   onQuestEvent(type, quest, extra) {
     const inv = this.registry.get('inventory'), items = this.registry.get('items');
-    if (type === 'started') this.banner(`퀘스트 시작: ${quest.name}`, '#e8c860');
-    if (type === 'stage') this.banner(`${quest.name} — 다음 목표`, '#e8c860');
+    if (type === 'flag') { this.refreshFlags(); return; }
+    if (type === 'started' && !quest.quiet) this.banner(`퀘스트 시작: ${quest.name}`, '#e8c860');
+    if (type === 'stage' && !quest.quiet) this.banner(`${quest.name} — 다음 목표`, '#e8c860');
+    if (type === 'started' || type === 'stage') {
+      // 단계 안내 (quests.json stages[].hint)
+      const id = Object.keys(this.questLog.defs).find((k) => this.questLog.defs[k] === quest);
+      const st = this.questLog.stageDef(id);
+      if (st?.hint) this.time.delayedCall(type === 'started' ? 900 : 1400, () => this.hint(st.hint, st.hintMs ?? 6000));
+    }
     if (type === 'completed') {
       const r = quest.reward ?? {};
       for (const [id, n] of r.takeItems ?? []) inv.remove(id, n);
       const got = [];
       for (const [id, n] of r.items ?? []) { inv.add(id, n); got.push(`${items.get(id)?.name ?? id} ×${n}`); }
       for (const id of r.gear ?? []) { this.player.obtain(id, false); got.push(this.player.equipment.def(id)?.name ?? id); }
-      this.banner(`퀘스트 완료: ${quest.name}${got.length ? ` — ${got.join(', ')}` : ''}`, '#ffe08a');
+      if (!quest.quiet) this.banner(`퀘스트 완료: ${quest.name}${got.length ? ` — ${got.join(', ')}` : ''}`, '#ffe08a');
       this.saveGame('auto', `${quest.name} 완료`);
     }
-    if (type === 'stageAction' && extra?.spawn) {
-      const data = this.registry.get('monsters')[extra.spawn];
-      if (!data || this.mobs.some((m) => m.id === extra.spawn && m.isHittable)) return;
-      const mob = new Mob(this, extra.x, extra.y, extra.spawn, { ...data, respawnMs: 0 }, (m) => this.onMobDefeated(m));
-      this.mobs.push(mob); this.monsters.push(mob);
+    if (type === 'stageAction') this.dialogueAction(extra); // 단계 시작 때 할 일: spawn(몬스터, at = 위치 표시 이름 또는 x·y) · cutscene · setFlag …
+  }
+
+  /** 연출의 run 동작 (data/cutscenes.json {"run": 이름, ...옵션}) */
+  makeCutsceneActions() {
+    const boss = (id) => this.bosses.find((b) => b.id === id && b.isHittable);
+    return {
+      // 보스 포효 (연출 중에도 그 보스만 움직임): {run: 'roar', boss: id, ms}
+      roar: (st) => {
+        const b = boss(st.boss);
+        if (!b) return null;
+        this.cutsceneLive.add(b);
+        b.becomeAlert(true);
+        return new Promise((r) => window.setTimeout(() => { this.cutsceneLive.delete(b); r(); }, st.ms ?? b.data_.roarMs ?? 900));
+      },
+      // 플레이어 위치 옮기기: {run: 'teleport', at: 마커}
+      teleport: (st) => { const m = this.markers[st.at]; if (m) { this.player.body.reset(m.x, m.y); this.cameras.main.centerOn(m.x, m.y - 16); } return null; },
+      // 보스 치우기 (연출 뒤 사라짐): {run: 'despawn', boss: id}
+      despawn: (st) => {
+        for (const b of this.monsters.filter((q) => q.id === st.boss)) {
+          b.body.enable = false; b.setActive(false);
+          for (const o of [b.visual, b.telegraph, b.hpBarSmall, b.icon]) o?.setVisible(false);
+        }
+        this.monsters = this.monsters.filter((q) => q.id !== st.boss);
+        this.bosses = this.bosses.filter((q) => q.id !== st.boss);
+        return null;
+      },
+      // 날짜 넘기기: {run: 'passDays', days, hour} — days일 뒤 hour시로 (그동안의 시계 타이머도 지남)
+      passDays: (st) => {
+        const target = (this.clock.day - 1 + st.days) * 1440 + (st.hour ?? 8) * 60;
+        this.clock.advance(Math.max(0, target - this.clock.minutes));
+        return null;
+      },
+      // 다 나음: 체력·기력 가득, 넘어짐 풀기
+      healFull: () => { const p = this.player; p.stats.hp = p.stats.maxHp; p.stats.stamina = p.stats.maxStamina; p.respawn(p.x, p.y); return null; },
+      // 저장: {run: 'save', label}
+      save: (st) => { this.saveGame('auto', st.label ?? '이야기'); return null; },
+    };
+  }
+
+  /** 몬스터 AI에 넘기는 주변 정보 */
+  monsterCtx() {
+    return {
+      player: this.player, env: this.env, noises: this.noiseBus.list, mobs: this.mobs,
+      stealth: this.player.data_.stealth, showCones: this.player.isSneaking, coneGfx: this.coneGfx,
+      summon: (id, x, y) => this.summonMob(id, x, y),
+      onTelegraph: (boss, atk) => this.onBossTelegraph(boss, atk),
+    };
+  }
+
+  // ---------- 이야기 연출 ----------
+  /** 연출 재생 (조건이 맞고, 한 번만 보는 연출이면 아직 안 봤을 때). 진행 중이면 줄 세움 */
+  playCutscene(id) {
+    const def = this.registry.get('cutscenes')?.[id];
+    if (!def) { console.warn(`[World] 연출 없음: ${id}`); return false; }
+    if (!def.repeat && this.questLog.flags[`cs_${id}`]) return false;
+    if (this.cutscene || !this.scene.get('UI')?.cinema) { if (!this.pendingCutscenes.includes(id)) this.pendingCutscenes.push(id); return true; }
+    if (!testCondition(def.if, this.condCtx())) return false;
+    new Cutscene(id, def, this.director).play();
+    return true;
+  }
+
+  condCtx() {
+    return { quests: this.questLog, inventory: this.registry.get('inventory'), companion: () => Object.values(this.companions)[0]?.mode };
+  }
+
+  /** 연출 중: 플레이어는 가만히(넘어진 동작 등은 마저), 몬스터는 live에 든 것만 움직임, 사람들은 숨 쉼 */
+  updateCutscene(delta) {
+    this.player.update({ move: { x: 0, y: 0 }, aim: null, autoAim: true }, delta);
+    const ctx = this.monsterCtx();
+    for (const m of this.monsters) if (this.cutsceneLive.has(m) || m.isDeadState) m.update?.(delta, ctx); // 쓰러지는 동작은 마저
+    for (const n of this.npcs) n.update(delta, this.player, this.npcMark(n.id));
+    this.registry.set('interactPrompt', null);
+    this.registry.set('activeBoss', null);
+  }
+
+  /** 연출 구역에 들어섰나 */
+  checkTriggers() {
+    const { x, y } = this.player;
+    for (const t of this.triggers) {
+      if (x >= t.x && x <= t.x + t.width && y >= t.y && y <= t.y + t.height) this.playCutscene(t.cutscene);
     }
   }
 
+  /** 이야기 경계: 밖으로 나가려 하면 되돌리고 안내 */
+  checkBounds() {
+    const f = this.questLog.flags, p = this.player;
+    for (const b of this.bounds) {
+      if ((b.flag && !f[b.flag]) || (b.until && f[b.until])) continue;
+      const inside = p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
+      if (inside) { b.last = { x: p.x, y: p.y }; continue; }
+      if (b.last) p.body.reset(b.last.x, b.last.y);
+      if (this.time.now - (b.warnedAt ?? -9999) > 3000) { b.warnedAt = this.time.now; this.hint(b.message, 2500); }
+    }
+  }
+
+  /** 조작 안내 (화면 위) */
+  hint(text, ms = 5000) { this.scene.get('UI')?.cinema?.hint(text, ms); }
+
+  /** 깃발에 따라 보이기·숨기기, 그림 바꾸기 */
+  refreshFlags() {
+    const f = this.questLog.flags;
+    for (const o of this.flagged) o.setShown((!o.showIf || !!f[o.showIf]) && (!o.hideIf || !f[o.hideIf]));
+    for (const a of this.altSprites) a.img.setTexture(f[a.flag] ? a.alt : a.sprite);
+    const npcs = this.registry.get('npcs');
+    for (const n of this.npcs) {
+      const d = npcs[n.id];
+      if (d?.showIf || d?.hideIf) {
+        const on = (!d.showIf || !!f[d.showIf]) && (!d.hideIf || !f[d.hideIf]);
+        n.setShown(on);
+        const c = this.companions[n.id];
+        if (c) c.feet.body.enable = on;
+      }
+    }
+  }
+
+  /** 몬스터를 새로 내보냄 (퀘스트·연출). 보스면 충돌까지 붙임 */
+  spawnMonster(id, x, y) {
+    const data = this.registry.get('monsters')[id];
+    if (!data) { console.warn(`[World] 모르는 몬스터: ${id}`); return null; }
+    if (this.monsters.some((m) => m.id === id && m.isHittable)) return null; // 이미 있음
+    if (data.ai === 'boss') {
+      const b = new Boss(this, x, y, id, { ...data, respawnMs: 0 }, () => this.player, (boss) => this.onBossDefeated(boss));
+      b.isBoss = true;
+      this.bosses.push(b); this.monsters.push(b);
+      this.physics.add.collider(this.player, b);
+      this.physics.add.collider(b, this.blockersGroup);
+      this.physics.add.collider(b, this.groundLayer);
+      this.physics.add.collider(b, this.mobs);
+      return b;
+    }
+    const mob = new Mob(this, x, y, id, { ...data, respawnMs: 0 }, (m) => this.onMobDefeated(m));
+    this.mobs.push(mob); this.monsters.push(mob);
+    return mob;
+  }
+
+  /** 보스가 공격을 예고하기 시작할 때 — 프롤로그 멧돼지는 회피를 가르침 (tutorialDodge) */
+  onBossTelegraph(boss, atk) {
+    if (!boss.data_.tutorialDodge) return;
+    const f = this.questLog.flags;
+    if (!f.tut_dodge) {
+      // 첫 공격: 확 느려지며 구르기 안내 — 누르거나 잠시 뒤 원래대로
+      this.questLog.setFlag('tut_dodge');
+      this.setSlowMotion(0.12);
+      this.hint('빨간 범위가 차오르면 공격이 온다!\nSpace (휴대폰: 구르기) — 굴러서 피하자', 4200);
+      this.cameras.main.zoomTo(WORLD_ZOOM * 1.12, 300, 'Sine.easeOut', true);
+      const restore = () => { this.setSlowMotion(1); this.cameras.main.zoomTo(WORLD_ZOOM, 300, 'Sine.easeOut', true); window.clearInterval(iv); };
+      const t0 = Date.now();
+      const iv = window.setInterval(() => { if (this.player.stateName === 'roll' || Date.now() - t0 > 3500) restore(); }, 30);
+    } else if (!f.tut_perfect) {
+      this.questLog.setFlag('tut_perfect');
+      this.hint('공격이 닿기 직전에 구르면 「완벽한 회피」\n잠깐 느려지는 사이 반격하면 더 아프다', 5000);
+    }
+  }
   /** 동료가 순간이동해도 되는 자리인가: 물·절벽·막힌 물체가 없고, (fx, fy)와 같은 높이 */
   isWalkable(x, y, fx, fy) {
     const t = this.terrain;
@@ -651,6 +892,7 @@ export class WorldScene extends window.Phaser.Scene {
       if (d <= r && d < bestD) { best = it; bestD = d; }
     };
     for (const it of this.interactables) {
+      if (it.hidden) continue;
       // 따라오는 동료는 늘 곁에 있으니 다른 것(아이템·채집)이 있으면 그쪽을 먼저
       if (it.isCompanion && this.companions[it.id]?.following) { if (!best) consider(it, it.interactRadius); continue; }
       consider(it, it.interactRadius);

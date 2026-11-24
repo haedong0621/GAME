@@ -49,6 +49,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.getPlayer = getPlayer;
     this.onDefeated = onDefeated;
     this.stats = new Stats(data);
+    if (data.startHpRatio) this.stats.hp = Math.round(this.stats.maxHp * data.startHpRatio); // 이미 다친 채로 등장 (프롤로그 멧돼지)
     this.status = new StatusEffects(this);
     this.meter = new AwarenessMeter(data.perception); // 시야·청각 (스닉 시스템)
     this.home = { x, y };
@@ -101,6 +102,14 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   /** @returns {number} 실제로 들어간 데미지 */
   takeDamage(amount, opts = {}) {
     if (this.state === State.DEAD) return 0;
+    if (this.data_.invulnerable) {
+      // 이길 수 없는 적 (강제 패배 연출): 맞아도 꿈쩍 않음
+      spawnFloatingLabel(this.scene, this.x + (Math.random() - 0.5) * 20, this.y - this.data_.hurtbox.height - 10, '……');
+      this.visual.setTintFill(0xffffff);
+      this.scene.time.delayedCall(50, () => { if (this.state !== State.DEAD) this.applyTint(); });
+      if (this.awareness !== Awareness.ALERT) this.becomeAlert(false);
+      return 0;
+    }
     let dealt = amount;
     if (this.awareness !== Awareness.ALERT && !opts.fromStatus) {
       // 기습: 눈치채기 전에 맞으면 배율 (스닉 시스템의 기초)
@@ -315,6 +324,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.mobsHitThisCharge = new Set();
     this.mobsHit = new Set();
     this.enter(State.WINDUP);
+    this.ctx?.onTelegraph?.(this, atk); // 공격 예고 시작 (프롤로그 회피 안내 등)
   }
 
   /**
