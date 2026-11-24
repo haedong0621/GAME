@@ -17,3 +17,6 @@
 | `docs/maps/region1_plan.png` | `tools/art/region_plan.py`로 Claude가 그림 (글꼴: WenQuanYi Zen Hei, GPL+FE — 그림 안 글자만) | 이 프로젝트 | 자체 제작 | 첫 지역 설계도 |
 | `assets/characters/hero_<층>_<tobb·chief·marta·villager>_fist.png` | `tools/art/pixel_hero.py`의 NPC 옷(주인공 그림 색 바꾸기)으로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 마을 사람 (토브·촌장·마르타·주민) |
 | `assets/characters/mon_rooster.png` (+ `mon_px.json`의 rooster) | `tools/art/pixel_rooster.py`로 Claude가 생성 (pixel_hunter 렌더러 사용) | 이 프로젝트 | 자체 제작 (제한 없음) | 퀘스트 몬스터 뒤틀린 수탉 |
+| `assets/characters/hero_wpnB/F_hatchet.png`, `hero_wpnB/F_father_axe.png`, `hero_<층>_<father·mother>_fist.png` | `tools/art/pixel_hero.py`로 Claude가 생성 (도끼 규칙 그림, NPC 옷 색 바꾸기) | 이 프로젝트 | 자체 제작 (제한 없음) | 작은 손도끼·아버지의 도끼, 소년의 부모 |
+| `assets/characters/mon_boar.png` (+ `mon_px.json`의 boar) | `tools/art/pixel_monsters.py`로 Claude가 네 발 뼈대·도형으로 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 프롤로그 보스 뒤틀린 멧돼지 |
+| `assets/characters/mon_troll.png` (+ `mon_px.json`의 troll) | `tools/art/pixel_troll.py`로 Claude가 생성 (pixel_hunter 렌더러 사용) | 이 프로젝트 | 자체 제작 (제한 없음) | 프롤로그 강제 패배 괴물 잿빛 거인 |

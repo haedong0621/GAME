@@ -40,6 +40,18 @@ SPECS = {
           'eye': (216, 228, 106), 'teeth': (232, 220, 184), 'mouth': (92, 34, 30), 'bone': (201, 189, 152), 'boneDark': (150, 140, 110)},
   'plates': True, 'fangs': True, 'tailSpikes': True, 'poseScale': 1.45,
  },
+ # 프롤로그 보스: 아버지와 싸워 크게 다친 뒤틀린 멧돼지 — 앞이 솟은 등(혹), 짧은 다리, 휘어 오른 엄니, 등갈기,
+ # 어깨를 뚫고 나온 뼈 가시(뒤틀림), 붉은 눈, 피 흘리는 상처, 옆구리에 박힌 아버지의 도끼
+ 'boar': {
+  'frame': 112, 'footY': 88,
+  'spine': 31, 'hipZ': 13, 'shZ': 19, 'legX': 7.5, 'leg': (7.2, 7.2), 'legW': 5,
+  'body': [(10.5, 0.0), (12.5, 0.35), (15.0, 0.72), (13.0, 0.98)],
+  'neck': (4.0, 0.8), 'head': 9.2, 'snout': (8.6, 4.2), 'tail': 8, 'tailW': 3,
+  'col': {'base': (88, 66, 54), 'dark': (58, 42, 36), 'light': (122, 94, 74), 'leg': (66, 50, 40),
+          'eye': (240, 70, 50), 'teeth': (236, 226, 200), 'mouth': (100, 30, 28), 'bone': (214, 200, 164), 'boneDark': (156, 142, 110),
+          'blood': (142, 26, 26), 'bloodL': (190, 48, 40), 'wood': (104, 70, 40), 'iron': (196, 194, 186)},
+  'bristles': True, 'tusks': True, 'spurs': True, 'wounds': True, 'axeStuck': True, 'poseScale': 1.5,
+ },
 }
 
 def P(**k):
@@ -65,6 +77,27 @@ ANIMS = {
   'hurt': [P(pitch=8, lunge=-2, head=-1, tail=30), P(crouch=1, lunge=-1, tail=15)],
   'stagger': [P(crouch=1, head=2, roll=8, tail=25), P(crouch=1, head=2, roll=-8, tail=-25)],
   'death': [P(crouch=2, head=2, roll=15), P(crouch=4, head=3, roll=40), P(flat=True)],
+ },
+ 'boar': {
+  # 다친 몸: 숨을 몰아쉬며 고개를 숙임
+  'idle': [P(head=1, tail=-6), P(bob=1, head=2, crouch=1, tail=6)],
+  'walk': [P(fl=(0, 3, 2), br=(0, -2, 0), bl=(0, 1, 0), fr=(0, -1, 0), head=1, tail=-8),
+           P(fl=(0, 1, 0), fr=(0, 0, 1), bob=-1, head=1, tail=0),
+           P(fr=(0, 3, 2), bl=(0, -2, 0), br=(0, 1, 0), fl=(0, -1, 0), head=1, tail=8),
+           P(fr=(0, 1, 0), fl=(0, 0, 1), bob=-1, head=1, tail=0)],
+  'roar': [P(pitch=8, head=-3, jaw=2, tail=20), P(pitch=10, head=-4, jaw=2, bob=-1, tail=-20)],
+  # 엄니 휘두르기: 고개 낮춰 옆으로 비틂 → 쳐올림 → 회복
+  'gore': [P(crouch=2, head=4, lunge=-1, roll=-6, tail=15),
+           P(crouch=3, head=5, lunge=-2, roll=-10, tail=20),
+           P(pitch=10, head=-3, lunge=4, roll=10, jaw=1, fl=(0, 3, 2), tail=-15),
+           P(lunge=2, head=1, tail=0)],
+  # 돌진: 앞발로 땅 긁기 → 질주 → 미끄러지며 멈춤
+  'charge': [P(crouch=2, head=4, lunge=-2, fr=(0, -3, 2), tail=30),
+             P(crouch=3, head=5, lunge=-3, fr=(0, -4, 0), fl=(0, 1, 1), tail=35)]
+            + [dict(r, lunge=2, head=4, crouch=1) for r in RUN]
+            + [P(pitch=6, lunge=1, crouch=2, head=2, fl=(0, 3, 0), fr=(0, 3, 0), tail=-10)],
+  'stagger': [P(crouch=3, head=4, roll=10, jaw=1, tail=25), P(crouch=3, head=4, roll=-10, jaw=1, tail=-25)],
+  'death': [P(crouch=3, head=4, jaw=1, roll=12), P(crouch=6, head=5, jaw=2, roll=35), P(flat=True, jaw=1)],
  },
  'swamp': {
   'idle': [P(tail=-6), P(bob=1, head=1, tail=6)],
@@ -219,7 +252,44 @@ def draw(kind, view, pose):
                 top = y - r * 0.75
                 cv.tri([(x - 2.5 * k, top + 1), (x + 0.5, top - h), (x + 2.5 * k, top + 1)], C['bone'])
                 cv.px(x + 0.5, top - h + 2, C['boneDark'])
+        if S.get('bristles'):
+            # 등갈기: 어깨 혹 쪽으로 갈수록 길고 뻣뻣한 털
+            k = S['spine'] / 22
+            for i in range(12):
+                t = 0.12 + i * 0.075
+                x, y = scr(spine(min(t, 1.0))); r = [rr for rr, tt in S['body']][2]
+                h = (2 + 3.5 * t) * k
+                top = y - r * 0.8
+                cv.tri([(x - 1.5 * k, top + 1), (x + 0.5 - t * 2, top - h), (x + 1.5 * k, top + 1)], C['dark'])
+        if S.get('spurs'):
+            # 뒤틀림: 어깨 혹을 뚫고 나온 뼈 가시 셋
+            k = S['spine'] / 22
+            for t, dx, h in ((0.74, -4, 6), (0.84, 3, 8), (0.62, 5, 4)):
+                x, y = scr(spine(t)); r = [rr for rr, tt in S['body']][2]
+                top = y - r * 0.55
+                dx, h = dx * k, h * k
+                cv.tri([(x + dx - 1.5 * k, top + 1), (x + dx + 1.5, top - h), (x + dx + 1.5 * k, top + 1)], C['bone'])
+                cv.px(x + dx + 0.5, top - h + 3, C['boneDark'])
+        if S.get('wounds') and view != 'up':
+            # 아버지와 싸운 상처: 피 흘리는 베인 자국
+            k = S['spine'] / 22
+            for t, ox, oy, ln in ((0.3, -3, 1, 4), (0.55, 2, -1, 5), (0.8, -1, 2, 3)):
+                x, y = scr(spine(t)); ox, oy, ln = ox * k, oy * k, ln * k
+                cv.line(x + ox, y + oy, x + ox + ln, y + oy - ln * 0.4, C['blood'], 2)
+                cv.px(x + ox + 1, y + oy, C['bloodL'])
+                cv.line(x + ox + 1, y + oy + 1, x + ox + 1, y + oy + 3, C['blood'], 1)   # 흘러내림
     prims.append((body_d, body_fn))
+    if S.get('axeStuck'):
+        # 옆구리(오른쪽)에 박힌 도끼: 자루가 밖으로 비스듬히 위로
+        r = [rr for rr, tt in S['body']][1]
+        base3 = spine(0.42); base3 = (r * 0.75, base3[1], base3[2])
+        end3 = (base3[0] + 9, base3[1] - 4, base3[2] + 11)
+        def axe_fn(b=scr(base3), e=scr(end3)):
+            cv.line(*b, *e, C['wood'], 3)
+            cv.px(e[0], e[1], shade(C['wood'], 1.3))
+            cv.line(b[0] - 2, b[1] + 1, b[0] + 2, b[1] - 1, C['iron'], 1)          # 살 속에 묻힌 날 끝
+            cv.px(b[0] - 1, b[1] + 2, C['blood']); cv.px(b[0] + 1, b[1] + 2, C['blood'])
+        prims.append((depth(base3) + 0.5 if depth(base3) > body_d - 0.5 else body_d - 1, axe_fn))
 
     # 꼬리
     tb, tt = scr(tail_base), scr(tail_tip)
@@ -256,7 +326,11 @@ def draw(kind, view, pose):
             g = ground(1, 0)
             for s in (-1, 1):
                 tx, ty = sn_s[0] + g[0] * s * sn_r * 0.6, sn_s[1] + 1
-                if S.get('fangs'): cv.tri([(tx - 1, ty), (tx + 1, ty), (tx, ty + 3 + pose['jaw'])], C['teeth'])
+                if S.get('tusks'):
+                    # 휘어 오른 엄니: 주둥이 옆에서 위로
+                    cv.line(tx + g[0] * s, ty, tx + g[0] * s * 3, ty - 5, C['teeth'], 2)
+                    cv.line(tx + g[0] * s * 3, ty - 5, tx + g[0] * s * 3.4, ty - 7, C['teeth'], 1)
+                elif S.get('fangs'): cv.tri([(tx - 1, ty), (tx + 1, ty), (tx, ty + 3 + pose['jaw'])], C['teeth'])
                 else: cv.px(tx, ty + 1, C['teeth'])
             # 눈
             for s in (-1, 1):

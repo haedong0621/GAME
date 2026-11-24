@@ -200,6 +200,86 @@
      "frames": 3
     }
    }
+  },
+  "boar": {
+   "key": "mon_boar",
+   "frameWidth": 112,
+   "frameHeight": 112,
+   "columns": 7,
+   "origin": {
+    "x": 0.5,
+    "y": 0.8036
+   },
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 2
+    },
+    "walk": {
+     "row": 5,
+     "frames": 4
+    },
+    "roar": {
+     "row": 10,
+     "frames": 2
+    },
+    "gore": {
+     "row": 15,
+     "frames": 4
+    },
+    "charge": {
+     "row": 20,
+     "frames": 7
+    },
+    "stagger": {
+     "row": 25,
+     "frames": 2
+    },
+    "death": {
+     "row": 30,
+     "frames": 3
+    }
+   }
+  },
+  "troll": {
+   "key": "mon_troll",
+   "frameWidth": 232,
+   "frameHeight": 232,
+   "columns": 4,
+   "origin": {
+    "x": 0.5,
+    "y": 0.7845
+   },
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 2
+    },
+    "walk": {
+     "row": 5,
+     "frames": 4
+    },
+    "roar": {
+     "row": 10,
+     "frames": 2
+    },
+    "smash": {
+     "row": 15,
+     "frames": 4
+    },
+    "sweep": {
+     "row": 20,
+     "frames": 4
+    },
+    "stagger": {
+     "row": 25,
+     "frames": 2
+    },
+    "death": {
+     "row": 30,
+     "frames": 3
+    }
+   }
   }
  }
 }
