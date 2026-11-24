@@ -475,6 +475,9 @@ NPC_OUTFITS = {
  'marta':    {'base': 'hunter', 'pal': {'K': (78, 86, 70), 'k': (54, 60, 50), 'j': (34, 38, 32), 'F': (150, 146, 136), 'f': (112, 108, 100), 'g': (78, 76, 70)}},
  # 피난민 마을 사람: 흙빛 옷
  'villager': {'base': 'rags',   'pal': {'T': (120, 100, 70), 't': (90, 74, 52), 'H': (110, 78, 50), 'h': (74, 52, 36), 'P': (70, 74, 90), 'p': (50, 54, 66)}},
+ # 소년의 가족 (프롤로그): 아버지 = 나무꾼(붉은 체크 셔츠, 갈색 머리) · 어머니 = 빛바랜 초록 옷, 머릿수건
+ 'father':   {'base': 'rags',   'pal': {'T': (140, 60, 46), 't': (100, 42, 34), 'C': (150, 70, 52), 'c': (104, 46, 36), 'H': (92, 62, 38), 'h': (64, 42, 26), 'P': (64, 60, 52), 'p': (46, 42, 36)}},
+ 'mother':   {'base': 'rags',   'pal': {'T': (96, 118, 84), 't': (70, 88, 62), 'C': (110, 130, 96), 'c': (74, 92, 66), 'H': (196, 184, 150), 'h': (150, 138, 108), 'P': (96, 118, 84), 'p': (70, 88, 62)}},
 }
 
 # ---------------- 키 키우기: 몸통·팔·다리에 줄을 복제해 늘림 (도트가 뭉개지지 않음) ----------------
@@ -506,6 +509,9 @@ WEAPONS = {
  'fang_sword':     {'cls': 'sword',      'len': 14, 'w': 2, 'blade': (216, 204, 166), 'dark': (150, 140, 110), 'hilt': (58, 69, 41), 'guard': (42, 36, 32), 'fang': True, 'glow': (154, 223, 90)},
  'hunter_cleaver': {'cls': 'sword',      'len': 14, 'w': 3, 'blade': (200, 205, 216), 'dark': (118, 122, 134), 'hilt': (80, 56, 38), 'guard': (42, 36, 32), 'cleaver': True},
  'old_greatsword': {'cls': 'greatsword', 'len': 21, 'w': 3, 'blade': (143, 138, 128), 'dark': (96, 92, 86), 'hilt': (63, 42, 26), 'guard': (42, 36, 32)},
+ # 도끼: 소년의 작은 손도끼(한손) · 아버지의 도끼(양손, 나무꾼 도끼 — 멧돼지 피가 말라붙음)
+ 'hatchet':    {'cls': 'sword',      'axe': True, 'len': 11, 'w': 1, 'head': 4, 'depth': 3.5, 'wood': (120, 84, 50), 'woodL': (160, 120, 76), 'blade': (200, 198, 190), 'dark': (110, 108, 104)},
+ 'father_axe': {'cls': 'greatsword', 'axe': True, 'len': 19, 'w': 2, 'head': 6, 'depth': 5.5, 'wood': (104, 70, 40), 'woodL': (150, 108, 64), 'blade': (214, 212, 204), 'dark': (96, 94, 92), 'blood': (110, 34, 30)},
  # 보스 무기 (종류별): 늪지 짐승 = 뼈·독, 뒤엉킨 사냥꾼 = 은·늑대
  'spine_greatsword':  {'cls': 'greatsword', 'len': 22, 'w': 4, 'blade': (214, 204, 170), 'dark': (140, 130, 104), 'hilt': (58, 69, 41), 'guard': (60, 72, 44), 'fang': True, 'spine': True, 'glow': (154, 223, 90)},
  'hunter_greatsword': {'cls': 'greatsword', 'len': 21, 'w': 4, 'blade': (198, 204, 216), 'dark': (112, 116, 130), 'hilt': (70, 40, 34), 'guard': (150, 154, 166), 'cleaver': True},
@@ -761,8 +767,26 @@ def draw_blade(img, V, hand_s, bdir, wd, smear=False, t=1.0):
         line(img, mid[0], mid[1], out[0], out[1], SMEAR_EDGE, 1)
         line(img, out[0], out[1], tip[0], tip[1], SMEAR, 1 + (1 if t > 0.5 else 0))
         return
-    line(img, hand_s[0] - vec[0] * 3, hand_s[1] - vec[1] * 3, hand_s[0], hand_s[1], wd['hilt'], 1)
     px, py = -vec[1], vec[0]
+    if wd.get('axe'):
+        # 도끼: 나무 자루 + 끝쪽 한쪽에 쐐기 모양 날 (바깥 날은 밝게)
+        nrm = math.hypot(px, py) or 1
+        px, py = px / nrm, py / nrm
+        line(img, hand_s[0] - vec[0] * 2, hand_s[1] - vec[1] * 2, tip[0], tip[1], wd['wood'], wd['w'])
+        line(img, hand_s[0] - vec[0] * 2 - px * 0.5, hand_s[1] - vec[1] * 2 - py * 0.5, tip[0] - px * 0.5, tip[1] - py * 0.5, wd['woodL'], 1)
+        hs, hd = wd['head'], wd['depth']
+        for i in range(hs + 1):
+            k = L - hs + i
+            o = (hand_s[0] + vec[0] * k, hand_s[1] + vec[1] * k)
+            d = hd * (0.55 + 0.45 * math.sin(math.pi * i / hs))          # 가운데가 넓은 쐐기
+            line(img, o[0], o[1], o[0] + px * d, o[1] + py * d, wd['dark'], 1)
+            plot(img, o[0] + px * d, o[1] + py * d, wd['blade'])
+            plot(img, o[0] + px * (d - 1), o[1] + py * (d - 1), wd['blade'])
+        if wd.get('blood'):
+            o = (hand_s[0] + vec[0] * (L - hs / 2), hand_s[1] + vec[1] * (L - hs / 2))
+            plot(img, o[0] + px * 1.5, o[1] + py * 1.5, wd['blood'])
+        return
+    line(img, hand_s[0] - vec[0] * 3, hand_s[1] - vec[1] * 3, hand_s[0], hand_s[1], wd['hilt'], 1)
     nrm = math.hypot(px, py) or 1
     px, py = px / nrm, py / nrm
     line(img, hand_s[0] - px * 2, hand_s[1] - py * 2, hand_s[0] + px * 2, hand_s[1] + py * 2, wd['guard'], 1)
@@ -1077,7 +1101,7 @@ def finish(img, shadow=True):
     return sh
 
 PARTS = {'head': ['head'], 'body': ['body'], 'arms': ['armsB', 'armsF'], 'legs': ['legs']}
-CLASS_WEAPONS = {'sword': ['rusty_sword', 'fang_sword', 'hunter_cleaver'], 'greatsword': ['old_greatsword', 'spine_greatsword', 'hunter_greatsword'],
+CLASS_WEAPONS = {'sword': ['rusty_sword', 'fang_sword', 'hunter_cleaver', 'hatchet'], 'greatsword': ['old_greatsword', 'spine_greatsword', 'hunter_greatsword', 'father_axe'],
                  'fist': ['swamp_claws', 'wolf_claws']}
 
 def build():

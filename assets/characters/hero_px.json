@@ -328,6 +328,16 @@
     "fist": {
      "head": "hero_head_villager_fist"
     }
+   },
+   "father": {
+    "fist": {
+     "head": "hero_head_father_fist"
+    }
+   },
+   "mother": {
+    "fist": {
+     "head": "hero_head_mother_fist"
+    }
    }
   },
   "body": {
@@ -382,6 +392,16 @@
    "villager": {
     "fist": {
      "body": "hero_body_villager_fist"
+    }
+   },
+   "father": {
+    "fist": {
+     "body": "hero_body_father_fist"
+    }
+   },
+   "mother": {
+    "fist": {
+     "body": "hero_body_mother_fist"
     }
    }
   },
@@ -451,6 +471,18 @@
      "armsB": "hero_armsB_villager_fist",
      "armsF": "hero_armsF_villager_fist"
     }
+   },
+   "father": {
+    "fist": {
+     "armsB": "hero_armsB_father_fist",
+     "armsF": "hero_armsF_father_fist"
+    }
+   },
+   "mother": {
+    "fist": {
+     "armsB": "hero_armsB_mother_fist",
+     "armsF": "hero_armsF_mother_fist"
+    }
    }
   },
   "legs": {
@@ -506,6 +538,16 @@
     "fist": {
      "legs": "hero_legs_villager_fist"
     }
+   },
+   "father": {
+    "fist": {
+     "legs": "hero_legs_father_fist"
+    }
+   },
+   "mother": {
+    "fist": {
+     "legs": "hero_legs_mother_fist"
+    }
    }
   }
  },
@@ -525,6 +567,11 @@
    "wpnB": "hero_wpnB_hunter_cleaver",
    "wpnF": "hero_wpnF_hunter_cleaver"
   },
+  "hatchet": {
+   "class": "sword",
+   "wpnB": "hero_wpnB_hatchet",
+   "wpnF": "hero_wpnF_hatchet"
+  },
   "old_greatsword": {
    "class": "greatsword",
    "wpnB": "hero_wpnB_old_greatsword",
@@ -539,6 +586,11 @@
    "class": "greatsword",
    "wpnB": "hero_wpnB_hunter_greatsword",
    "wpnF": "hero_wpnF_hunter_greatsword"
+  },
+  "father_axe": {
+   "class": "greatsword",
+   "wpnB": "hero_wpnB_father_axe",
+   "wpnF": "hero_wpnF_father_axe"
   },
   "swamp_claws": {
    "class": "fist",
