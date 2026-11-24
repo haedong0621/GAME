@@ -1,27 +1,81 @@
 {
-  "_설명": "퀘스트. stages = 차례로 진행하는 단계. goals = have(아이템 가지고 있기)·kill(몬스터 잡기, 받은 뒤부터 셈)·reach(장소 근처 가기)·talk(대화로 넘김). turnIn = 목표를 채운 뒤 이 사람과 대화해야 다음 단계로 (없으면 자동). onStart = 단계 시작 때 할 일(spawn 몬스터). reward = 끝날 때 받는 것(items), takeItems = 가져가는 것",
+  "_설명": "퀘스트. stages = 차례로 진행하는 단계. goals = have(아이템 가지고 있기)·kill(몬스터 잡기, 받은 뒤부터 셈)·reach(장소 근처 가기)·talk(대화로 넘김). turnIn = 목표를 채운 뒤 이 사람과 대화해야 다음 단계로 (없으면 자동). onStart = 단계 시작 때 할 일(spawn 몬스터). reward = 끝날 때 받는 것(items), takeItems = 가져가는 것. flag(연출이 깃발을 세우면 채워짐). onStart에 cutscene(연출 재생)·setFlag도 됨. hint = 단계 시작 때 화면 위 조작 안내. quiet = 시작·완료 큰 글씨 안 띄움",
   "tobb_errand": {
-    "name": "토브의 심부름", "giver": "tobb",
+    "name": "토브의 심부름",
+    "giver": "tobb",
     "stages": [
-      { "text": "강가에서 약초 5개 모아 토브에게 가져가기", "goals": [{ "type": "have", "item": "herb", "count": 5 }], "turnIn": "tobb" }
+      {
+        "text": "강가에서 약초 5개 모아 토브에게 가져가기",
+        "goals": [{"type": "have", "item": "herb", "count": 5}],
+        "turnIn": "tobb"
+      }
     ],
     "reward": { "items": [["odd_potion", 3]], "takeItems": [["herb", 5]] }
   },
   "chief_rooster": {
-    "name": "촌장의 수탉", "giver": "chief",
+    "name": "촌장의 수탉",
+    "giver": "chief",
     "stages": [
-      { "text": "마른 들판 동쪽 언덕에서 수탉 알렉산더 찾기", "goals": [{ "type": "kill", "monster": "twisted_rooster", "count": 1 }], "turnIn": "chief",
-        "onStart": [{ "spawn": "twisted_rooster", "x": 2832, "y": 1168 }] }
+      {
+        "text": "마른 들판 동쪽 언덕에서 수탉 알렉산더 찾기",
+        "goals": [{"type": "kill", "monster": "twisted_rooster", "count": 1}],
+        "turnIn": "chief",
+        "onStart": [{"spawn": "twisted_rooster", "x": 2832, "y": 1168}]
+      }
     ],
     "reward": { "gear": ["chief_boots"], "items": [["apple", 3]] }
   },
   "marta_revenge": {
-    "name": "사냥꾼 마르타의 원수", "giver": "marta",
+    "name": "사냥꾼 마르타의 원수",
+    "giver": "marta",
     "stages": [
-      { "text": "사냥꾼의 들판(북쪽 고원)에서 뒤엉킨 사냥꾼 쓰러뜨리기", "goals": [{ "type": "kill", "monster": "mangled_hunter", "count": 1 }], "turnIn": "marta" },
-      { "text": "무너진 제단 살펴보기 (북서쪽 바위 절벽 위 — 덩굴로 오르기)", "goals": [{ "type": "reach", "place": "무너진 제단", "radius": 90 }] },
-      { "text": "마르타에게 제단에서 본 것을 알리기", "goals": [{ "type": "talk", "npc": "marta" }], "turnIn": "marta" }
+      {
+        "text": "사냥꾼의 들판(북쪽 고원)에서 뒤엉킨 사냥꾼 쓰러뜨리기",
+        "goals": [{"type": "kill", "monster": "mangled_hunter", "count": 1}],
+        "turnIn": "marta"
+      },
+      {
+        "text": "무너진 제단 살펴보기 (북서쪽 바위 절벽 위 — 덩굴로 오르기)",
+        "goals": [{"type": "reach", "place": "무너진 제단", "radius": 90}]
+      },
+      {
+        "text": "마르타에게 제단에서 본 것을 알리기",
+        "goals": [{"type": "talk", "npc": "marta"}],
+        "turnIn": "marta"
+      }
     ],
     "reward": { "items": [["hunter_silver", 3], ["silver_wolf_fang", 1]] }
+  },
+  "prologue": {
+    "name": "아버지를 찾아서",
+    "giver": "mother",
+    "quiet": true,
+    "stages": [
+      {
+        "text": "가는 길에 장작 3개 패기",
+        "goals": [{"type": "have", "item": "wood", "count": 3}],
+        "hint": "나무를 도끼로 때리자 (왼쪽 클릭 / J)\n떨어진 장작은 가까이 가서 E로 줍는다"
+      },
+      {
+        "text": "늙은참나무 숲 깊은 곳에서 아버지 찾기",
+        "goals": [{"type": "flag", "flag": "found_father"}],
+        "hint": "흙길을 따라 북쪽 숲으로 (M: 지도)"
+      },
+      {
+        "text": "뒤틀린 멧돼지에게서 살아남기",
+        "goals": [{"type": "kill", "monster": "wounded_boar", "count": 1}],
+        "onStart": [{"spawn": "wounded_boar", "at": "boar_spot"}]
+      },
+      {
+        "text": "솔밭골로 돌아가기",
+        "goals": [{"type": "reach", "place": "솔밭골", "radius": 190}],
+        "onStart": [{"cutscene": "father_axe"}]
+      },
+      {
+        "text": "……",
+        "goals": [{"type": "flag", "flag": "rescued"}],
+        "onStart": [{"spawn": "troll", "at": "troll_spot"}, {"cutscene": "village"}]
+      }
+    ]
   }
 }

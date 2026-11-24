@@ -1,0 +1,98 @@
+{
+  "_설명": "연출(컷신). 연출 = {if: 조건(대화와 같은 규칙), repeat: 다시 볼 수 있음, bars: false(검은 띠 없음), steps: [단계…]}. 단계 = 동사 하나 + 옵션 — say [말하는 사람(npcs.json 이름·'나'·그 밖은 그대로), 대사] · card [검은 화면 글 줄들] · wait ms · fade out|in (ms, color) · camera player|marker:이름|npc:이름|corpse:이름|boss:이름 (ms) · zoom 배율 · shake ms · flash ms · slowmo 배율(ms) · tint 색|null (alpha) · do {할 일} · run 이름(옵션) · hint 글 (ms) · banner 글 · talk npc이름. 한 번 본 연출은 깃발 cs_<이름>이 섬. 시작 방법: 맵 trigger 구역(cutscene 속성), 퀘스트 단계 onStart {cutscene}, 월드(새 게임 intro, 강제 패배 defeat)",
+  "intro": {
+    "if": { "quest": "prologue", "is": "none" },
+    "steps": [
+      {
+        "card": ["솔밭골.", "늙은참나무 숲 언저리의 작은 마을.", "아버지는 아침 일찍 도끼를 메고 숲으로 갔다.", "해가 중천을 넘었는데도, 돌아오지 않았다."]
+      },
+      { "fade": "in", "ms": 1400 },
+      { "camera": "npc:mother", "ms": 900 },
+      { "say": ["mother", "얘! 이리 좀 와 봐라."] },
+      { "camera": "player", "ms": 700 },
+      { "hint": "WASD (휴대폰: 화면 왼쪽 끌기) 이동 · E 대화\n어머니에게 말을 걸자", "ms": 8000 }
+    ]
+  },
+  "found_father": {
+    "if": { "quest": "prologue", "is": "stage1" },
+    "steps": [
+      { "camera": "corpse:father", "ms": 1600 },
+      { "say": ["나", "아버지…?"] },
+      { "wait": 500 },
+      { "say": ["나", "아버지! 일어나요, 아버지!"] },
+      { "shake": 300, "intensity": 0.003 },
+      { "card": ["소년은 그 자리에 주저앉아 토했다."] },
+      { "do": {"setFlag": "found_father"} },
+      { "fade": "in", "ms": 700 },
+      { "wait": 300 },
+      { "camera": "boss:wounded_boar", "ms": 1000 },
+      { "say": ["나", "……!"] },
+      { "say": ["나", "저 도끼… 아버지 도끼야. 너였구나. 네가…!"] },
+      { "run": "roar", "boss": "wounded_boar", "ms": 1100 },
+      { "camera": "player", "ms": 600 }
+    ]
+  },
+  "father_axe": {
+    "if": { "quest": "prologue", "is": "stage3" },
+    "steps": [
+      { "wait": 1400 },
+      { "say": ["나", "하아… 하아…"] },
+      { "camera": "corpse:father", "ms": 1000 },
+      { "say": ["나", "……아버지."] },
+      { "wait": 700 },
+      { "say": ["", "멧돼지 옆구리에서 아버지의 도끼를 뽑았다. 무거웠다. 아버지는 이걸 한 손으로 들었었다."] },
+      { "do": {"gear": "father_axe", "equip": true} },
+      { "hint": "I: 가방·장비창 — 무기를 바꿔 들 수 있다 (1·2·Q로 빠르게)", "ms": 5000 },
+      { "say": ["나", "엄마한테… 알려야 해."] },
+      { "do": {"setFlag": "village_burning"} },
+      { "camera": "marker:village_center", "ms": 2600 },
+      { "wait": 900 },
+      { "say": ["나", "…연기? 마을 쪽이야!"] },
+      { "camera": "player", "ms": 1300 },
+      { "hint": "Shift를 누른 채 달리면 전력질주 (기력이 닳는다)", "ms": 6000 }
+    ]
+  },
+  "village": {
+    "if": { "quest": "prologue", "is": "stage4" },
+    "steps": [
+      { "camera": "marker:village_center", "ms": 900 },
+      { "say": ["나", "……"] },
+      { "camera": "corpse:mother", "ms": 1300 },
+      { "say": ["나", "엄마…?"] },
+      { "wait": 500 },
+      { "say": ["나", "엄마! 엄마!!"] },
+      { "camera": "boss:troll", "ms": 1000 },
+      { "run": "roar", "boss": "troll", "ms": 1500 },
+      { "shake": 500, "intensity": 0.01 },
+      { "say": ["나", "너…… 너…!!"] },
+      { "tint": "#ff2010", "alpha": 0.24, "ms": 900 },
+      { "card": ["눈앞이 새빨개졌다."] },
+      { "fade": "in", "ms": 400 },
+      { "camera": "player", "ms": 400 },
+      { "do": {"setFlag": "troll_fight"} }
+    ]
+  },
+  "defeat": {
+    "if": { "flag": "troll_fight", "notFlag": "rescued" },
+    "steps": [
+      { "slowmo": 0.25 },
+      { "wait": 1300 },
+      { "slowmo": 1 },
+      { "fade": "out", "ms": 1800 },
+      { "tint": null },
+      { "card": ["……"] },
+      { "say": ["???", "야…! 꼬맹아! 눈 떠! 눈 뜨라고!"] },
+      { "say": ["???", "제길… 제길, 제길… 미안하다. 미안하다…"] },
+      { "say": ["???", "…일단 살고 보자. 응? 살고 보자."] },
+      { "run": "despawn", "boss": "troll" },
+      { "run": "teleport", "at": "wake_spot" },
+      { "run": "passDays", "days": 3, "hour": 9 },
+      { "run": "healFull" },
+      { "do": [{"clearFlag": "troll_fight"}, {"setFlag": "prologue_done"}, {"setFlag": "rescued"}] },
+      { "card": ["사흘 뒤.", "버려진 물레방앗간."] },
+      { "fade": "in", "ms": 1600 },
+      { "talk": "tobb" },
+      { "hint": "여기는 토브의 거점 — 제작대(E)에서 장비를 만들고, 쉴 수 있다(Z)", "ms": 7000 }
+    ]
+  }
+}

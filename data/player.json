@@ -12,8 +12,7 @@
     "perfectWindowMs": 170
   },
   "weaponSlots": [
-    "rusty_sword",
-    "old_greatsword"
+    "hatchet"
   ],
   "hurtbox": {
     "width": 14,

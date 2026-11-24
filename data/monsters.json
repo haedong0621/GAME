@@ -398,5 +398,157 @@
       }
     ],
     "staggerMs": 800
+  },
+  "wounded_boar": {
+    "name": "뒤틀린 멧돼지",
+    "ai": "boss",
+    "sizeClass": "medium",
+    "texture": "boss_swamp",
+    "maxHp": 300,
+    "speed": 70,
+    "chaseStopDistance": 40,
+    "leashRadius": 520,
+    "roarMs": 1000,
+    "sneakAttackMultiplier": 2.0,
+    "attackCooldownMs": 700,
+    "hurtbox": {
+      "width": 52,
+      "height": 40
+    },
+    "feetCollider": {
+      "width": 40,
+      "height": 14
+    },
+    "respawnMs": 0,
+    "phases": [],
+    "attacks": [
+      {
+        "id": "gore",
+        "name": "엄니 쳐올리기",
+        "type": "circle",
+        "minRange": 0,
+        "maxRange": 64,
+        "weight": 3,
+        "windupMs": 700,
+        "activeMs": 120,
+        "recoveryMs": 700,
+        "damage": 14,
+        "offset": 30,
+        "radius": 26,
+        "lunge": 50,
+        "knockdown": false,
+        "shape": "fan",
+        "reach": 58,
+        "arcDeg": 110
+      },
+      {
+        "id": "charge",
+        "name": "돌진",
+        "type": "charge",
+        "minRange": 70,
+        "maxRange": 260,
+        "weight": 4,
+        "windupMs": 950,
+        "aimLockAt": 0.6,
+        "activeMs": 650,
+        "recoveryMs": 1300,
+        "damage": 20,
+        "speed": 290,
+        "width": 40,
+        "knockdown": true
+      }
+    ],
+    "drops": [
+      {
+        "itemId": "beast_hide",
+        "amount": 2
+      }
+    ],
+    "perception": {
+      "visionRange": 200,
+      "visionAngleDeg": 160,
+      "detectPerSec": 3.0,
+      "closeSenseRadius": 40,
+      "hearingMultiplier": 1.2
+    },
+    "mobChargeDamage": 16,
+    "staggerMs": 1300,
+    "pixelKind": "boar",
+    "startHpRatio": 0.4,
+    "tutorialDodge": true,
+    "_설명": "프롤로그: 아버지와 싸워 크게 다친 채 등장(startHpRatio). 첫 공격 때 회피 안내(tutorialDodge). 돌진 회피 → 완벽한 회피 → 반격 두세 번이면 쓰러짐"
+  },
+  "troll": {
+    "name": "잿빛 거인",
+    "ai": "boss",
+    "sizeClass": "medium",
+    "texture": "boss_swamp",
+    "maxHp": 9999,
+    "speed": 58,
+    "chaseStopDistance": 60,
+    "leashRadius": 900,
+    "roarMs": 1400,
+    "sneakAttackMultiplier": 1,
+    "attackCooldownMs": 600,
+    "hurtbox": {
+      "width": 70,
+      "height": 96
+    },
+    "feetCollider": {
+      "width": 52,
+      "height": 20
+    },
+    "respawnMs": 0,
+    "phases": [],
+    "attacks": [
+      {
+        "id": "smash",
+        "name": "두 주먹 내려찍기",
+        "type": "circle",
+        "minRange": 0,
+        "maxRange": 90,
+        "weight": 3,
+        "windupMs": 900,
+        "activeMs": 160,
+        "recoveryMs": 900,
+        "damage": 38,
+        "offset": 44,
+        "radius": 46,
+        "lunge": 0,
+        "knockdown": true
+      },
+      {
+        "id": "sweep",
+        "name": "팔 휘두르기",
+        "type": "circle",
+        "minRange": 0,
+        "maxRange": 100,
+        "weight": 3,
+        "windupMs": 750,
+        "activeMs": 140,
+        "recoveryMs": 700,
+        "damage": 30,
+        "offset": 40,
+        "radius": 30,
+        "lunge": 30,
+        "knockdown": true,
+        "shape": "fan",
+        "reach": 96,
+        "arcDeg": 150
+      }
+    ],
+    "drops": [],
+    "perception": {
+      "visionRange": 400,
+      "visionAngleDeg": 360,
+      "detectPerSec": 9,
+      "closeSenseRadius": 120,
+      "hearingMultiplier": 2
+    },
+    "mobChargeDamage": 20,
+    "staggerMs": 0,
+    "pixelKind": "troll",
+    "invulnerable": true,
+    "_설명": "프롤로그 강제 패배: 맞지 않음(invulnerable). 플레이어가 쓰러지면 죽지 않고 '구출' 연출로 (WorldScene deathGuard). 정체는 미정 — 소년의 오랜 복수 목표"
   }
 }

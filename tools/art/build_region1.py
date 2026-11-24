@@ -43,6 +43,7 @@ ROADS = [
 ]
 BRIDGES = [(54, 49), (66, 21)]                     # 강 건너는 곳 (가로 다리 가운데)
 VILLAGES = {'solbat': (15, 58, 5), 'galdae': (78, 24, 6)}
+CLEARINGS = [(12.5, 31, 4.2)]                       # 숲 깊은 곳 (아버지·멧돼지 — 싸울 빈터)
 REGIONS = [  # (번호, cx, cy, rx, ry, seed) 나중 것이 위에 칠해짐
     (3, 15, 37, 16, 15, 1.0), (4, 33, 11, 21, 10, 2.0), (5, 73, 9, 10, 6, 3.0), (5, 9, 10, 8, 7, 4.0),
     (1, 79, 30, 17, 12, 5.0), (2, 85, 59, 16, 12, 6.0),
@@ -102,7 +103,7 @@ def build():
         o = {'id': nid[0], 'name': name or type_, 'type': type_, 'x': round(x), 'y': round(y), 'rotation': 0, 'visible': True,
              'width': w, 'height': h}
         if point: o['point'] = True
-        if props: o['properties'] = [{'name': k, 'type': 'int' if isinstance(v, int) and not isinstance(v, bool) else 'bool' if isinstance(v, bool) else 'string', 'value': v} for k, v in props.items()]
+        if props: o['properties'] = [{'name': k, 'type': 'int' if isinstance(v, int) and not isinstance(v, bool) else 'bool' if isinstance(v, bool) else 'float' if isinstance(v, float) else 'string', 'value': v} for k, v in props.items()]
         objs.append(o); nid[0] += 1
         return o
     occupied = []           # (x, y, r) px — 나무 등 깔 때 피할 곳
@@ -118,7 +119,11 @@ def build():
         add('building', x, y, name or sprite, {'sprite': sprite, 'blockW': bw, 'blockH': bh}); occupy(x, y - 30, 64)
     # 솔밭골: 집 4채 + 우물 + 울타리
     for i, (x, y) in enumerate([(9.5, 55), (20.5, 55), (10.5, 63.5), (19.5, 64)]):
-        building(f'house{i % 2}', tx(x), tx(y), 76, 30, '솔밭골 집')
+        o = add('building', tx(x), tx(y), '솔밭골 집', {'sprite': f'house{i % 2}', 'blockW': 76, 'blockH': 30,
+                                                   'altSprite': f'house_burned{i % 2}', 'altFlag': 'village_burning'}); occupy(tx(x), tx(y) - 30, 64)
+        # 불길 (마을이 불타는 동안) · 잔불 연기 (그 뒤)
+        add('fire', tx(x + 0.6), tx(y + 0.25), 'fire', {'kind': 'fire', 'size': 1.3, 'showIf': 'village_burning', 'hideIf': 'rescued'})
+        add('fire', tx(x - 0.4), tx(y - 0.6), 'smoke', {'kind': 'smoke', 'size': 1.2, 'showIf': 'rescued'})
     building('well', tx(15), tx(57.2), 26, 12)
     for k in range(5): add('decor', tx(4 + k * 1.06), tx(66.5), 'fence', {'kind': 'fence_h'})
     # 갈대나루: 집 6채 + 우물 + 울타리
@@ -146,7 +151,7 @@ def build():
     add('monster', tx(33), tx(9), '뒤엉킨 사냥꾼', {'monsterId': 'mangled_hunter'}); occupy(tx(33), tx(9), 90)
     add('monster', tx(84), tx(57), '늪지 짐승', {'monsterId': 'swamp_brute'}); occupy(tx(84), tx(57), 90)
     # 들개 무리
-    for cx, cy, n in [(82, 36, 3), (30, 52, 2), (25, 7, 3), (64, 56, 3)]:
+    for cx, cy, n in [(82, 36, 3), (34, 53, 2), (25, 7, 3), (64, 56, 3)]:
         for k in range(n):
             x, y = tx(cx) + rnd.uniform(-40, 40), tx(cy) + rnd.uniform(-30, 30)
             add('monster', x, y, 'hound', {'monsterId': 'feral_hound'}); occupy(x, y, 20)
@@ -171,6 +176,8 @@ def build():
             if dist_line(x / T, y / T, r) < 1.8: return True
         for name, (cx, cy, rr) in VILLAGES.items():
             if math.hypot(x / T - cx, (y / T - cy)) < rr + 1.5: return True
+        for cx, cy, rr in CLEARINGS:
+            if math.hypot(x / T - cx, y / T - cy) < rr: return True
         return False
     DENS = {0: {'tree': 0.05, 'bush': 0.025, 'rock': 0.006}, 3: {'tree': 0.30, 'bush': 0.05, 'herb_patch': 0.012},
             4: {'tree': 0.06, 'bush': 0.03, 'rock': 0.015}, 5: {'tree': 0.015, 'rock': 0.06}, 1: {'tree': 0.03, 'bush': 0.02, 'rock': 0.008},
@@ -197,6 +204,23 @@ def build():
             if not blocked(x * T, y * T) and free(x * T, y * T, 20):
                 add('item', x * T, y * T, 'apple', {'itemId': 'apple', 'amount': 1}); occupy(x * T, y * T, 10); break
 
+    # ---- 프롤로그 (솔밭골 → 숲 깊은 곳 → 불탄 마을): 엄마·이웃, 쓰러진 사람들, 아버지, 위치 표시, 연출 구역, 이야기 경계
+    add('npc', tx(12.6), tx(58.6), 'mother', {'npcId': 'mother'}); occupy(tx(12.6), tx(58.6), 30)
+    add('npc', tx(18.6), tx(59.8), 'sol_neighbor', {'npcId': 'sol_neighbor'}); occupy(tx(18.6), tx(59.8), 30)
+    for name, (x, y, outfit, face) in {'mother': (12.4, 59.2, 'mother', 160), 'neighbor': (18.2, 60.6, 'villager', 20),
+                                       'villager2': (8.6, 60.2, 'villager', 200), 'villager3': (21.4, 57.4, 'villager', 300)}.items():
+        add('corpse', tx(x), tx(y), name, {'outfit': outfit, 'facing': face, 'showIf': 'village_burning', 'hideIf': 'rescued'})
+    add('fire', tx(14), tx(61.5), 'fire', {'kind': 'fire', 'size': 0.9, 'showIf': 'village_burning', 'hideIf': 'rescued'})
+    add('fire', tx(17.2), tx(56.4), 'fire', {'kind': 'fire', 'size': 0.8, 'showIf': 'village_burning', 'hideIf': 'rescued'})
+    # 숲 깊은 곳: 쓰러진 아버지 + 쪼개다 만 나무 그루터기
+    add('corpse', tx(11.6), tx(31.4), 'father', {'outfit': 'father', 'facing': 30, 'hideIf': 'rescued'})
+    for x, y in ((10.2, 30.2), (13.4, 29.6)): add('decor', tx(x), tx(y), 'stump', {'kind': 'stump'})
+    for name, (x, y) in {'boar_spot': (14.6, 29.6), 'troll_spot': (15.8, 59.4), 'village_center': (15, 59), 'wake_spot': (44.4, 48.7)}.items():
+        add('marker', tx(x), tx(y), name)
+    add('trigger', tx(7), tx(28), 'found_father', {'cutscene': 'found_father'}, tx(11), tx(7), point=False)
+    add('bounds', tx(1), tx(25), 'prologue', {'until': 'prologue_done', 'message': '지금은 아버지를 찾는 게 먼저다.'}, tx(27), tx(44), point=False)
+    add('bounds', tx(5), tx(51), 'troll_fight', {'flag': 'troll_fight', 'until': 'rescued', 'message': '도망칠 수 없다. 저놈이… 엄마를…!'}, tx(21), tx(17), point=False)
+
     # 마을 사람 (data/npcs.json)
     for npc, (x, y) in {'tobb': (45.6, 48.4), 'chief': (80.2, 26.8), 'marta': (88, 31.6), 'villager_a': (75.6, 23.4), 'villager_b': (82.6, 31.6)}.items():
         add('npc', tx(x), tx(y), npc, {'npcId': npc}); occupy(tx(x), tx(y), 30)
@@ -204,7 +228,7 @@ def build():
     # 지도에 표시할 장소 이름 (가 본 곳만 지도에 보임)
     for name, (x, y, kind) in {'솔밭골': (15, 60, 'village'), '버려진 물레방앗간': (44.5, 44, 'base'), '갈대나루': (79, 23, 'village'),
                                '무너진 감시탑': (73, 8, 'landmark'), '무너진 제단': (8, 9, 'landmark'), '쓰러진 거대 나무': (31, 22, 'landmark'),
-                               '도적 캠프': (90, 13, 'danger'), '늙은참나무 숲': (14, 38, 'area'), '사냥꾼의 들판': (30, 6, 'area'),
+                               '도적 캠프': (90, 13, 'danger'), '늙은참나무 숲': (14, 38, 'area'), '숲 깊은 곳': (12.5, 30, 'area'), '사냥꾼의 들판': (30, 6, 'area'),
                                '늪지': (86, 64, 'area'), '마른 들판': (84, 35, 'area')}.items():
         add('place', tx(x), tx(y), name, {'kind': kind})
 

@@ -1,5 +1,5 @@
 {
-  "_설명": "마을 사람. outfit = 주인공 층 그림의 옷 이름(tools/art/pixel_hero.py OUTFITS·NPC_OUTFITS), dialogue = data/dialogues.json의 이름, color = 대화창 이름 색. 맵 오브젝트 type=npc, npcId로 놓는다",
+  "_설명": "마을 사람. outfit = 주인공 층 그림의 옷 이름(tools/art/pixel_hero.py OUTFITS·NPC_OUTFITS), dialogue = data/dialogues.json의 이름, color = 대화창 이름 색. 맵 오브젝트 type=npc, npcId로 놓는다. showIf/hideIf = 이 깃발이 서야 보임 / 서면 숨음 (이야기 진행)",
   "tobb": {
     "name": "토브",
     "title": "떠돌이 약장수",
@@ -25,7 +25,8 @@
         "idleEveryMs": [80000, 150000],
         "showMs": 3800
       }
-    }
+    },
+    "showIf": "prologue_done"
   },
   "chief": {
     "name": "바르톨 촌장",
@@ -54,5 +55,21 @@
     "outfit": "villager",
     "dialogue": "villager_b",
     "color": "#e0d0b0"
+  },
+  "mother": {
+    "name": "어머니",
+    "title": "소년의 어머니",
+    "outfit": "mother",
+    "dialogue": "mother",
+    "color": "#c8e0a8",
+    "hideIf": "village_burning"
+  },
+  "sol_neighbor": {
+    "name": "이웃 한스",
+    "title": "솔밭골 사람",
+    "outfit": "villager",
+    "dialogue": "sol_neighbor",
+    "color": "#d8c8a0",
+    "hideIf": "village_burning"
   }
 }
