@@ -1,7 +1,7 @@
 /**
  * 퀘스트 진행 (화면과 분리된 순수 로직). 내용은 data/quests.json.
  *   상태: none(안 받음) / active(진행 중) / ready(지금 단계 목표를 채움 — 보고하면 넘어감) / done(끝)
- *   목표: have(아이템 가짐) · kill(받은 뒤 잡은 수) · reach(장소 근처) · talk(대화로 넘김)
+ *   목표: have(아이템 가짐) · kill(받은 뒤 잡은 수) · reach(장소 근처) · talk(대화로 넘김) · flag(깃발이 섬 — 연출이 세움)
  *   turnIn이 없는 단계는 목표를 채우면 자동으로 다음 단계.
  * Godot: QuestLog.gd (Autoload) — 같은 표, signal quest_changed.
  */
@@ -37,6 +37,7 @@ export class QuestLog {
       if (g.type === 'kill') { const cur = Math.min(g.count, s.kills[g.monster] ?? 0); return { cur, need: g.count, ok: cur >= g.count }; }
       if (g.type === 'reach') return { ok: !!s.reached };
       if (g.type === 'talk') return { ok: true };            // 대화하면 넘어감 (보고 단계)
+      if (g.type === 'flag') return { ok: !!this.flags[g.flag] };
       return { ok: false };
     });
   }
@@ -99,6 +100,14 @@ export class QuestLog {
       const p = places.find((q) => q.name === g.place);
       if (p && Math.hypot(p.x - x, p.y - y) <= (g.radius ?? 64)) { s.reached = true; this.hooks.onEvent('progress', this.defs[id]); this.autoAdvance(id); }
     }
+  }
+
+  /** 깃발 세우기 (연출·대화) — 깃발을 기다리던 단계는 바로 넘어감 */
+  setFlag(name, on = true) {
+    if (!!this.flags[name] === on) return;
+    if (on) this.flags[name] = true; else delete this.flags[name];
+    this.hooks.onEvent('flag', null, name);
+    for (const id of this.active()) this.autoAdvance(id);
   }
 
   /** 진행 중인 퀘스트 (HUD 표시용) */

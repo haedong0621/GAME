@@ -1,3 +1,5 @@
+import { testCondition } from './Conditions.js';
+
 /**
  * 대화 진행기 (화면과 분리된 순수 로직). 내용은 data/dialogues.json.
  *   시작 노드: entries에서 조건(if)이 맞는 첫 것. 노드 = lines(줄들) → choices(선택지) 또는 next(다음 노드), do(할 일).
@@ -17,24 +19,7 @@ export class Dialogue {
     this.goto(entry?.node);
   }
 
-  test(c) {
-    if (!c) return true;
-    const q = this.ctx.quests;
-    if (c.quest) {
-      const st = q.status(c.quest);
-      if (c.is?.startsWith('stage')) {
-        const s = q.state[c.quest];
-        if (!s || s.done || s.stage !== Number(c.is.slice(5))) return false;
-        if (c.ready !== undefined && c.ready !== (st === 'ready')) return false;
-        return true;
-      }
-      if (c.is && c.is !== st) return false;
-    }
-    if (c.flag && !q.flags[c.flag]) return false;
-    if (c.companion && this.ctx.companion?.() !== c.companion) return false; // 동료 상태: home·follow·wait
-    if (c.has && this.ctx.inventory.count(c.has[0]) < c.has[1]) return false;
-    return true;
-  }
+  test(c) { return testCondition(c, this.ctx); }
 
   goto(nodeId) {
     this.node = nodeId ? this.script.nodes[nodeId] : null;
