@@ -164,6 +164,42 @@
      "frames": 3
     }
    }
+  },
+  "rooster": {
+   "key": "mon_rooster",
+   "frameWidth": 96,
+   "frameHeight": 96,
+   "columns": 4,
+   "origin": {
+    "x": 0.5,
+    "y": 0.875
+   },
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 2
+    },
+    "run": {
+     "row": 5,
+     "frames": 4
+    },
+    "bite": {
+     "row": 10,
+     "frames": 4
+    },
+    "hurt": {
+     "row": 15,
+     "frames": 2
+    },
+    "stagger": {
+     "row": 20,
+     "frames": 2
+    },
+    "death": {
+     "row": 25,
+     "frames": 3
+    }
+   }
   }
  }
 }

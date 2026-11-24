@@ -308,6 +308,26 @@
     "fist": {
      "head": "hero_head_hunter_fist"
     }
+   },
+   "tobb": {
+    "fist": {
+     "head": "hero_head_tobb_fist"
+    }
+   },
+   "chief": {
+    "fist": {
+     "head": "hero_head_chief_fist"
+    }
+   },
+   "marta": {
+    "fist": {
+     "head": "hero_head_marta_fist"
+    }
+   },
+   "villager": {
+    "fist": {
+     "head": "hero_head_villager_fist"
+    }
    }
   },
   "body": {
@@ -342,6 +362,26 @@
     },
     "fist": {
      "body": "hero_body_hunter_fist"
+    }
+   },
+   "tobb": {
+    "fist": {
+     "body": "hero_body_tobb_fist"
+    }
+   },
+   "chief": {
+    "fist": {
+     "body": "hero_body_chief_fist"
+    }
+   },
+   "marta": {
+    "fist": {
+     "body": "hero_body_marta_fist"
+    }
+   },
+   "villager": {
+    "fist": {
+     "body": "hero_body_villager_fist"
     }
    }
   },
@@ -387,6 +427,30 @@
      "armsB": "hero_armsB_hunter_fist",
      "armsF": "hero_armsF_hunter_fist"
     }
+   },
+   "tobb": {
+    "fist": {
+     "armsB": "hero_armsB_tobb_fist",
+     "armsF": "hero_armsF_tobb_fist"
+    }
+   },
+   "chief": {
+    "fist": {
+     "armsB": "hero_armsB_chief_fist",
+     "armsF": "hero_armsF_chief_fist"
+    }
+   },
+   "marta": {
+    "fist": {
+     "armsB": "hero_armsB_marta_fist",
+     "armsF": "hero_armsF_marta_fist"
+    }
+   },
+   "villager": {
+    "fist": {
+     "armsB": "hero_armsB_villager_fist",
+     "armsF": "hero_armsF_villager_fist"
+    }
    }
   },
   "legs": {
@@ -421,6 +485,26 @@
     },
     "fist": {
      "legs": "hero_legs_hunter_fist"
+    }
+   },
+   "tobb": {
+    "fist": {
+     "legs": "hero_legs_tobb_fist"
+    }
+   },
+   "chief": {
+    "fist": {
+     "legs": "hero_legs_chief_fist"
+    }
+   },
+   "marta": {
+    "fist": {
+     "legs": "hero_legs_marta_fist"
+    }
+   },
+   "villager": {
+    "fist": {
+     "legs": "hero_legs_villager_fist"
     }
    }
   }

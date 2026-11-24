@@ -463,6 +463,20 @@ bbbb"""),
  },
 }
 
+# ---------------- NPC 옷 (기존 옷 그림 + 색 바꾸기) ----------------
+NPC_OUTFITS = {
+ # 토브: 반쪽짜리 마법사 — 빛바랜 남보라 로브, 회색 머리, 가죽 허리띠
+ 'tobb':     {'base': 'rags',   'pal': {'T': (78, 70, 112), 't': (56, 50, 84), 'C': (96, 86, 128), 'c': (60, 54, 86), 'L': (120, 84, 50), 'l': (200, 170, 100),
+                                        'H': (150, 146, 140), 'h': (104, 100, 96), 'P': (70, 60, 74), 'p': (50, 44, 54)}},
+ # 갈대나루 촌장: 낡았지만 화려한 붉은 조끼, 금빛 허리띠, 검은 머리
+ 'chief':    {'base': 'rags',   'pal': {'T': (150, 52, 48), 't': (108, 36, 34), 'C': (170, 70, 60), 'c': (110, 44, 40), 'L': (200, 170, 80), 'l': (240, 210, 120),
+                                        'H': (40, 34, 32), 'h': (24, 20, 20), 'P': (60, 56, 70), 'p': (42, 40, 50)}},
+ # 늙은 사냥꾼 마르타: 사냥꾼 코트를 회녹색으로, 털은 잿빛 늑대 가죽
+ 'marta':    {'base': 'hunter', 'pal': {'K': (78, 86, 70), 'k': (54, 60, 50), 'j': (34, 38, 32), 'F': (150, 146, 136), 'f': (112, 108, 100), 'g': (78, 76, 70)}},
+ # 피난민 마을 사람: 흙빛 옷
+ 'villager': {'base': 'rags',   'pal': {'T': (120, 100, 70), 't': (90, 74, 52), 'H': (110, 78, 50), 'h': (74, 52, 36), 'P': (70, 74, 90), 'p': (50, 54, 66)}},
+}
+
 # ---------------- 키 키우기: 몸통·팔·다리에 줄을 복제해 늘림 (도트가 뭉개지지 않음) ----------------
 def grow(grid, rows):
     out = []
@@ -482,6 +496,9 @@ LIMB = {
  'swamp': {'upper': 'W', 'fore': 'w', 'hand': 'S', 'thigh': 'W', 'shin': 'w', 'boot': 'b', 'bootDark': 'v', 'plate': 'N', 'claw': 'N'},
  'hunter': {'upper': 'K', 'fore': 'k', 'hand': 'S', 'thigh': 'k', 'shin': 'j', 'boot': 'B', 'bootDark': 'b', 'plate': 'F', 'claw': None},
 }
+for _k, _n in NPC_OUTFITS.items():
+    OUTFITS[_k] = {**OUTFITS[_n['base']], 'name': _k, 'npc': True, 'pal': _n['pal']}
+    LIMB[_k] = dict(LIMB[_n['base']])
 
 # ---------------- 무기 (규칙으로 그림) ----------------
 WEAPONS = {
@@ -669,12 +686,15 @@ def ik(root, target, l1, l2, pole):
     return joint, end
 
 # ---------------- 그리기 ----------------
+CUR_PAL = {}   # 지금 그리는 옷의 색 덮어쓰기 (NPC 옷)
+def pal(ch): return CUR_PAL.get(ch, PAL[ch])
+
 def stamp(img, grid, x, y, shade=1.0):
     px = img.load()
     for j, row in enumerate(grid):
         for i, ch in enumerate(row):
             if ch in '. ': continue
-            r, g, b = PAL[ch]
+            r, g, b = pal(ch)
             X, Y = int(x) + i, int(y) + j
             if 0 <= X < F and 0 <= Y < F:
                 px[X, Y] = (int(r * shade), int(g * shade), int(b * shade), 255)
@@ -694,7 +714,7 @@ def line(img, x0, y0, x1, y1, c, w=1):
                 plot(img, x + dx - (w - 1) / 2, y + dy - (w - 1) / 2, c)
 
 def shade_c(ch, k):
-    r, g, b = PAL[ch]
+    r, g, b = pal(ch)
     return (int(r * k), int(g * k), int(b * k))
 
 class View:
@@ -820,6 +840,7 @@ def layer_order(view):
 def draw_layers(outfit_key, weapon_key, view, pose):
     """부위별 층 그림 (같은 좌표계). 갑옷 부위(머리·몸·팔·다리)와 무기를 따로 갈아 끼울 수 있게"""
     o, lc = OUTFITS[outfit_key], LIMB[outfit_key]
+    CUR_PAL.clear(); CUR_PAL.update(o.get('pal', {}))
     wd = WEAPONS.get(weapon_key)
     if wd is None or wd.get('gauntlet') or wd.get('bow'): pose = {**pose, 'weapon': False, 'smear': None}   # 맨손·건틀릿·활은 칼 없음
     V = View(view, pose)
@@ -1081,6 +1102,7 @@ def build():
         size = (cols * F, len(anims) * len(VIEWS) * F)
         weapons = CLASS_WEAPONS[cls] or [None]
         for ok in OUTFITS:
+            if OUTFITS[ok].get('npc') and cls != 'fist': continue   # NPC는 맨손 동작만
             sheets = {k: Image.new('RGBA', size, (0, 0, 0, 0)) for k in LAYERS}
             wsheets = {w: {k: Image.new('RGBA', size, (0, 0, 0, 0)) for k in ('wpnB', 'wpnF')} for w in weapons if w and ok == 'rags'}
             for ai, (n, frames) in enumerate(anims.items()):

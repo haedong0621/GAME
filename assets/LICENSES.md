@@ -15,3 +15,5 @@
 | `assets/tiles/pine0~1.png`, `deadtree0.png`, `decor_*.png` | `tools/art/pixel_world.py`로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 지역별 나무(침엽수·죽은 나무)와 깔개 소품(버섯·마른 풀·갈대·뼈·모닥불 자리·천막) |
 | `assets/tiles/house0~1.png`, `house_burned0~1.png`, `well.png`, `fence_h/v.png`, `watermill.png`, `ruin_tower.png`, `ruin_altar.png`, `fallen_tree.png`, `bridge_h.png` | `tools/art/pixel_world.py`로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 마을·거점·랜드마크 건물 |
 | `docs/maps/region1_plan.png` | `tools/art/region_plan.py`로 Claude가 그림 (글꼴: WenQuanYi Zen Hei, GPL+FE — 그림 안 글자만) | 이 프로젝트 | 자체 제작 | 첫 지역 설계도 |
+| `assets/characters/hero_<층>_<tobb·chief·marta·villager>_fist.png` | `tools/art/pixel_hero.py`의 NPC 옷(주인공 그림 색 바꾸기)으로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 마을 사람 (토브·촌장·마르타·주민) |
+| `assets/characters/mon_rooster.png` (+ `mon_px.json`의 rooster) | `tools/art/pixel_rooster.py`로 Claude가 생성 (pixel_hunter 렌더러 사용) | 이 프로젝트 | 자체 제작 (제한 없음) | 퀘스트 몬스터 뒤틀린 수탉 |
