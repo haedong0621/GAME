@@ -13,6 +13,7 @@ import { spawnFloatingLabel } from '../systems/Effects.js';
 import { Terrain } from '../systems/Terrain.js';
 import { GameClock } from '../systems/GameClock.js';
 import { Needs } from '../systems/Needs.js';
+import { WorldMap } from '../systems/WorldMap.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH, applyYSort } from '../systems/YSort.js';
@@ -75,6 +76,7 @@ export class WorldScene extends window.Phaser.Scene {
     const darkZones = [];
     this.noiseBus = new NoiseBus();
     let spawn = { x: map.widthInPixels / 2, y: map.heightInPixels / 2 };
+    const places = []; // 지도에 표시할 장소
 
     for (const obj of objects) {
       switch (obj.type) {
@@ -107,6 +109,9 @@ export class WorldScene extends window.Phaser.Scene {
           if (kind === 'tent') blockers.add(this.add.zone(obj.x, obj.y - 6, 34, 12));
           break;
         }
+        case 'place':
+          places.push({ name: obj.name, x: obj.x, y: obj.y, kind: getProperty(obj, 'kind', 'area') });
+          break;
         case 'climb':
           break; // 덩굴: 그림은 절벽 굽기에 포함, 오를 수 있는 범위는 terrain 격자 파일에 있음
         case 'autosave':
@@ -173,12 +178,17 @@ export class WorldScene extends window.Phaser.Scene {
     this.coneGfx = this.add.graphics().setDepth(-0.4); // 웅크릴 때 보이는 적 시야 (바닥 위)
 
     // ---- 플레이어
+    // 지도 (미니맵·큰 지도, 가 본 곳만 밝혀짐)
+    this.worldMap = new WorldMap(this, terrainData, map.width, map.height, map.tileWidth, places);
+    this.registry.set('worldMap', this.worldMap);
+
     // 높낮이: 절벽 벽면·고지대 경계를 막는 사각형 (격자에서 합쳐 만듦)
     for (const w of this.terrain.solidRects()) blockers.add(this.add.zone(w.x + w.width / 2, w.y + w.height / 2, w.width, w.height));
 
     const playerData = this.registry.get('playerData');
     this.inputSystem = new InputSystem(this, () => this.registry.get('touch'));
     this.registry.set('inputSystem', this.inputSystem); // 입력 진단 화면용
+    this.events.on('resume', () => this.inputSystem.clearPressed()); // 창을 닫으며 누른 키가 다시 처리되지 않게
     this.recorder = new FrameRecorder(this); // F8: 직전 10초 기록 저장
     const db = { weapons: this.registry.get('weapons'), gear: this.registry.get('gear'), skills: this.registry.get('skills') };
     this.player = new Player(this, spawn.x, spawn.y, playerData, db, () => this.monsters);
@@ -236,6 +246,7 @@ export class WorldScene extends window.Phaser.Scene {
     });
     snap.world.clock = this.clock.toJSON();   // 날짜·시각
     snap.player.needs = this.needs.toJSON();  // 배고픔·목마름·피로
+    snap.world.explored = this.worldMap.toJSON(); // 지도에서 가 본 곳
     const ok = SaveSystem.save(slot, snap);
     const label = slot === 'auto' ? `자동 저장 — ${location}` : '저장됨';
     this.banner(ok ? label : '저장 실패 (브라우저 저장소를 쓸 수 없음)', ok ? '#9adf5a' : '#d06050');
@@ -258,6 +269,7 @@ export class WorldScene extends window.Phaser.Scene {
     const sp = save.player ?? {};
     if (Number.isFinite(sp.x) && Number.isFinite(sp.y)) p.body.reset(sp.x, sp.y);
     this.clock.load(save.world?.clock);
+    this.worldMap.load(save.world?.explored);
     this.needs.load(sp.needs);
     if (sp.equipment) p.equipment.load(sp.equipment);
     else this.migrateOldGear(sp); // 예전 저장(무기 목록 + 갑옷 한 벌)
@@ -315,6 +327,8 @@ export class WorldScene extends window.Phaser.Scene {
     this.registry.set('interactPrompt', near && !this.player.isDead ? near.label : null);
     if (cmd.useItem) this.eatBestFood();
     if (cmd.openInventory && this.player.stateName === 'free') { this.openPanel('inventory'); return; }
+    if (cmd.openMap && !this.player.isDead) { this.openPanel('map'); return; }
+    this.worldMap.update(this.player.x, this.player.y);
     if (cmd.interact && near && this.player.stateName === 'free') {
       if (near.isDrink) {
         // 물가에서 마시기: 쪼그려 떠 마시는 모션 (줍기 모션 재사용)

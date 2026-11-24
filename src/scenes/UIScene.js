@@ -2,6 +2,8 @@ import { DEBUG, FORCE_TOUCH } from '../config.js';
 import { TouchControls } from '../systems/TouchControls.js';
 import { InputDebugPanel } from '../systems/InputDebugPanel.js';
 import { InventoryPanel } from '../systems/InventoryPanel.js';
+import { MapPanel } from '../systems/MapPanel.js';
+import { MAP_SCALE } from '../systems/WorldMap.js';
 import { CraftingPanel } from '../systems/CraftingPanel.js';
 import { DevTools } from '../systems/DevTools.js';
 import { PauseMenu } from '../systems/PauseMenu.js';
@@ -31,6 +33,14 @@ export class UIScene extends window.Phaser.Scene {
     // 시계 (오른쪽 위)
     this.clockText = this.add.text(this.scale.width - 12, isTouch ? 84 : 40, '', { ...small, color: '#e8dcc0', backgroundColor: '#00000066', padding: { x: 6, y: 2 } })
       .setOrigin(1, 0);
+    // 미니맵 (오른쪽 위, 시계 아래): 지도 그림·안개를 잘라 보여 줌. 누르면 큰 지도
+    this.mini = { w: 150, h: 100, x: this.scale.width - 162, y: (isTouch ? 84 : 40) + 24, scale: 1.25 };
+    this.miniFrame = this.add.rectangle(this.mini.x + this.mini.w / 2, this.mini.y + this.mini.h / 2, this.mini.w + 4, this.mini.h + 4, 0x16130f, 0.9)
+      .setStrokeStyle(1, 0x8a7450).setInteractive({ useHandCursor: true });
+    this.miniFrame.on('pointerdown', () => { if (!this.panel) this.scene.get('World').openPanel('map'); });
+    this.miniDot = this.add.graphics();
+    this.add.text(this.mini.x + this.mini.w, this.mini.y + this.mini.h + 3, 'M 지도', { fontFamily: 'sans-serif', fontSize: '11px', color: '#a89a80' }).setOrigin(1, 0);
+
     // 생존 게이지 (체력·기력 바 오른쪽): 배고픔·목마름·피로 + 걸린 상태
     this.needText = this.add.text(222, 8, '', { ...small, fontSize: '12px', lineSpacing: 1 }).setShadow(1, 1, '#000', 0);
 
@@ -81,6 +91,14 @@ export class UIScene extends window.Phaser.Scene {
     // 월드가 패널 열기를 요청하면 (월드는 이미 멈춘 상태)
     this.registry.events.on('changedata-openPanel', (_p, req) => {
       if (!req || this.panel) return;
+      if (req.type === 'map') {
+        this.registry.set('panelOpen', true);
+        this.panel = new MapPanel(this, {
+          map: this.registry.get('worldMap'), player: this.registry.get('player'),
+          onClose: () => { this.panel = null; this.registry.set('panelOpen', false); this.scene.resume('World'); },
+        });
+        return;
+      }
       if (req.type === 'inventory') {
         this.registry.set('panelOpen', true);
         const world = this.scene.get('World');
@@ -124,7 +142,7 @@ export class UIScene extends window.Phaser.Scene {
       this.registry.set('touch', new TouchControls(this));
     } else {
       this.add.text(12, this.scale.height - 8,
-        'WASD/TFGH 이동 · Shift 질주 · C 웅크림 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기 · E 줍기 · R 먹기 · I 가방 · ` 입력 진단' + (DEBUG ? '   [debug]' : ''),
+        'WASD/TFGH 이동 · Shift 질주 · C 웅크림 · 마우스 조준 · 왼쪽 클릭/J 공격(연타로 콤보) · Space 구르기 · 오른쪽 클릭/Tab 대상 고정 · 1/2 무기 · E 줍기 · R 먹기 · I 가방 · M 지도 · ` 입력 진단' + (DEBUG ? '   [debug]' : ''),
         { ...small, color: '#c9ced4' }).setOrigin(0, 1).setShadow(1, 1, '#000', 0);
     }
   }
@@ -138,6 +156,8 @@ export class UIScene extends window.Phaser.Scene {
     g.clear();
     this.drawBar(g, 50, 13, s.hp / s.maxHp, 0xb23a2e);
     this.drawBar(g, 50, 31, s.stamina / s.maxStamina, s.regenCooldown > 0 ? 0x8f8a4a : 0xd9c25a);
+
+    this.updateMinimap(player);
 
     // 낮밤 색 · 시계 · 생존 게이지
     const clock = this.registry.get('clock'), needs = this.registry.get('needs');
@@ -209,6 +229,29 @@ export class UIScene extends window.Phaser.Scene {
     g.fillStyle(0x000000, 0.65).fillRect(x - 3, y - 3, w + 6, h + 6);
     g.fillStyle(0x2a2a2a).fillRect(x, y, w, h);
     g.fillStyle(phase ? 0xd04a2a : 0x9a2e24).fillRect(x, y, w * (boss.stats.hp / boss.stats.maxHp), h);
+  }
+
+  /** 미니맵: 내 주변(지도 그림의 일부)을 잘라 보여 주고 가운데에 내 위치·방향 */
+  updateMinimap(player) {
+    const m = this.mini;
+    if (!this.textures.exists('map-land')) return;
+    if (!this.miniLand) {
+      this.miniLand = this.add.image(0, 0, 'map-land').setOrigin(0, 0).setScale(m.scale);
+      this.miniFog = this.add.image(0, 0, 'map-fog').setOrigin(0, 0).setScale(m.scale);
+      this.miniDot.setDepth(1);
+    }
+    const tw = m.w / m.scale, th = m.h / m.scale;                       // 지도 그림에서 잘라 낼 크기
+    const lw = this.miniLand.width, lh = this.miniLand.height;
+    const cx = Math.max(0, Math.min(lw - tw, player.x * MAP_SCALE - tw / 2));
+    const cy = Math.max(0, Math.min(lh - th, player.y * MAP_SCALE - th / 2));
+    for (const img of [this.miniLand, this.miniFog]) {
+      img.setCrop(cx, cy, tw, th).setPosition(m.x - cx * m.scale, m.y - cy * m.scale);
+    }
+    const px = m.x + (player.x * MAP_SCALE - cx) * m.scale, py = m.y + (player.y * MAP_SCALE - cy) * m.scale;
+    const a = player.facingAngle ?? 0, g = this.miniDot;
+    g.clear().fillStyle(0x6ec8ff, 1).lineStyle(1, 0x0a1a2a, 1);
+    const pts = [[0, 6], [2.5, 4], [-2.5, 4]].map(([k, r], i) => ({ x: px + Math.cos(a + (i ? k : 0)) * (i ? r : 6), y: py + Math.sin(a + (i ? k : 0)) * (i ? r : 6) }));
+    g.fillPoints(pts, true).strokePoints(pts, true);
   }
 
   drawBar(g, x, y, ratio, color) {

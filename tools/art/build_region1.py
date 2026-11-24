@@ -197,6 +197,13 @@ def build():
             if not blocked(x * T, y * T) and free(x * T, y * T, 20):
                 add('item', x * T, y * T, 'apple', {'itemId': 'apple', 'amount': 1}); occupy(x * T, y * T, 10); break
 
+    # 지도에 표시할 장소 이름 (가 본 곳만 지도에 보임)
+    for name, (x, y, kind) in {'솔밭골': (15, 60, 'village'), '버려진 물레방앗간': (44.5, 44, 'base'), '갈대나루': (79, 23, 'village'),
+                               '무너진 감시탑': (73, 8, 'landmark'), '무너진 제단': (8, 9, 'landmark'), '쓰러진 거대 나무': (31, 22, 'landmark'),
+                               '도적 캠프': (90, 13, 'danger'), '늙은참나무 숲': (14, 38, 'area'), '사냥꾼의 들판': (30, 6, 'area'),
+                               '늪지': (86, 64, 'area'), '마른 들판': (84, 35, 'area')}.items():
+        add('place', tx(x), tx(y), name, {'kind': kind})
+
     # ---------------- 저장 (Tiled .tmj) ----------------
     gid = {'grass': 1, 'dirt': 5 + 15, 'water': 21 + 15}       # 종류만 맞으면 됨 (--remap이 경계 번호를 다시 매김)
     ground = [gid[kinds[y][x]] for y in range(H) for x in range(W)]

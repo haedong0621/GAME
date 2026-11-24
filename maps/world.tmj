@@ -11,7 +11,7 @@
  "tilewidth": 32,
  "tileheight": 32,
  "nextlayerid": 6,
- "nextobjectid": 612,
+ "nextobjectid": 622,
  "layers": [
   {
    "id": 1,
@@ -27856,6 +27856,215 @@
     },
     {
      "id": 516,
+     "name": "\uc194\ubc2d\uace8",
+     "type": "place",
+     "x": 480,
+     "y": 1920,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "village"
+      }
+     ]
+    },
+    {
+     "id": 517,
+     "name": "\ubc84\ub824\uc9c4 \ubb3c\ub808\ubc29\uc557\uac04",
+     "type": "place",
+     "x": 1424,
+     "y": 1408,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "base"
+      }
+     ]
+    },
+    {
+     "id": 518,
+     "name": "\uac08\ub300\ub098\ub8e8",
+     "type": "place",
+     "x": 2528,
+     "y": 736,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "village"
+      }
+     ]
+    },
+    {
+     "id": 519,
+     "name": "\ubb34\ub108\uc9c4 \uac10\uc2dc\ud0d1",
+     "type": "place",
+     "x": 2336,
+     "y": 256,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "landmark"
+      }
+     ]
+    },
+    {
+     "id": 520,
+     "name": "\ubb34\ub108\uc9c4 \uc81c\ub2e8",
+     "type": "place",
+     "x": 256,
+     "y": 288,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "landmark"
+      }
+     ]
+    },
+    {
+     "id": 521,
+     "name": "\uc4f0\ub7ec\uc9c4 \uac70\ub300 \ub098\ubb34",
+     "type": "place",
+     "x": 992,
+     "y": 704,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "landmark"
+      }
+     ]
+    },
+    {
+     "id": 522,
+     "name": "\ub3c4\uc801 \ucea0\ud504",
+     "type": "place",
+     "x": 2880,
+     "y": 416,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "danger"
+      }
+     ]
+    },
+    {
+     "id": 523,
+     "name": "\ub299\uc740\ucc38\ub098\ubb34 \uc232",
+     "type": "place",
+     "x": 448,
+     "y": 1216,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "area"
+      }
+     ]
+    },
+    {
+     "id": 524,
+     "name": "\uc0ac\ub0e5\uafbc\uc758 \ub4e4\ud310",
+     "type": "place",
+     "x": 960,
+     "y": 192,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "area"
+      }
+     ]
+    },
+    {
+     "id": 525,
+     "name": "\ub2aa\uc9c0",
+     "type": "place",
+     "x": 2752,
+     "y": 2048,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "area"
+      }
+     ]
+    },
+    {
+     "id": 526,
+     "name": "\ub9c8\ub978 \ub4e4\ud310",
+     "type": "place",
+     "x": 2688,
+     "y": 1120,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "point": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "area"
+      }
+     ]
+    },
+    {
+     "id": 527,
      "name": "auto",
      "type": "decor",
      "x": 519,
@@ -27874,7 +28083,7 @@
      ]
     },
     {
-     "id": 517,
+     "id": 528,
      "name": "auto",
      "type": "decor",
      "x": 1301,
@@ -27893,7 +28102,7 @@
      ]
     },
     {
-     "id": 518,
+     "id": 529,
      "name": "auto",
      "type": "decor",
      "x": 1323,
@@ -27912,7 +28121,7 @@
      ]
     },
     {
-     "id": 519,
+     "id": 530,
      "name": "auto",
      "type": "decor",
      "x": 845,
@@ -27931,7 +28140,7 @@
      ]
     },
     {
-     "id": 520,
+     "id": 531,
      "name": "auto",
      "type": "decor",
      "x": 1268,
@@ -27950,7 +28159,7 @@
      ]
     },
     {
-     "id": 521,
+     "id": 532,
      "name": "auto",
      "type": "decor",
      "x": 1015,
@@ -27969,7 +28178,7 @@
      ]
     },
     {
-     "id": 522,
+     "id": 533,
      "name": "auto",
      "type": "decor",
      "x": 1766,
@@ -27988,7 +28197,7 @@
      ]
     },
     {
-     "id": 523,
+     "id": 534,
      "name": "auto",
      "type": "decor",
      "x": 1576,
@@ -28007,7 +28216,7 @@
      ]
     },
     {
-     "id": 524,
+     "id": 535,
      "name": "auto",
      "type": "decor",
      "x": 1047,
@@ -28026,7 +28235,7 @@
      ]
     },
     {
-     "id": 525,
+     "id": 536,
      "name": "auto",
      "type": "decor",
      "x": 1207,
@@ -28045,7 +28254,7 @@
      ]
     },
     {
-     "id": 526,
+     "id": 537,
      "name": "auto",
      "type": "decor",
      "x": 1404,
@@ -28064,7 +28273,7 @@
      ]
     },
     {
-     "id": 527,
+     "id": 538,
      "name": "auto",
      "type": "decor",
      "x": 532,
@@ -28083,7 +28292,7 @@
      ]
     },
     {
-     "id": 528,
+     "id": 539,
      "name": "auto",
      "type": "decor",
      "x": 700,
@@ -28102,7 +28311,7 @@
      ]
     },
     {
-     "id": 529,
+     "id": 540,
      "name": "auto",
      "type": "decor",
      "x": 978,
@@ -28121,7 +28330,7 @@
      ]
     },
     {
-     "id": 530,
+     "id": 541,
      "name": "auto",
      "type": "decor",
      "x": 1480,
@@ -28140,7 +28349,7 @@
      ]
     },
     {
-     "id": 531,
+     "id": 542,
      "name": "auto",
      "type": "decor",
      "x": 1274,
@@ -28159,7 +28368,7 @@
      ]
     },
     {
-     "id": 532,
+     "id": 543,
      "name": "auto",
      "type": "decor",
      "x": 742,
@@ -28178,7 +28387,7 @@
      ]
     },
     {
-     "id": 533,
+     "id": 544,
      "name": "auto",
      "type": "decor",
      "x": 2764,
@@ -28197,7 +28406,7 @@
      ]
     },
     {
-     "id": 534,
+     "id": 545,
      "name": "auto",
      "type": "decor",
      "x": 2265,
@@ -28216,7 +28425,7 @@
      ]
     },
     {
-     "id": 535,
+     "id": 546,
      "name": "auto",
      "type": "decor",
      "x": 2350,
@@ -28235,7 +28444,7 @@
      ]
     },
     {
-     "id": 536,
+     "id": 547,
      "name": "auto",
      "type": "decor",
      "x": 2926,
@@ -28254,7 +28463,7 @@
      ]
     },
     {
-     "id": 537,
+     "id": 548,
      "name": "auto",
      "type": "decor",
      "x": 332,
@@ -28273,7 +28482,7 @@
      ]
     },
     {
-     "id": 538,
+     "id": 549,
      "name": "auto",
      "type": "decor",
      "x": 2885,
@@ -28292,7 +28501,7 @@
      ]
     },
     {
-     "id": 539,
+     "id": 550,
      "name": "auto",
      "type": "decor",
      "x": 2966,
@@ -28311,7 +28520,7 @@
      ]
     },
     {
-     "id": 540,
+     "id": 551,
      "name": "auto",
      "type": "decor",
      "x": 324,
@@ -28330,7 +28539,7 @@
      ]
     },
     {
-     "id": 541,
+     "id": 552,
      "name": "auto",
      "type": "decor",
      "x": 2999,
@@ -28349,7 +28558,7 @@
      ]
     },
     {
-     "id": 542,
+     "id": 553,
      "name": "auto",
      "type": "decor",
      "x": 2664,
@@ -28368,7 +28577,7 @@
      ]
     },
     {
-     "id": 543,
+     "id": 554,
      "name": "auto",
      "type": "decor",
      "x": 2868,
@@ -28387,7 +28596,7 @@
      ]
     },
     {
-     "id": 544,
+     "id": 555,
      "name": "auto",
      "type": "decor",
      "x": 40,
@@ -28406,7 +28615,7 @@
      ]
     },
     {
-     "id": 545,
+     "id": 556,
      "name": "auto",
      "type": "decor",
      "x": 2732,
@@ -28425,7 +28634,7 @@
      ]
     },
     {
-     "id": 546,
+     "id": 557,
      "name": "auto",
      "type": "decor",
      "x": 2771,
@@ -28444,7 +28653,7 @@
      ]
     },
     {
-     "id": 547,
+     "id": 558,
      "name": "auto",
      "type": "decor",
      "x": 2831,
@@ -28463,7 +28672,7 @@
      ]
     },
     {
-     "id": 548,
+     "id": 559,
      "name": "auto",
      "type": "decor",
      "x": 2040,
@@ -28482,7 +28691,7 @@
      ]
     },
     {
-     "id": 549,
+     "id": 560,
      "name": "auto",
      "type": "decor",
      "x": 2925,
@@ -28501,7 +28710,7 @@
      ]
     },
     {
-     "id": 550,
+     "id": 561,
      "name": "auto",
      "type": "decor",
      "x": 144,
@@ -28520,7 +28729,7 @@
      ]
     },
     {
-     "id": 551,
+     "id": 562,
      "name": "auto",
      "type": "decor",
      "x": 171,
@@ -28539,7 +28748,7 @@
      ]
     },
     {
-     "id": 552,
+     "id": 563,
      "name": "auto",
      "type": "decor",
      "x": 2379,
@@ -28558,7 +28767,7 @@
      ]
     },
     {
-     "id": 553,
+     "id": 564,
      "name": "auto",
      "type": "decor",
      "x": 180,
@@ -28577,7 +28786,7 @@
      ]
     },
     {
-     "id": 554,
+     "id": 565,
      "name": "auto",
      "type": "decor",
      "x": 974,
@@ -28596,7 +28805,7 @@
      ]
     },
     {
-     "id": 555,
+     "id": 566,
      "name": "auto",
      "type": "decor",
      "x": 2903,
@@ -28615,7 +28824,7 @@
      ]
     },
     {
-     "id": 556,
+     "id": 567,
      "name": "auto",
      "type": "decor",
      "x": 183,
@@ -28634,7 +28843,7 @@
      ]
     },
     {
-     "id": 557,
+     "id": 568,
      "name": "auto",
      "type": "decor",
      "x": 294,
@@ -28653,7 +28862,7 @@
      ]
     },
     {
-     "id": 558,
+     "id": 569,
      "name": "auto",
      "type": "decor",
      "x": 48,
@@ -28672,7 +28881,7 @@
      ]
     },
     {
-     "id": 559,
+     "id": 570,
      "name": "auto",
      "type": "decor",
      "x": 2728,
@@ -28691,26 +28900,7 @@
      ]
     },
     {
-     "id": 560,
-     "name": "auto",
-     "type": "decor",
-     "x": 434,
-     "y": 1203,
-     "point": true,
-     "rotation": 0,
-     "visible": true,
-     "width": 0,
-     "height": 0,
-     "properties": [
-      {
-       "name": "kind",
-       "type": "string",
-       "value": "mushrooms"
-      }
-     ]
-    },
-    {
-     "id": 561,
+     "id": 571,
      "name": "auto",
      "type": "decor",
      "x": 489,
@@ -28729,7 +28919,7 @@
      ]
     },
     {
-     "id": 562,
+     "id": 572,
      "name": "auto",
      "type": "decor",
      "x": 2772,
@@ -28748,7 +28938,7 @@
      ]
     },
     {
-     "id": 563,
+     "id": 573,
      "name": "auto",
      "type": "decor",
      "x": 294,
@@ -28767,7 +28957,7 @@
      ]
     },
     {
-     "id": 564,
+     "id": 574,
      "name": "auto",
      "type": "decor",
      "x": 397,
@@ -28786,7 +28976,7 @@
      ]
     },
     {
-     "id": 565,
+     "id": 575,
      "name": "auto",
      "type": "decor",
      "x": 2310,
@@ -28805,7 +28995,7 @@
      ]
     },
     {
-     "id": 566,
+     "id": 576,
      "name": "auto",
      "type": "decor",
      "x": 2705,
@@ -28824,7 +29014,7 @@
      ]
     },
     {
-     "id": 567,
+     "id": 577,
      "name": "auto",
      "type": "decor",
      "x": 181,
@@ -28843,7 +29033,7 @@
      ]
     },
     {
-     "id": 568,
+     "id": 578,
      "name": "auto",
      "type": "decor",
      "x": 2361,
@@ -28862,7 +29052,7 @@
      ]
     },
     {
-     "id": 569,
+     "id": 579,
      "name": "auto",
      "type": "decor",
      "x": 2737,
@@ -28881,7 +29071,7 @@
      ]
     },
     {
-     "id": 570,
+     "id": 580,
      "name": "auto",
      "type": "decor",
      "x": 2767,
@@ -28900,7 +29090,7 @@
      ]
     },
     {
-     "id": 571,
+     "id": 581,
      "name": "auto",
      "type": "decor",
      "x": 2803,
@@ -28919,7 +29109,7 @@
      ]
     },
     {
-     "id": 572,
+     "id": 582,
      "name": "auto",
      "type": "decor",
      "x": 408,
@@ -28938,7 +29128,7 @@
      ]
     },
     {
-     "id": 573,
+     "id": 583,
      "name": "auto",
      "type": "decor",
      "x": 139,
@@ -28957,7 +29147,7 @@
      ]
     },
     {
-     "id": 574,
+     "id": 584,
      "name": "auto",
      "type": "decor",
      "x": 499,
@@ -28976,7 +29166,7 @@
      ]
     },
     {
-     "id": 575,
+     "id": 585,
      "name": "auto",
      "type": "decor",
      "x": 983,
@@ -28995,7 +29185,7 @@
      ]
     },
     {
-     "id": 576,
+     "id": 586,
      "name": "auto",
      "type": "decor",
      "x": 666,
@@ -29014,7 +29204,7 @@
      ]
     },
     {
-     "id": 577,
+     "id": 587,
      "name": "auto",
      "type": "decor",
      "x": 919,
@@ -29033,7 +29223,7 @@
      ]
     },
     {
-     "id": 578,
+     "id": 588,
      "name": "auto",
      "type": "decor",
      "x": 333,
@@ -29052,7 +29242,7 @@
      ]
     },
     {
-     "id": 579,
+     "id": 589,
      "name": "auto",
      "type": "decor",
      "x": 517,
@@ -29071,7 +29261,7 @@
      ]
     },
     {
-     "id": 580,
+     "id": 590,
      "name": "auto",
      "type": "decor",
      "x": 2744,
@@ -29090,7 +29280,7 @@
      ]
     },
     {
-     "id": 581,
+     "id": 591,
      "name": "auto",
      "type": "decor",
      "x": 2458,
@@ -29109,7 +29299,7 @@
      ]
     },
     {
-     "id": 582,
+     "id": 592,
      "name": "auto",
      "type": "decor",
      "x": 697,
@@ -29128,7 +29318,7 @@
      ]
     },
     {
-     "id": 583,
+     "id": 593,
      "name": "auto",
      "type": "decor",
      "x": 2441,
@@ -29147,7 +29337,7 @@
      ]
     },
     {
-     "id": 584,
+     "id": 594,
      "name": "auto",
      "type": "decor",
      "x": 2778,
@@ -29166,7 +29356,7 @@
      ]
     },
     {
-     "id": 585,
+     "id": 595,
      "name": "auto",
      "type": "decor",
      "x": 2726,
@@ -29185,7 +29375,7 @@
      ]
     },
     {
-     "id": 586,
+     "id": 596,
      "name": "auto",
      "type": "decor",
      "x": 2488,
@@ -29204,7 +29394,7 @@
      ]
     },
     {
-     "id": 587,
+     "id": 597,
      "name": "auto",
      "type": "decor",
      "x": 2859,
@@ -29223,7 +29413,7 @@
      ]
     },
     {
-     "id": 588,
+     "id": 598,
      "name": "auto",
      "type": "decor",
      "x": 2583,
@@ -29242,7 +29432,7 @@
      ]
     },
     {
-     "id": 589,
+     "id": 599,
      "name": "auto",
      "type": "decor",
      "x": 2681,
@@ -29261,7 +29451,7 @@
      ]
     },
     {
-     "id": 590,
+     "id": 600,
      "name": "auto",
      "type": "decor",
      "x": 2896,
@@ -29280,7 +29470,7 @@
      ]
     },
     {
-     "id": 591,
+     "id": 601,
      "name": "auto",
      "type": "decor",
      "x": 2321,
@@ -29299,7 +29489,7 @@
      ]
     },
     {
-     "id": 592,
+     "id": 602,
      "name": "auto",
      "type": "decor",
      "x": 2569,
@@ -29318,7 +29508,7 @@
      ]
     },
     {
-     "id": 593,
+     "id": 603,
      "name": "auto",
      "type": "decor",
      "x": 2931,
@@ -29337,7 +29527,7 @@
      ]
     },
     {
-     "id": 594,
+     "id": 604,
      "name": "auto",
      "type": "decor",
      "x": 2375,
@@ -29356,7 +29546,7 @@
      ]
     },
     {
-     "id": 595,
+     "id": 605,
      "name": "auto",
      "type": "decor",
      "x": 2547,
@@ -29375,7 +29565,7 @@
      ]
     },
     {
-     "id": 596,
+     "id": 606,
      "name": "auto",
      "type": "decor",
      "x": 2792,
@@ -29394,7 +29584,7 @@
      ]
     },
     {
-     "id": 597,
+     "id": 607,
      "name": "auto",
      "type": "decor",
      "x": 2521,
@@ -29413,7 +29603,7 @@
      ]
     },
     {
-     "id": 598,
+     "id": 608,
      "name": "auto",
      "type": "decor",
      "x": 2601,
@@ -29432,7 +29622,7 @@
      ]
     },
     {
-     "id": 599,
+     "id": 609,
      "name": "auto",
      "type": "decor",
      "x": 2644,
@@ -29451,7 +29641,7 @@
      ]
     },
     {
-     "id": 600,
+     "id": 610,
      "name": "auto",
      "type": "decor",
      "x": 2321,
@@ -29470,7 +29660,7 @@
      ]
     },
     {
-     "id": 601,
+     "id": 611,
      "name": "auto",
      "type": "decor",
      "x": 2287,
@@ -29489,7 +29679,7 @@
      ]
     },
     {
-     "id": 602,
+     "id": 612,
      "name": "auto",
      "type": "decor",
      "x": 2361,
@@ -29508,7 +29698,7 @@
      ]
     },
     {
-     "id": 603,
+     "id": 613,
      "name": "auto",
      "type": "decor",
      "x": 2610,
@@ -29527,7 +29717,7 @@
      ]
     },
     {
-     "id": 604,
+     "id": 614,
      "name": "auto",
      "type": "decor",
      "x": 2410,
@@ -29546,7 +29736,7 @@
      ]
     },
     {
-     "id": 605,
+     "id": 615,
      "name": "auto",
      "type": "decor",
      "x": 2517,
@@ -29565,7 +29755,7 @@
      ]
     },
     {
-     "id": 606,
+     "id": 616,
      "name": "auto",
      "type": "decor",
      "x": 3109,
@@ -29584,7 +29774,7 @@
      ]
     },
     {
-     "id": 607,
+     "id": 617,
      "name": "auto",
      "type": "decor",
      "x": 2926,
@@ -29603,7 +29793,7 @@
      ]
     },
     {
-     "id": 608,
+     "id": 618,
      "name": "auto",
      "type": "decor",
      "x": 3090,
@@ -29622,7 +29812,7 @@
      ]
     },
     {
-     "id": 609,
+     "id": 619,
      "name": "auto",
      "type": "decor",
      "x": 3148,
@@ -29641,7 +29831,7 @@
      ]
     },
     {
-     "id": 610,
+     "id": 620,
      "name": "auto",
      "type": "decor",
      "x": 3063,
@@ -29660,7 +29850,7 @@
      ]
     },
     {
-     "id": 611,
+     "id": 621,
      "name": "auto",
      "type": "decor",
      "x": 2671,
