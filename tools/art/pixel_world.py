@@ -801,6 +801,194 @@ def decor(kind):
         return shadow(outline(img), 26, 38, 20, 3)
     raise ValueError(kind)
 
+# ---------------- 마을·장소 건물 (3/4 시점: 지붕 윗면 + 앞벽, 셀 셰이딩) ----------------
+WOOD = [(52, 38, 28), (78, 58, 40), (104, 80, 54), (130, 102, 70)]
+THATCH = [(92, 74, 40), (124, 102, 56), (156, 132, 74), (186, 162, 96)]
+STONE = [(70, 68, 66), (98, 96, 92), (126, 122, 116), (156, 150, 140)]
+
+def planks(d, x0, y0, x1, y1, ramp, vertical=True, step=5):
+    d.rectangle([x0, y0, x1, y1], fill=ramp[1])
+    if vertical:
+        for x in range(x0, x1, step): d.line([x, y0, x, y1], fill=ramp[0])
+        for x in range(x0 + 2, x1, step * 3): d.line([x, y0 + 2, x, y0 + 6], fill=ramp[2])
+    else:
+        for y in range(y0, y1, step): d.line([x0, y, x1, y], fill=ramp[0])
+
+def house(seed, burned=False):
+    """초가집 96×92: 돌 밑단 + 나무 앞벽(문·창) + 초가 지붕(앞으로 기운 면이 크게 보임). burned = 지붕 없이 그을린 뼈대"""
+    rnd = random.Random(seed)
+    Wd, Ht = 96, 92
+    img = Image.new('RGBA', (Wd, Ht), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    wx0, wx1, wy0, wy1 = 10, 86, 46, 86                       # 앞벽
+    char = (lambda c: tuple(int(v * 0.35) for v in c)) if burned else (lambda c: c)
+    d.rectangle([wx0, wy1 - 6, wx1, wy1], fill=char(STONE[1]))    # 돌 밑단
+    for x in range(wx0, wx1, 7): d.line([x, wy1 - 6, x + 3, wy1], fill=char(STONE[0]))
+    planks(d, wx0, wy0, wx1, wy1 - 7, [char(c) for c in WOOD])
+    d.line([wx0, wy0, wx0, wy1], fill=char(WOOD[0]), width=3); d.line([wx1, wy0, wx1, wy1], fill=char(WOOD[0]), width=3)  # 기둥
+    dx = 30 + rnd.randint(-6, 6)
+    d.rectangle([dx, 62, dx + 14, wy1 - 6], fill=(28, 22, 20))  # 문 (어둠)
+    if not burned:
+        d.rectangle([dx + 2, 64, dx + 12, wy1 - 7], fill=WOOD[1]); d.line([dx + 7, 64, dx + 7, wy1 - 7], fill=WOOD[0])
+        for wx in (60, 72):                                       # 창 (불빛 없는 창)
+            d.rectangle([wx, 58, wx + 8, 66], fill=(40, 36, 34)); d.line([wx + 4, 58, wx + 4, 66], fill=WOOD[2]); d.rectangle([wx - 1, 57, wx + 9, 67], outline=WOOD[0])
+        # 초가 지붕: 앞으로 기운 큰 면 + 용마루 + 처마 그늘
+        roof = [(2, 50), (94, 50), (80, 12), (16, 12)]
+        d.polygon(roof, fill=THATCH[1])
+        for y in range(14, 50, 4):
+            t = (y - 12) / 38
+            xa, xb = 16 - 14 * t, 80 + 14 * t
+            d.line([xa, y, xb, y], fill=THATCH[0] if y % 8 else THATCH[2])
+        for _ in range(70):
+            y = rnd.randrange(14, 48); t = (y - 12) / 38
+            x = rnd.uniform(16 - 14 * t, 80 + 14 * t)
+            put(img, int(x), y, THATCH[3] + (255,) if rnd.random() < 0.5 else THATCH[0] + (255,))
+        d.polygon([(16, 12), (80, 12), (76, 6), (20, 6)], fill=THATCH[2])  # 용마루 윗면
+        d.line([20, 6, 76, 6], fill=THATCH[3])
+        d.line([2, 50, 94, 50], fill=THATCH[0], width=2)
+        d.rectangle([wx0, 52, wx1, 54], fill=(30, 24, 20))       # 처마 그늘
+        d.rectangle([66, 2, 72, 12], fill=STONE[1]); d.line([66, 2, 72, 2], fill=STONE[3])   # 굴뚝
+    else:
+        # 불탄 집: 지붕 없음, 부러진 서까래, 그을음
+        for x0, x1 in ((14, 40), (50, 82)):
+            d.line([x0, 46, x1, 20 + rnd.randint(0, 14)], fill=(30, 24, 20), width=3)
+        d.line([10, 46, 86, 46], fill=(26, 20, 18), width=3)
+        for _ in range(40):
+            x, y = rnd.randrange(wx0, wx1), rnd.randrange(wy0 - 4, wy1)
+            put(img, x, y, (20, 16, 14, 255))
+        for _ in range(6):                                        # 남은 불씨
+            put(img, rnd.randrange(14, 82), rnd.randrange(70, 86), (200, 90, 40, 255))
+        # 윗부분 무너짐: 벽 위쪽을 들쭉날쭉 지움
+        px = img.load()
+        for x in range(Wd):
+            cut = 46 + int(abs(math.sin(x * 0.3 + seed)) * 14)
+            for y in range(0, cut):
+                if px[x, y][3] and y > 18 and not (px[x, y][:3] == (30, 24, 20) or px[x, y][:3] == (26, 20, 18)): px[x, y] = (0, 0, 0, 0)
+    return shadow(outline(img), 48, 86, 44, 4)
+
+def well():
+    img = Image.new('RGBA', (40, 46), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    d.ellipse([6, 22, 34, 34], fill=STONE[1]); d.ellipse([10, 24, 30, 31], fill=(30, 40, 48))   # 돌 테두리·물
+    d.rectangle([6, 28, 34, 40], fill=STONE[1]); d.ellipse([6, 34, 34, 44], fill=STONE[0])
+    for x in range(8, 34, 6): d.line([x, 30, x, 40], fill=STONE[0])
+    d.line([8, 28, 8, 6], fill=WOOD[1], width=2); d.line([32, 28, 32, 6], fill=WOOD[0], width=2)
+    d.polygon([(4, 8), (36, 8), (30, 2), (10, 2)], fill=THATCH[1]); d.line([10, 2, 30, 2], fill=THATCH[3])
+    d.line([20, 8, 20, 22], fill=(160, 150, 120)); d.rectangle([17, 18, 23, 23], fill=WOOD[2])  # 두레박
+    return shadow(outline(img), 20, 42, 16, 3)
+
+def fence(vertical=False):
+    if vertical:
+        img = Image.new('RGBA', (12, 40), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+        d.rectangle([4, 4, 7, 38], fill=WOOD[1]); d.line([4, 4, 4, 38], fill=WOOD[2])
+        for y in (10, 26): d.rectangle([2, y, 9, y + 3], fill=WOOD[2])
+        return outline(img)
+    img = Image.new('RGBA', (34, 24), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    for x in (3, 29): d.rectangle([x, 4, x + 3, 22], fill=WOOD[1]); d.line([x, 4, x, 22], fill=WOOD[2])
+    for y in (8, 15): d.rectangle([0, y, 33, y + 3], fill=WOOD[2]); d.line([0, y + 3, 33, y + 3], fill=WOOD[0])
+    return shadow(outline(img), 17, 22, 15, 2, alpha=60)
+
+def watermill():
+    """버려진 물레방앗간 (토브의 베이스캠프): 돌 벽 + 기운 지붕 + 옆의 큰 물레바퀴"""
+    rnd = random.Random(3)
+    img = Image.new('RGBA', (128, 104), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    d.rectangle([8, 50, 88, 98], fill=STONE[1])
+    for y in range(52, 98, 6):
+        off = (y // 6) % 2 * 5
+        for x in range(8 + off, 88, 10): d.rectangle([x, y, x + 8, y + 4], outline=STONE[0])
+    d.rectangle([36, 70, 54, 98], fill=(28, 22, 20)); d.rectangle([38, 72, 52, 98], fill=WOOD[1])
+    d.rectangle([64, 62, 76, 72], fill=(220, 170, 90))                         # 불 켜진 창 (사람이 산다)
+    d.line([70, 62, 70, 72], fill=WOOD[0]); d.rectangle([63, 61, 77, 73], outline=WOOD[0])
+    roof = [(2, 54), (94, 54), (84, 14), (12, 18)]
+    d.polygon(roof, fill=(84, 72, 66)); 
+    for y in range(18, 54, 5): d.line([12 - (y - 18) * 0.28, y, 84 + (y - 14) * 0.25, y], fill=(64, 54, 50))
+    d.polygon([(30, 22), (46, 22), (44, 34), (32, 34)], fill=(40, 34, 32))      # 지붕 구멍 (버려짐)
+    d.line([2, 54, 94, 54], fill=(50, 42, 40), width=2)
+    # 물레바퀴
+    cx, cy, R = 104, 72, 22
+    d.ellipse([cx - R, cy - R, cx + R, cy + R], outline=WOOD[0], width=4)
+    d.ellipse([cx - R + 3, cy - R + 3, cx + R - 3, cy + R - 3], outline=WOOD[2], width=1)
+    for k in range(10):
+        a = k / 10 * math.tau
+        d.line([cx, cy, cx + math.cos(a) * R, cy + math.sin(a) * R], fill=WOOD[1], width=2)
+        bx, by = cx + math.cos(a) * R, cy + math.sin(a) * R
+        d.rectangle([bx - 2, by - 2, bx + 2, by + 2], fill=WOOD[2])
+    d.ellipse([cx - 4, cy - 4, cx + 4, cy + 4], fill=WOOD[0])
+    return shadow(outline(img), 64, 98, 56, 5)
+
+def ruin_tower():
+    """무너진 감시탑 (랜드마크): 높은 돌탑, 윗부분이 부서짐"""
+    rnd = random.Random(8)
+    img = Image.new('RGBA', (60, 128), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    for y in range(20, 122):
+        w = 20 + (y - 20) * 0.06
+        top = 20 + int(abs(math.sin(y * 0.9)) * 0)
+        for x in range(int(30 - w), int(30 + w)):
+            rel = (x - (30 - w)) / (2 * w)
+            c = STONE[3] if rel < 0.25 else STONE[2] if rel < 0.6 else STONE[1]
+            if (y // 7 + (x // 9)) % 5 == 0: c = STONE[0]
+            put(img, x, y, c + (255,))
+    px = img.load()
+    for x in range(60):                                           # 부서진 윗단
+        cut = 20 + int(abs(math.sin(x * 0.5)) * 14 + (x % 7))
+        for y in range(0, cut): px[x, y] = (0, 0, 0, 0)
+    d.rectangle([26, 70, 34, 84], fill=(24, 20, 18))              # 창 구멍
+    d.rectangle([24, 102, 36, 122], fill=(24, 20, 18))            # 입구
+    for _ in range(8):
+        x, y = rnd.randrange(4, 56), rnd.randrange(118, 126)
+        d.ellipse([x - 3, y - 2, x + 3, y + 2], fill=STONE[1])
+    return shadow(outline(img), 30, 122, 26, 4)
+
+def ruin_altar():
+    """무너진 제단 (광신도 흔적): 갈라진 돌판 + 붉은 문양 + 기울어진 비석"""
+    img = Image.new('RGBA', (64, 52), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    d.polygon([(6, 34), (58, 34), (52, 46), (12, 46)], fill=STONE[1]); d.polygon([(6, 34), (58, 34), (54, 28), (10, 28)], fill=STONE[2])
+    d.line([30, 28, 34, 46], fill=STONE[0], width=1)
+    for a in range(0, 360, 30):                                    # 붉은 원 문양 (윗면)
+        r = math.radians(a)
+        put(img, int(32 + math.cos(r) * 12), int(31 + math.sin(r) * 2.5), (150, 30, 40, 255))
+    d.line([26, 31, 38, 31], fill=(150, 30, 40)); d.line([32, 29, 32, 33], fill=(150, 30, 40))
+    d.polygon([(40, 28), (50, 28), (54, 4), (44, 6)], fill=STONE[2]); d.line([44, 6, 54, 4], fill=STONE[3])   # 기울어진 비석
+    d.line([46, 12, 50, 22], fill=(150, 30, 40)); d.line([50, 12, 46, 22], fill=(150, 30, 40))
+    for x in (14, 20): d.rectangle([x, 22, x + 3, 28], fill=(200, 190, 160)); put(img, x + 1, 21, (240, 200, 90, 255))  # 촛농 초
+    return shadow(outline(img), 32, 46, 26, 3)
+
+def fallen_tree():
+    """쓰러진 거대 나무 (협곡 다리): 세로로 누운 굵은 통나무 — 위가 북쪽"""
+    img = Image.new('RGBA', (44, 236), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    for y in range(8, 228):
+        for x in range(6, 38):
+            rel = (x - 6) / 32
+            c = BARK[3] if rel < 0.2 else BARK[2] if rel < 0.55 else BARK[1] if rel < 0.85 else BARK[0]
+            if (y * 3 + x) % 17 == 0: c = BARK[0]
+            put(img, x, y, c + (255,))
+    d.ellipse([6, 222, 38, 234], fill=(176, 140, 96)); d.ellipse([12, 225, 32, 231], outline=(140, 104, 70))   # 잘린 면 (남쪽 끝)
+    for y in (40, 110, 170):                                        # 부러진 가지
+        d.line([36, y, 43, y - 8], fill=BARK[1], width=3)
+    for y in range(12, 220, 14): d.line([8, y, 36, y + 2], fill=(70, 100, 54))   # 이끼
+    return outline(img)
+
+def bridge(length_tiles=4):
+    """나무다리 (가로, 강 위): 바닥 판자 + 난간. 바닥 깊이로 그림 (위로 걸어 다님)"""
+    Wd = length_tiles * 32
+    img = Image.new('RGBA', (Wd, 44), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    planks(d, 0, 12, Wd - 1, 36, WOOD, vertical=True, step=6)
+    d.line([0, 12, Wd, 12], fill=WOOD[3]); d.line([0, 36, Wd, 36], fill=WOOD[0], width=2)
+    for x in range(2, Wd, 30):
+        d.rectangle([x, 2, x + 3, 14], fill=WOOD[1]); d.rectangle([x, 34, x + 3, 42], fill=WOOD[0])
+    d.line([0, 4, Wd, 4], fill=WOOD[2], width=2)
+    return outline(img)
+
+def village_props():
+    for i in range(2): house(40 + i * 13).save(os.path.join(TILES_DIR, f'house{i}.png'))
+    for i in range(2): house(70 + i * 7, burned=True).save(os.path.join(TILES_DIR, f'house_burned{i}.png'))
+    well().save(os.path.join(TILES_DIR, 'well.png'))
+    fence().save(os.path.join(TILES_DIR, 'fence_h.png')); fence(True).save(os.path.join(TILES_DIR, 'fence_v.png'))
+    watermill().save(os.path.join(TILES_DIR, 'watermill.png'))
+    ruin_tower().save(os.path.join(TILES_DIR, 'ruin_tower.png'))
+    ruin_altar().save(os.path.join(TILES_DIR, 'ruin_altar.png'))
+    fallen_tree().save(os.path.join(TILES_DIR, 'fallen_tree.png'))
+    bridge(4).save(os.path.join(TILES_DIR, 'bridge_h.png'))
+
+
 def biome_props():
     for i in range(2): pine(60 + i * 9).save(os.path.join(TILES_DIR, f'pine{i}.png'))
     dead_tree(5).save(os.path.join(TILES_DIR, 'deadtree0.png'))
@@ -901,6 +1089,7 @@ if __name__ == '__main__':
     props()
     gatherables()
     biome_props()
+    village_props()
     height_marks()
     region_marks()
     if '--remap' in sys.argv: remap()
