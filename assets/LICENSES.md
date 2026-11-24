@@ -13,3 +13,5 @@
 | `assets/tiles/height_marks.png`, `region_marks.png` | `tools/art/pixel_world.py`로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | Tiled 높이 표시용 (게임에선 안 씀) |
 | `assets/maps/world_land_*.png` | `tools/art/terrain_bake.py`가 맵(ground·region·height 레이어)으로 구운 바닥 그림 (Claude 작성 도구) | 이 프로젝트 | 자체 제작 (제한 없음) | 지역별 바닥·흙길·물·절벽·계단·덩굴 |
 | `assets/tiles/pine0~1.png`, `deadtree0.png`, `decor_*.png` | `tools/art/pixel_world.py`로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 지역별 나무(침엽수·죽은 나무)와 깔개 소품(버섯·마른 풀·갈대·뼈·모닥불 자리·천막) |
+| `assets/tiles/house0~1.png`, `house_burned0~1.png`, `well.png`, `fence_h/v.png`, `watermill.png`, `ruin_tower.png`, `ruin_altar.png`, `fallen_tree.png`, `bridge_h.png` | `tools/art/pixel_world.py`로 Claude가 생성 | 이 프로젝트 | 자체 제작 (제한 없음) | 마을·거점·랜드마크 건물 |
+| `docs/maps/region1_plan.png` | `tools/art/region_plan.py`로 Claude가 그림 (글꼴: WenQuanYi Zen Hei, GPL+FE — 그림 안 글자만) | 이 프로젝트 | 자체 제작 | 첫 지역 설계도 |

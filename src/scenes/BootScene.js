@@ -56,7 +56,8 @@ export class BootScene extends window.Phaser.Scene {
     this.load.image('world_tiles', PATHS.worldTiles);
     // 배경 소품 도트 (tools/art/pixel_world.py)
     for (const k of ['tree0', 'tree1', 'tree2', 'bush', 'workbench', 'dummy', 'stump', 'rock0', 'rock1', 'rock_rubble', 'herb', 'herb_picked', 'pine0', 'pine1', 'deadtree0',
-      'decor_mushrooms', 'decor_tallgrass', 'decor_reeds', 'decor_bones', 'decor_campfire', 'decor_tent']) this.load.image(k, `assets/tiles/${k}.png`);
+      'decor_mushrooms', 'decor_tallgrass', 'decor_reeds', 'decor_bones', 'decor_campfire', 'decor_tent',
+      'house0', 'house1', 'house_burned0', 'house_burned1', 'well', 'fence_h', 'fence_v', 'watermill', 'ruin_tower', 'ruin_altar', 'fallen_tree', 'bridge_h']) this.load.image(k, `assets/tiles/${k}.png`);
   }
 
   create() {

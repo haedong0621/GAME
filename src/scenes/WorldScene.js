@@ -87,10 +87,22 @@ export class WorldScene extends window.Phaser.Scene {
           this.interactables.push(wb);
           break;
         }
+        case 'building': {
+          // 건물·큰 소품 (집, 우물, 물레방앗간, 감시탑, 제단): 발밑(blockW×blockH)만 막고 그림은 세워서 Y정렬
+          const img = this.add.image(obj.x, obj.y, getProperty(obj, 'sprite')).setOrigin(0.5, 1);
+          applyYSort(img);
+          const bw = getProperty(obj, 'blockW', 40), bh = getProperty(obj, 'blockH', 14);
+          blockers.add(this.add.zone(obj.x, obj.y - bh / 2 - 4, bw, bh));
+          break;
+        }
+        case 'flat':
+          // 바닥에 깔리는 큰 그림 (다리, 쓰러진 거대 나무): 위로 걸어 다님 — 지나갈 수 있는지는 바닥·높이가 정함
+          this.add.image(obj.x, obj.y, getProperty(obj, 'sprite')).setOrigin(0.5, 1).setDepth(GROUND_DEPTH + 0.2);
+          break;
         case 'decor': {
-          // 깔기만 하는 소품 (지역별: 마른 풀, 갈대, 버섯, 뼈, 모닥불 자리, 천막…). 천막은 막음
+          // 깔기만 하는 소품 (지역별: 마른 풀, 갈대, 버섯, 뼈, 모닥불 자리, 천막, 울타리…). 천막은 막음
           const kind = getProperty(obj, 'kind');
-          const img = this.add.image(obj.x, obj.y, `decor_${kind}`).setOrigin(0.5, 1);
+          const img = this.add.image(obj.x, obj.y, this.textures.exists(`decor_${kind}`) ? `decor_${kind}` : kind).setOrigin(0.5, 1);
           applyYSort(img);
           if (kind === 'tent') blockers.add(this.add.zone(obj.x, obj.y - 6, 34, 12));
           break;
