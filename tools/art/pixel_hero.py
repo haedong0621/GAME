@@ -492,6 +492,8 @@ WEAPONS = {
  # 보스 무기 (종류별): 늪지 짐승 = 뼈·독, 뒤엉킨 사냥꾼 = 은·늑대
  'spine_greatsword':  {'cls': 'greatsword', 'len': 22, 'w': 4, 'blade': (214, 204, 170), 'dark': (140, 130, 104), 'hilt': (58, 69, 41), 'guard': (60, 72, 44), 'fang': True, 'spine': True, 'glow': (154, 223, 90)},
  'hunter_greatsword': {'cls': 'greatsword', 'len': 21, 'w': 4, 'blade': (198, 204, 216), 'dark': (112, 116, 130), 'hilt': (70, 40, 34), 'guard': (150, 154, 166), 'cleaver': True},
+ 'short_bow': {'cls': 'bow', 'bow': True, 'len': 17, 'wood': (110, 78, 46), 'woodL': (150, 112, 70), 'grip': (60, 40, 30), 'string': (220, 214, 196),
+               'shaft': (176, 146, 100), 'head': (190, 194, 204), 'fletch': (200, 70, 60), 'quiver': (96, 64, 40)},
  'swamp_claws': {'cls': 'fist', 'gauntlet': True, 'plate': (64, 78, 46), 'plateL': (96, 112, 66), 'claw': (226, 216, 178), 'glow': (154, 223, 90)},
  'wolf_claws':  {'cls': 'fist', 'gauntlet': True, 'plate': (150, 154, 166), 'plateL': (206, 210, 220), 'claw': (236, 236, 240), 'fur': (138, 102, 68)},
 }
@@ -511,7 +513,8 @@ def P(**k):
                 off=(0, 0, 0),                        # 왼손(빈손) 위치 조정
                 w=dict(a=40, e=-55, r=3, z=0),        # 칼: 바라보는 방향 기준 각도 a, 위로 든 각도 e, 어깨에서 손까지 r, 손 높이 z
                 smear=None, weapon=True, rot=0, tuck=False,
-                tumble=(False, 1.0), bounce=0, dust=0)            # 구르기: 앞뒤로 고꾸라짐(뒤집기, 세로 납작), 튀기, 흙먼지 크기
+                tumble=(False, 1.0), bounce=0, dust=0,            # 구르기: 앞뒤로 고꾸라짐(뒤집기, 세로 납작), 튀기, 흙먼지 크기
+                bow=None)                                          # 활: dict(aim=조준 높이각, draw=0~1 시위 당김, arrow=화살 걸림) — 없으면 활을 왼손에 늘어뜨림
     base.update(k)
     return base
 
@@ -626,6 +629,18 @@ FIST = {
          P(weapon=False, lunge=4, lean=-12, twist=-20, head=-1, fr=(0, 5, 0), off=(0, 1, 5), w=W(5, 70, 6, 10)),
          P(weapon=False, lunge=3, lean=-8, twist=-15, fr=(0, 4, 0), off=(0, 2, 5), w=W(10, 50, 5, 8)),
          P(weapon=False, lunge=1, lean=3, off=(1, 4, 6), w=W(20, -20, 4, 4))],
+}
+# 활 (미리보기 — 활 시스템을 만들 때 CLASS_ANIMS에 넣는다). 활은 왼손, 오른손으로 시위를 당김.
+# 몸을 옆으로 틀고(왼어깨가 과녁 쪽) → 화살 꺼내 걸기 → 들어 올려 조준 → 뺨까지 당김 → 버팀 → 놓음(손이 뒤로 튕김) → 제자리
+def BOWP(draw, arrow, aim=0, **k):
+    return P(bow=dict(draw=draw, arrow=arrow, aim=aim), **k)
+BOW = {
+ 'shoot': [BOWP(0, False, -30, twist=-20, off=(0.5, 5, 3), w=W(-150, 0, 5, 5)),                       # 등 뒤 화살통에서 꺼냄
+           BOWP(0, True, -10, twist=-40, off=(0.5, 7, 6), w=W(-40, 0, 7, 4)),                          # 활에 걸며 들어 올림
+           BOWP(0.4, True, 0, twist=-55, lean=-3, off=(0.5, 9, 8.5), w=W(-60, 0, 4, 6)),               # 당기기 시작
+           BOWP(1, True, 0, twist=-60, lean=-5, off=(0.5, 9.5, 8.5), w=W(-75, 0, 3.2, 6), fr=(0, -2, 0)), # 뺨까지 당김 (버팀)
+           BOWP(0, False, 0, twist=-62, lean=-6, off=(0.5, 9.5, 8.5), w=W(-140, 0, 4.2, 6), fr=(0, -2, 0)), # 놓음: 손이 뒤로 튕김, 시위 떨림
+           BOWP(0, False, -15, twist=-35, lean=-2, off=(0.5, 7, 5), w=W(-60, -20, 4, 3))],              # 내림
 }
 CLASS_ANIMS = {'sword': {**COMMON, **SWORD}, 'greatsword': {**COMMON, **GREAT}, 'fist': {**COMMON, **FIST}}
 
@@ -806,7 +821,7 @@ def draw_layers(outfit_key, weapon_key, view, pose):
     """부위별 층 그림 (같은 좌표계). 갑옷 부위(머리·몸·팔·다리)와 무기를 따로 갈아 끼울 수 있게"""
     o, lc = OUTFITS[outfit_key], LIMB[outfit_key]
     wd = WEAPONS.get(weapon_key)
-    if wd is None or wd.get('gauntlet'): pose = {**pose, 'weapon': False, 'smear': None}   # 맨손·건틀릿은 칼 없음
+    if wd is None or wd.get('gauntlet') or wd.get('bow'): pose = {**pose, 'weapon': False, 'smear': None}   # 맨손·건틀릿·활은 칼 없음
     V = View(view, pose)
     J = rig(pose)
     imgs = {k: Image.new('RGBA', (F, F), (0, 0, 0, 0)) for k in LAYERS}
@@ -859,6 +874,49 @@ def draw_layers(outfit_key, weapon_key, view, pose):
 
     leg('L'); leg('R')
     armR_behind = arm('R'); armL_behind = arm('L')
+    if wd and wd.get('bow'):
+        # 활: 왼손에 쥔 활대(가운데 손잡이, 양 끝이 사수 쪽으로 휨) + 시위 + 화살, 등에 화살통
+        bp = pose['bow']
+        hand = J['handL']
+        if bp:
+            ae = math.radians(bp['aim'])
+            aim = v_norm((0, math.cos(ae), math.sin(ae)))           # 조준: 앞 (위아래 각도)
+            up = v_norm((0, -math.sin(ae) * 0.3, 1))                  # 활대 방향: 대략 수직
+        else:
+            aim = v_norm((0, 0.4, -1)); up = v_norm((0, 1, 0.35))     # 쉬는 자세: 아래로 늘어뜨림
+        half = wd['len'] / 2
+        tips = []
+        pts = []
+        for i in range(13):
+            t = i / 12 * 2 - 1                                        # -1 ~ 1
+            bend = (t * t) * 2.6                                      # 끝으로 갈수록 사수 쪽으로
+            p3 = v_add(v_add(hand, v_mul(up, t * half)), v_mul(aim, -bend + (0.8 if abs(t) < 0.15 else 0)))
+            pts.append(V.scr(p3))
+            if i in (0, 12): tips.append(p3)
+        tgt = imgs['wpnB' if armL_behind else 'wpnF']
+        draw_ = bp['draw'] if bp else 0
+        pull = J['handR'] if draw_ > 0 else None
+        # 시위
+        if pull is not None:
+            ps = V.scr(v_add(v_mul(v_add(tips[0], tips[1]), 0.5), v_mul(v_sub(pull, v_mul(v_add(tips[0], tips[1]), 0.5)), draw_)))
+            for tip in tips: line(tgt, *V.scr(tip), *ps, wd['string'], 1)
+        else:
+            line(tgt, *V.scr(tips[0]), *V.scr(tips[1]), wd['string'], 1)
+        for a_, b_ in zip(pts, pts[1:]): line(tgt, *a_, *b_, wd['wood'], 2)
+        for a_, b_ in zip(pts, pts[1:]): line(tgt, a_[0] - 0.5, a_[1] - 0.5, b_[0] - 0.5, b_[1] - 0.5, wd['woodL'], 1)
+        plot(tgt, *V.scr(hand), wd['grip'])
+        # 화살 (걸려 있을 때): 시위 당긴 자리 → 활 앞으로
+        if bp and bp['arrow']:
+            back = J['handR'] if draw_ > 0 else v_add(hand, v_mul(aim, -4))
+            front = v_add(hand, v_mul(aim, 5 if draw_ > 0.5 else 7))
+            line(tgt, *V.scr(back), *V.scr(front), wd['shaft'], 1)
+            plot(tgt, *V.scr(front), wd['head']); plot(tgt, *V.scr(v_add(front, v_mul(aim, 0.8))), wd['head'])
+            plot(tgt, *V.scr(v_add(back, v_mul(aim, 0.8))), wd['fletch'])
+        # 화살통: 등 뒤 (위쪽을 볼 땐 몸 앞에 보임)
+        qt = upper_body((-2, -3.2, SHOULDER_Z - 1), pose, J['hip']); qb = upper_body((1, -3.2, HIP_Z - 1), pose, J['hip'])
+        qtgt = imgs['wpnF' if view in ('up', 'upside') else 'wpnB']
+        line(qtgt, *V.scr(qt), *V.scr(qb), wd['quiver'], 3)
+        for dx in (-1, 0, 1): plot(qtgt, V.scr(qt)[0] + dx, V.scr(qt)[1] - 2, wd['fletch'])
     if wd and wd.get('gauntlet'):
         # 건틀릿: 두 손에 철판 주먹 + 앞으로 뻗은 발톱 (팔이 몸 뒤면 뒤 층에)
         for side, behind in (('R', armR_behind), ('L', armL_behind)):
