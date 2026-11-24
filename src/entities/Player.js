@@ -836,7 +836,7 @@ export class Player extends window.Phaser.Physics.Arcade.Sprite {
     const keys = {};
     for (const part of ['head', 'body', 'arms', 'legs']) {
       const byOutfit = meta.parts[part][look[part] ?? 'rags'] ?? meta.parts[part].rags;
-      Object.assign(keys, byOutfit[cls]);
+      Object.assign(keys, byOutfit[cls] ?? meta.parts[part].rags[cls]); // 그 무기 종류용 그림이 없으면 기본 옷
     }
     if (cls !== 'fist') { keys.wpnB = meta.weapons[this.weaponId].wpnB; keys.wpnF = meta.weapons[this.weaponId].wpnF; }
     return { cls, keys };

@@ -10,5 +10,7 @@
   "tangled_pelt": {"name": "뒤엉킨 개가죽", "type": "material", "stack": 99, "description": "사람 털과 개 털이 한데 엉겨 붙은 가죽. 꿰매면 질기다.", "placeholderColor": "#7a6048", "grade": "common"},
   "hunter_silver": {"name": "사냥꾼의 은장식", "type": "material", "stack": 99, "description": "늑대인간 사냥꾼이 몸에 지니던 은 버클과 장식. 피가 말라붙어 있다.", "placeholderColor": "#c8ccd4", "grade": "common"},
   "swamp_spine_plate": {"name": "늪짐승 등뼈판", "type": "material", "grade": "rare", "stack": 99, "description": "늪지 짐승의 등에서 떼어 낸 단단한 뼈판. 좀처럼 온전히 남지 않는다. (특수 소재)", "placeholderColor": "#d8cfa8"},
-  "silver_wolf_fang": {"name": "은빛 늑대 송곳니", "type": "material", "grade": "rare", "stack": 99, "description": "사냥꾼의 늑대 머리에 박혀 있던 송곳니. 은빛으로 번들거린다. (특수 소재)", "placeholderColor": "#cfe4ff"}
+  "silver_wolf_fang": {"name": "은빛 늑대 송곳니", "type": "material", "grade": "rare", "stack": 99, "description": "사냥꾼의 늑대 머리에 박혀 있던 송곳니. 은빛으로 번들거린다. (특수 소재)", "placeholderColor": "#cfe4ff"},
+  "odd_potion": {"name": "토브의 수상한 물약", "type": "consumable", "stack": 20, "description": "토브 특제 회복약. 맛은… 묻지 마라. 체력을 크게 회복한다. (R)", "heal": 40, "food": 0, "placeholderColor": "#8a6ad8"},
+  "rooster_feather": {"name": "뒤틀린 수탉 깃털", "type": "material", "grade": "common", "stack": 99, "description": "기름진 적갈색 깃털. 묘하게 품위가 있다.", "placeholderColor": "#c87a48"}
 }

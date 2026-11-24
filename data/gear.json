@@ -116,5 +116,12 @@
    "second_wind"
   ],
   "description": "사냥꾼의 은장식을 녹여 만든 반지. 끼고 있으면 숨이 덜 찬다. (뒤엉킨 사냥꾼이 가끔 떨굼)"
+ },
+ "chief_boots": {
+  "name": "촌장의 낡은 장화",
+  "slot": "legs",
+  "outfit": "rags",
+  "maxHpBonus": 5,
+  "description": "촌장 바르톨이 젊을 적 신던 장화. 아주 귀한 거라고 한다. 수탉 냄새가 난다."
  }
 }

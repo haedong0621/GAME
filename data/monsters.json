@@ -344,5 +344,59 @@
       "closeSenseRadius": 34,
       "hearingMultiplier": 1.5
     }
+  },
+  "twisted_rooster": {
+    "name": "뒤틀린 수탉 알렉산더",
+    "ai": "mob",
+    "sizeClass": "small",
+    "texture": "hound",
+    "pixelKind": "rooster",
+    "maxHp": 150,
+    "speed": 125,
+    "wanderSpeed": 40,
+    "wanderRadius": 70,
+    "hurtbox": {
+      "width": 34,
+      "height": 44
+    },
+    "feetCollider": {
+      "width": 22,
+      "height": 10
+    },
+    "respawnMs": 0,
+    "sneakAttackMultiplier": 2.0,
+    "packAlertRadius": 0,
+    "leashRadius": 520,
+    "loseSightMs": 4000,
+    "perception": {
+      "visionRange": 170,
+      "visionAngleDeg": 140,
+      "detectPerSec": 2.5,
+      "closeSenseRadius": 30,
+      "hearingMultiplier": 1.2
+    },
+    "attack": {
+      "name": "쪼기",
+      "range": 46,
+      "windupMs": 420,
+      "activeMs": 140,
+      "recoveryMs": 600,
+      "cooldownMs": 300,
+      "damage": 14,
+      "lungeSpeed": 260,
+      "radius": 20
+    },
+    "knockbackSpeed": 140,
+    "hurtMs": 200,
+    "drops": [
+      {
+        "itemId": "rooster_feather",
+        "amount": [
+          2,
+          3
+        ]
+      }
+    ],
+    "staggerMs": 800
   }
 }

@@ -14,6 +14,8 @@ import { Terrain } from '../systems/Terrain.js';
 import { GameClock } from '../systems/GameClock.js';
 import { Needs } from '../systems/Needs.js';
 import { WorldMap } from '../systems/WorldMap.js';
+import { QuestLog } from '../systems/QuestLog.js';
+import { Npc } from '../entities/Npc.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH, applyYSort } from '../systems/YSort.js';
@@ -36,6 +38,10 @@ export class WorldScene extends window.Phaser.Scene {
     this.needs = new Needs(rules.needs);
     this.registry.set('clock', this.clock);
     this.registry.set('needs', this.needs);
+    // 퀘스트 (진행 상태 + 시작·진행·완료 때 할 일)
+    this.npcs = [];
+    this.questLog = new QuestLog(this.registry.get('quests'), { inventory: this.registry.get('inventory'), onEvent: (t, q, extra) => this.onQuestEvent(t, q, extra) });
+    this.registry.set('questLog', this.questLog);
 
     // ---- 맵과 바닥
     const map = this.make.tilemap({ key: 'world' });
@@ -107,6 +113,17 @@ export class WorldScene extends window.Phaser.Scene {
           const img = this.add.image(obj.x, obj.y, this.textures.exists(`decor_${kind}`) ? `decor_${kind}` : kind).setOrigin(0.5, 1);
           applyYSort(img);
           if (kind === 'tent') blockers.add(this.add.zone(obj.x, obj.y - 6, 34, 12));
+          break;
+        }
+        case 'npc': {
+          // 마을 사람 (data/npcs.json) — E로 대화
+          const npcId = getProperty(obj, 'npcId');
+          const def = this.registry.get('npcs')[npcId];
+          if (!def) { console.warn(`[World] 알 수 없는 npc: ${npcId}`); break; }
+          const npc = new Npc(this, obj.x, obj.y, npcId, def);
+          blockers.add(npc.blocker);
+          this.npcs.push(npc);
+          this.interactables.push(npc);
           break;
         }
         case 'place':
@@ -247,6 +264,7 @@ export class WorldScene extends window.Phaser.Scene {
     snap.world.clock = this.clock.toJSON();   // 날짜·시각
     snap.player.needs = this.needs.toJSON();  // 배고픔·목마름·피로
     snap.world.explored = this.worldMap.toJSON(); // 지도에서 가 본 곳
+    snap.quests = this.questLog.toJSON();         // 퀘스트 진행
     const ok = SaveSystem.save(slot, snap);
     const label = slot === 'auto' ? `자동 저장 — ${location}` : '저장됨';
     this.banner(ok ? label : '저장 실패 (브라우저 저장소를 쓸 수 없음)', ok ? '#9adf5a' : '#d06050');
@@ -270,6 +288,9 @@ export class WorldScene extends window.Phaser.Scene {
     if (Number.isFinite(sp.x) && Number.isFinite(sp.y)) p.body.reset(sp.x, sp.y);
     this.clock.load(save.world?.clock);
     this.worldMap.load(save.world?.explored);
+    this.questLog.load(save.quests);
+    // 진행 중인 단계가 몬스터를 불러냈었다면 다시 불러냄 (예: 촌장의 수탉)
+    for (const id of this.questLog.active()) for (const a of this.questLog.stageDef(id)?.onStart ?? []) if (this.questLog.status(id) === 'active') this.onQuestEvent('stageAction', this.questLog.def(id), a);
     this.needs.load(sp.needs);
     if (sp.equipment) p.equipment.load(sp.equipment);
     else this.migrateOldGear(sp); // 예전 저장(무기 목록 + 갑옷 한 벌)
@@ -329,7 +350,12 @@ export class WorldScene extends window.Phaser.Scene {
     if (cmd.openInventory && this.player.stateName === 'free') { this.openPanel('inventory'); return; }
     if (cmd.openMap && !this.player.isDead) { this.openPanel('map'); return; }
     this.worldMap.update(this.player.x, this.player.y);
+    // 마을 사람: 숨쉬기·바라보기·머리 위 퀘스트 표시 / 장소 도착 목표 확인
+    for (const n of this.npcs) n.update(delta, this.player, this.npcMark(n.id));
+    this.reachCheckMs = (this.reachCheckMs ?? 0) - delta;
+    if (this.reachCheckMs <= 0) { this.reachCheckMs = 400; this.questLog.checkReach(this.player.x, this.player.y, this.worldMap.places); }
     if (cmd.interact && near && this.player.stateName === 'free') {
+      if (near.isNpc) { this.openDialogue(near); return; }
       if (near.isDrink) {
         // 물가에서 마시기: 쪼그려 떠 마시는 모션 (줍기 모션 재사용)
         this.player.startGather(near, () => { this.needs.drink(); spawnFloatingLabel(this, this.player.x, this.player.y - 34, '꿀꺽꿀꺽 — 목마름 해소'); });
@@ -466,6 +492,52 @@ export class WorldScene extends window.Phaser.Scene {
     const p = this.player;
     p.resetGear();
     this.banner('장비 초기화', '#9adf5a');
+  }
+
+  /** 머리 위 표시: ? = 이 사람에게 보고할 것 있음, ! = 이 사람이 줄 퀘스트 있음 */
+  npcMark(npcId) {
+    const q = this.questLog;
+    for (const id of q.active()) if (q.stageDef(id)?.turnIn === npcId && q.status(id) === 'ready') return '?';
+    for (const [id, d] of Object.entries(q.defs)) if (!id.startsWith('_') && d.giver === npcId && q.status(id) === 'none') return '!';
+    return '';
+  }
+
+  /** 대화 열기 (월드 멈춤, UI 씬이 대화창을 띄움) */
+  openDialogue(npc) {
+    this.player.setVelocity(0, 0);
+    this.registry.set('openPanel', { type: 'dialogue', npcId: npc.id, at: this.time.now });
+    this.scene.pause();
+  }
+
+  /** 대화의 "할 일" (data/dialogues.json do) */
+  dialogueAction(a) {
+    const q = this.questLog, inv = this.registry.get('inventory');
+    if (a.startQuest) q.start(a.startQuest);
+    if (a.advanceQuest) q.advance(a.advanceQuest);
+    if (a.give) inv.add(a.give[0], a.give[1]);
+    if (a.setFlag) q.flags[a.setFlag] = true;
+  }
+
+  /** 퀘스트 알림·보상·몬스터 불러내기 */
+  onQuestEvent(type, quest, extra) {
+    const inv = this.registry.get('inventory'), items = this.registry.get('items');
+    if (type === 'started') this.banner(`퀘스트 시작: ${quest.name}`, '#e8c860');
+    if (type === 'stage') this.banner(`${quest.name} — 다음 목표`, '#e8c860');
+    if (type === 'completed') {
+      const r = quest.reward ?? {};
+      for (const [id, n] of r.takeItems ?? []) inv.remove(id, n);
+      const got = [];
+      for (const [id, n] of r.items ?? []) { inv.add(id, n); got.push(`${items.get(id)?.name ?? id} ×${n}`); }
+      for (const id of r.gear ?? []) { this.player.obtain(id, false); got.push(this.player.equipment.def(id)?.name ?? id); }
+      this.banner(`퀘스트 완료: ${quest.name}${got.length ? ` — ${got.join(', ')}` : ''}`, '#ffe08a');
+      this.saveGame('auto', `${quest.name} 완료`);
+    }
+    if (type === 'stageAction' && extra?.spawn) {
+      const data = this.registry.get('monsters')[extra.spawn];
+      if (!data || this.mobs.some((m) => m.id === extra.spawn && m.isHittable)) return;
+      const mob = new Mob(this, extra.x, extra.y, extra.spawn, { ...data, respawnMs: 0 }, (m) => this.onMobDefeated(m));
+      this.mobs.push(mob); this.monsters.push(mob);
+    }
   }
 
   /** 플레이어 발밑 근처(22px)의 물 칸 (물 마시기용) */
@@ -646,6 +718,7 @@ export class WorldScene extends window.Phaser.Scene {
   }
 
   onMobDefeated(mob) {
+    this.questLog.onKill(mob.id);
     this.spawnDrops(mob.x, mob.y + 2, mob.data_.drops);
   }
 
@@ -670,6 +743,7 @@ export class WorldScene extends window.Phaser.Scene {
   }
 
   onBossDefeated(boss) {
+    this.questLog.onKill(boss.id);
     this.banner(`${boss.displayName} 토벌!`, '#e8c860');
     // 보상: 쓰러진 자리 주변에 재료를 떨군다 (data/monsters.json 의 drops)
     this.spawnDrops(boss.x, boss.y, boss.data_.drops, 22);

@@ -24,6 +24,9 @@ export class BootScene extends window.Phaser.Scene {
     this.load.json('gatherables', PATHS.gatherables);
     this.load.json('regions', PATHS.regions);
     this.load.json('worldRules', PATHS.world);
+    this.load.json('npcs', PATHS.npcs);
+    this.load.json('dialogues', PATHS.dialogues);
+    this.load.json('quests', PATHS.quests);
     this.load.tilemapTiledJSON('world', PATHS.worldMap);
     // 절벽 굽기 결과 (tools/art/terrain_bake.py): 충돌 격자 + 그림 조각
     this.load.json('worldTerrain', PATHS.worldTerrain);
@@ -77,6 +80,7 @@ export class BootScene extends window.Phaser.Scene {
     this.registry.set('gatherables', this.cache.json.get('gatherables'));
     this.registry.set('regionsData', this.cache.json.get('regions'));
     this.registry.set('worldRules', this.cache.json.get('worldRules'));
+    for (const k of ['npcs', 'dialogues', 'quests']) this.registry.set(k, this.cache.json.get(k));
     this.registry.set('crafting', new Crafting(this.cache.json.get('recipes'), this.cache.json.get('weapons'), this.cache.json.get('gear')));
 
     // 알림용 값은 미리 만들어 둔다: Phaser registry는 "처음" 저장할 때는 changedata 이벤트를 보내지 않음

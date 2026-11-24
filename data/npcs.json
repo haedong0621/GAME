@@ -1,0 +1,8 @@
+{
+  "_설명": "마을 사람. outfit = 주인공 층 그림의 옷 이름(tools/art/pixel_hero.py OUTFITS·NPC_OUTFITS), dialogue = data/dialogues.json의 이름, color = 대화창 이름 색. 맵 오브젝트 type=npc, npcId로 놓는다",
+  "tobb": { "name": "토브", "title": "떠돌이 약장수", "outfit": "tobb", "dialogue": "tobb", "color": "#b8a8ff" },
+  "chief": { "name": "바르톨 촌장", "title": "갈대나루 촌장", "outfit": "chief", "dialogue": "chief", "color": "#ffb080" },
+  "marta": { "name": "마르타", "title": "늙은 사냥꾼", "outfit": "marta", "dialogue": "marta", "color": "#a8d890" },
+  "villager_a": { "name": "피난민 아낙", "title": "", "outfit": "villager", "dialogue": "villager_a", "color": "#e0d0b0" },
+  "villager_b": { "name": "피난민 영감", "title": "", "outfit": "villager", "dialogue": "villager_b", "color": "#e0d0b0" }
+}

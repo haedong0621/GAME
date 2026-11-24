@@ -3,6 +3,8 @@ import { TouchControls } from '../systems/TouchControls.js';
 import { InputDebugPanel } from '../systems/InputDebugPanel.js';
 import { InventoryPanel } from '../systems/InventoryPanel.js';
 import { MapPanel } from '../systems/MapPanel.js';
+import { DialoguePanel } from '../systems/DialoguePanel.js';
+import { Dialogue } from '../systems/Dialogue.js';
 import { MAP_SCALE } from '../systems/WorldMap.js';
 import { CraftingPanel } from '../systems/CraftingPanel.js';
 import { DevTools } from '../systems/DevTools.js';
@@ -91,6 +93,19 @@ export class UIScene extends window.Phaser.Scene {
     // 월드가 패널 열기를 요청하면 (월드는 이미 멈춘 상태)
     this.registry.events.on('changedata-openPanel', (_p, req) => {
       if (!req || this.panel) return;
+      if (req.type === 'dialogue') {
+        this.registry.set('panelOpen', true);
+        const world = this.scene.get('World');
+        const npc = this.registry.get('npcs')[req.npcId];
+        const dialogue = new Dialogue(this.registry.get('dialogues')[npc.dialogue], {
+          quests: this.registry.get('questLog'), inventory, act: (a) => world.dialogueAction(a),
+        });
+        this.panel = new DialoguePanel(this, {
+          dialogue, npc,
+          onClose: () => { this.panel = null; this.registry.set('panelOpen', false); this.scene.resume('World'); },
+        });
+        return;
+      }
       if (req.type === 'map') {
         this.registry.set('panelOpen', true);
         this.panel = new MapPanel(this, {
@@ -158,6 +173,7 @@ export class UIScene extends window.Phaser.Scene {
     this.drawBar(g, 50, 31, s.stamina / s.maxStamina, s.regenCooldown > 0 ? 0x8f8a4a : 0xd9c25a);
 
     this.updateMinimap(player);
+    this.updateQuestTracker();
 
     // 낮밤 색 · 시계 · 생존 게이지
     const clock = this.registry.get('clock'), needs = this.registry.get('needs');
@@ -229,6 +245,26 @@ export class UIScene extends window.Phaser.Scene {
     g.fillStyle(0x000000, 0.65).fillRect(x - 3, y - 3, w + 6, h + 6);
     g.fillStyle(0x2a2a2a).fillRect(x, y, w, h);
     g.fillStyle(phase ? 0xd04a2a : 0x9a2e24).fillRect(x, y, w * (boss.stats.hp / boss.stats.maxHp), h);
+  }
+
+  /** 퀘스트 알림판 (미니맵 아래): 진행 중인 퀘스트 이름 + 지금 할 일 + 진행 수 */
+  updateQuestTracker() {
+    const q = this.registry.get('questLog');
+    if (!q) return;
+    this.questText ??= this.add.text(this.scale.width - 12, this.mini.y + this.mini.h + 20, '', {
+      fontFamily: 'sans-serif', fontSize: '12px', color: '#efe4cc', align: 'right', lineSpacing: 2, backgroundColor: '#00000066', padding: { x: 6, y: 4 },
+    }).setOrigin(1, 0);
+    const npcs = this.registry.get('npcs');
+    const lines = [];
+    for (const id of q.active().slice(0, 3)) {
+      const d = q.def(id), st = q.stageDef(id);
+      if (!st) continue;
+      const prog = q.progress(id);
+      const nums = st.goals.map((g, i) => (g.type === 'have' || g.type === 'kill') && prog[i].need > 1 ? ` (${prog[i].cur}/${prog[i].need})` : '').join('');
+      lines.push(`◆ ${d.name}`);
+      lines.push(q.status(id) === 'ready' && st.turnIn ? `  → ${npcs[st.turnIn]?.name ?? st.turnIn}에게 보고하기` : `  ${st.text}${nums}`);
+    }
+    this.questText.setText(lines.join('\n')).setVisible(lines.length > 0);
   }
 
   /** 미니맵: 내 주변(지도 그림의 일부)을 잘라 보여 주고 가운데에 내 위치·방향 */
