@@ -55,6 +55,8 @@ export class DialoguePanel {
   finishTyping() {
     this.typing?.remove(); this.typing = null;
     this.body.setText(this.full);
+    for (const t of this.choiceTexts) t.destroy(); // 두 번 불려도 선택지가 겹치지 않게
+    this.choiceTexts = [];
     const cur = this.ctx.dialogue.current();
     if (cur.choices.length) {
       cur.choices.forEach((c, i) => {
