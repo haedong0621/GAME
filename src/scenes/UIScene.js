@@ -99,6 +99,7 @@ export class UIScene extends window.Phaser.Scene {
         const npc = this.registry.get('npcs')[req.npcId];
         const dialogue = new Dialogue(this.registry.get('dialogues')[npc.dialogue], {
           quests: this.registry.get('questLog'), inventory, act: (a) => world.dialogueAction(a),
+          companion: () => world.companions?.[req.npcId]?.mode,
         });
         this.panel = new DialoguePanel(this, {
           dialogue, npc,

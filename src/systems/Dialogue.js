@@ -8,7 +8,7 @@
 export class Dialogue {
   /**
    * @param {object} script dialogues.json[npc]
-   * @param {{quests:import('./QuestLog.js').QuestLog, inventory, act:(action:object)=>void}} ctx
+   * @param {{quests:import('./QuestLog.js').QuestLog, inventory, act:(action:object)=>void, companion?:()=>string}} ctx
    */
   constructor(script, ctx) {
     this.script = script;
@@ -31,6 +31,7 @@ export class Dialogue {
       if (c.is && c.is !== st) return false;
     }
     if (c.flag && !q.flags[c.flag]) return false;
+    if (c.companion && this.ctx.companion?.() !== c.companion) return false; // 동료 상태: home·follow·wait
     if (c.has && this.ctx.inventory.count(c.has[0]) < c.has[1]) return false;
     return true;
   }

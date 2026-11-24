@@ -9,13 +9,14 @@ import { SaveSystem } from '../systems/SaveSystem.js';
 import { Mob } from '../entities/Mob.js';
 import { Bush } from '../entities/Bush.js';
 import { NoiseBus, StealthEnv, Level } from '../systems/Stealth.js';
-import { spawnFloatingLabel } from '../systems/Effects.js';
+import { spawnFloatingLabel, spawnDamageNumber } from '../systems/Effects.js';
 import { Terrain } from '../systems/Terrain.js';
 import { GameClock } from '../systems/GameClock.js';
 import { Needs } from '../systems/Needs.js';
 import { WorldMap } from '../systems/WorldMap.js';
 import { QuestLog } from '../systems/QuestLog.js';
 import { Npc } from '../entities/Npc.js';
+import { Companion } from '../entities/Companion.js';
 import { InputSystem } from '../systems/InputSystem.js';
 import { getProperty } from '../systems/TiledUtil.js';
 import { GROUND_DEPTH, applyYSort } from '../systems/YSort.js';
@@ -40,6 +41,7 @@ export class WorldScene extends window.Phaser.Scene {
     this.registry.set('needs', this.needs);
     // 퀘스트 (진행 상태 + 시작·진행·완료 때 할 일)
     this.npcs = [];
+    this.companions = {}; // npcId → Companion (동료가 될 수 있는 NPC)
     this.questLog = new QuestLog(this.registry.get('quests'), { inventory: this.registry.get('inventory'), onEvent: (t, q, extra) => this.onQuestEvent(t, q, extra) });
     this.registry.set('questLog', this.questLog);
 
@@ -121,7 +123,14 @@ export class WorldScene extends window.Phaser.Scene {
           const def = this.registry.get('npcs')[npcId];
           if (!def) { console.warn(`[World] 알 수 없는 npc: ${npcId}`); break; }
           const npc = new Npc(this, obj.x, obj.y, npcId, def);
-          blockers.add(npc.blocker);
+          if (def.companion) {
+            // 동료: 움직이는 물리 몸(발밑)을 따로 둠 — 막히지 않게 길막 목록엔 안 넣음
+            const feet = this.add.zone(obj.x, obj.y - 4, 12, 8);
+            this.physics.add.existing(feet);
+            feet.body.setCollideWorldBounds(true);
+            const c = new Companion(this, npc, def.companion, this.registry.get('dialogues')[def.companion.banter.script], feet);
+            this.companions[npcId] = c;
+          } else blockers.add(npc.blocker);
           this.npcs.push(npc);
           this.interactables.push(npc);
           break;
@@ -176,6 +185,7 @@ export class WorldScene extends window.Phaser.Scene {
             this.monsters.push(mob);
           } else if (data.ai === 'boss') {
             const b = new Boss(this, obj.x, obj.y, monsterId, data, () => this.player, (boss) => this.onBossDefeated(boss));
+            b.isBoss = true;
             this.bosses.push(b);
             this.monsters.push(b);
           } else {
@@ -227,6 +237,7 @@ export class WorldScene extends window.Phaser.Scene {
     this.player.noiseBus = this.noiseBus;
 
     this.physics.add.collider(this.player, blockers);
+    for (const c of Object.values(this.companions)) { this.physics.add.collider(c.feet, blockers); this.physics.add.collider(c.feet, ground); }
     this.physics.add.collider(this.player, ground);
     for (const b of this.bosses) {
       this.physics.add.collider(this.player, b);
@@ -265,6 +276,7 @@ export class WorldScene extends window.Phaser.Scene {
     snap.player.needs = this.needs.toJSON();  // 배고픔·목마름·피로
     snap.world.explored = this.worldMap.toJSON(); // 지도에서 가 본 곳
     snap.quests = this.questLog.toJSON();         // 퀘스트 진행
+    snap.companions = Object.fromEntries(Object.entries(this.companions).map(([id, c]) => [id, c.toJSON()])); // 동료 상태
     const ok = SaveSystem.save(slot, snap);
     const label = slot === 'auto' ? `자동 저장 — ${location}` : '저장됨';
     this.banner(ok ? label : '저장 실패 (브라우저 저장소를 쓸 수 없음)', ok ? '#9adf5a' : '#d06050');
@@ -292,6 +304,7 @@ export class WorldScene extends window.Phaser.Scene {
     // 진행 중인 단계가 몬스터를 불러냈었다면 다시 불러냄 (예: 촌장의 수탉)
     for (const id of this.questLog.active()) for (const a of this.questLog.stageDef(id)?.onStart ?? []) if (this.questLog.status(id) === 'active') this.onQuestEvent('stageAction', this.questLog.def(id), a);
     this.needs.load(sp.needs);
+    for (const [id, c] of Object.entries(this.companions)) c.load(save.companions?.[id]);
     if (sp.equipment) p.equipment.load(sp.equipment);
     else this.migrateOldGear(sp); // 예전 저장(무기 목록 + 갑옷 한 벌)
     p.refreshEquipment(false);
@@ -351,6 +364,14 @@ export class WorldScene extends window.Phaser.Scene {
     if (cmd.openMap && !this.player.isDead) { this.openPanel('map'); return; }
     this.worldMap.update(this.player.x, this.player.y);
     // 마을 사람: 숨쉬기·바라보기·머리 위 퀘스트 표시 / 장소 도착 목표 확인
+    const cctx = this.companionCtx ??= {
+      player: this.player, monsters: this.monsters, needs: this.needs, night: 0,
+      onScreen: (x, y) => this.cameras.main.worldView.contains(x, y),
+      walkable: (x, y, fx, fy) => this.isWalkable(x, y, fx, fy),
+      healPlayer: (n) => this.companionHeal(n),
+    };
+    cctx.night = this.clock.nightFactor;
+    for (const c of Object.values(this.companions)) c.update(delta, cctx);
     for (const n of this.npcs) n.update(delta, this.player, this.npcMark(n.id));
     this.reachCheckMs = (this.reachCheckMs ?? 0) - delta;
     if (this.reachCheckMs <= 0) { this.reachCheckMs = 400; this.questLog.checkReach(this.player.x, this.player.y, this.worldMap.places); }
@@ -516,6 +537,12 @@ export class WorldScene extends window.Phaser.Scene {
     if (a.advanceQuest) q.advance(a.advanceQuest);
     if (a.give) inv.add(a.give[0], a.give[1]);
     if (a.setFlag) q.flags[a.setFlag] = true;
+    if (a.companion) {
+      // 동료 명령: follow(따라와) · wait(기다려) · home(거점에 가 있어)
+      const c = Object.values(this.companions)[0];
+      c?.setMode(a.companion);
+      if (c && a.companion === 'follow') this.banner(`${c.npc.def.name}이(가) 함께합니다`, '#b8a8ff');
+    }
   }
 
   /** 퀘스트 알림·보상·몬스터 불러내기 */
@@ -538,6 +565,31 @@ export class WorldScene extends window.Phaser.Scene {
       const mob = new Mob(this, extra.x, extra.y, extra.spawn, { ...data, respawnMs: 0 }, (m) => this.onMobDefeated(m));
       this.mobs.push(mob); this.monsters.push(mob);
     }
+  }
+
+  /** 동료가 순간이동해도 되는 자리인가: 물·절벽·막힌 물체가 없고, (fx, fy)와 같은 높이 */
+  isWalkable(x, y, fx, fy) {
+    const t = this.terrain;
+    const b = this.physics.world.bounds;
+    if (x < 16 || y < 16 || x > b.width - 16 || y > b.height - 16) return false;
+    for (const [dx, dy] of [[-6, 0], [6, 0], [0, -6], [0, 2]]) {
+      const [cx, cy] = t.cellOf(x + dx, y + dy);
+      if ('CL#'.includes(t.at(cx, cy))) return false;
+      if (this.groundLayer.getTileAtWorldXY(x + dx, y + dy)?.properties?.collides) return false;
+    }
+    if (t.isHigh(x, y) !== t.isHigh(fx, fy)) return false;
+    return this.physics.overlapRect(x - 8, y - 10, 16, 12, false, true).length === 0;
+  }
+
+  /** 동료의 치료 주문: 플레이어 회복 + 초록 빛 */
+  companionHeal(amount) {
+    const p = this.player;
+    const got = p.stats.heal(amount);
+    spawnDamageNumber(this, p.x, p.y - 30, `+${got}`, '#8af0a0');
+    const ring = this.add.graphics().setDepth(p.y + 1);
+    ring.lineStyle(2, 0x8af0a0, 0.9).strokeEllipse(0, 0, 34, 14);
+    ring.setPosition(p.x, p.y - 2);
+    this.tweens.add({ targets: ring, scale: 1.8, alpha: 0, y: p.y - 14, duration: 600, ease: 'Quad.out', onComplete: () => ring.destroy() });
   }
 
   /** 플레이어 발밑 근처(22px)의 물 칸 (물 마시기용) */
@@ -587,6 +639,7 @@ export class WorldScene extends window.Phaser.Scene {
     if (!info) return;
     this.regionShownAt = now; this.lastShownRegion = r;
     this.banner(info.name, info.color);
+    for (const c of Object.values(this.companions)) c.onEvent(`region:${info.name}`);
   }
 
   /** 가까운 상호작용 대상: 제작대, 캘 수 있는 약초, 바닥 아이템 중 가장 가까운 것 */
@@ -597,7 +650,11 @@ export class WorldScene extends window.Phaser.Scene {
       const d = Math.hypot(it.x - this.player.x, it.y - this.player.y);
       if (d <= r && d < bestD) { best = it; bestD = d; }
     };
-    for (const it of this.interactables) consider(it, it.interactRadius);
+    for (const it of this.interactables) {
+      // 따라오는 동료는 늘 곁에 있으니 다른 것(아이템·채집)이 있으면 그쪽을 먼저
+      if (it.isCompanion && this.companions[it.id]?.following) { if (!best) consider(it, it.interactRadius); continue; }
+      consider(it, it.interactRadius);
+    }
     for (const g of this.gatherables) if (g.canInteract) consider(g, g.interactRadius);
     for (const p of this.pickups.getChildren()) if (p.active && p.body?.enable) consider(p, R);
     // 아무것도 없고 물가 바로 옆이면: 물 마시기 (목마를 때만 안내)
@@ -719,6 +776,7 @@ export class WorldScene extends window.Phaser.Scene {
 
   onMobDefeated(mob) {
     this.questLog.onKill(mob.id);
+    for (const c of Object.values(this.companions)) c.onEvent('kill');
     this.spawnDrops(mob.x, mob.y + 2, mob.data_.drops);
   }
 
@@ -745,6 +803,7 @@ export class WorldScene extends window.Phaser.Scene {
   onBossDefeated(boss) {
     this.questLog.onKill(boss.id);
     this.banner(`${boss.displayName} 토벌!`, '#e8c860');
+    for (const c of Object.values(this.companions)) c.onEvent('bossDown');
     // 보상: 쓰러진 자리 주변에 재료를 떨군다 (data/monsters.json 의 drops)
     this.spawnDrops(boss.x, boss.y, boss.data_.drops, 22);
   }
