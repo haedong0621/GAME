@@ -197,6 +197,10 @@ def build():
             if not blocked(x * T, y * T) and free(x * T, y * T, 20):
                 add('item', x * T, y * T, 'apple', {'itemId': 'apple', 'amount': 1}); occupy(x * T, y * T, 10); break
 
+    # 마을 사람 (data/npcs.json)
+    for npc, (x, y) in {'tobb': (45.6, 48.4), 'chief': (80.2, 26.8), 'marta': (88, 31.6), 'villager_a': (75.6, 23.4), 'villager_b': (82.6, 31.6)}.items():
+        add('npc', tx(x), tx(y), npc, {'npcId': npc}); occupy(tx(x), tx(y), 30)
+
     # 지도에 표시할 장소 이름 (가 본 곳만 지도에 보임)
     for name, (x, y, kind) in {'솔밭골': (15, 60, 'village'), '버려진 물레방앗간': (44.5, 44, 'base'), '갈대나루': (79, 23, 'village'),
                                '무너진 감시탑': (73, 8, 'landmark'), '무너진 제단': (8, 9, 'landmark'), '쓰러진 거대 나무': (31, 22, 'landmark'),
