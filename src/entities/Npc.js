@@ -80,9 +80,11 @@ export class Npc {
       const deg = this.facing * 180 / Math.PI;
       const [view, flip] = meta.dirs[DIR8[((Math.round(deg / 45) % 8) + 8) % 8]];
       const vi = meta.views.indexOf(view);
-      const a = cls.anims[this.dead ? 'death' : this.anim] ?? cls.anims.idle;
+      // 쓰러진 사람 = 죽음 동작 마지막 장면 · 쓰러진 동료 = 넘어짐 동작 마지막 장면 · frameOverride = 바깥이 정한 장면(주먹질 등)
+      const a = cls.anims[this.dead ? 'death' : this.downed ? 'knockdown' : this.anim] ?? cls.anims.idle;
       const frameMs = this.anim === 'run' ? 110 : this.anim === 'walk' ? 160 : 600;
-      const fi = (a.row + vi) * cls.columns + (this.dead ? a.frames - 1 : Math.floor(this.clock / frameMs) % a.frames);
+      const f = this.dead || this.downed ? a.frames - 1 : this.frameOverride ?? Math.floor(this.clock / frameMs) % a.frames;
+      const fi = (a.row + vi) * cls.columns + Math.min(a.frames - 1, f);
       meta.layerOrder[view].forEach((k, i) => {
         const img = this.layers[k];
         if (!img) return;

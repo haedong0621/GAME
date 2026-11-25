@@ -13,9 +13,10 @@
       "walkSpeed": 100,
       "runSpeed": 235,
       "runAt": 130,
-      "combatDist": 120,
+      "combatDist": 130,
       "dangerRadius": 260,
       "fleeRadius": 70,
+      "fleeSpeed": 105,
       "teleportDist": 420,
       "stuckMs": 1400,
       "heal": { "belowRatio": 0.5, "amount": 35, "cooldownMs": 30000, "castMs": 900, "range": 220 },
@@ -24,6 +25,22 @@
         "gapMs": 15000,
         "idleEveryMs": [80000, 150000],
         "showMs": 3800
+      },
+      "combat": {
+        "_설명": "싸움 (스카이림식 동료). spell = 불꽃 주문 (outcomes = 맞음·픽 꺼짐·제 얼굴에 터짐 비율), bonk = 바로 옆 적에게 주먹질, down = 쓰러진 뒤 일어나기 (quietMs: 근처에 적이 없으면 · maxMs: 아무리 늦어도, getUpRatio: 일어날 때 체력), regen = 싸움 밖 회복",
+        "maxHp": 120,
+        "spell": {
+          "range": 170,
+          "cooldownMs": 3200,
+          "castMs": 650,
+          "damage": [6, 10],
+          "speed": 300,
+          "outcomes": { "hit": 0.6, "fizzle": 0.25, "backfire": 0.15 },
+          "backfireSelfDamage": 4
+        },
+        "bonk": { "range": 30, "damage": 4, "cooldownMs": 1300, "durationMs": 380 },
+        "down": { "quietMs": 5000, "maxMs": 30000, "getUpRatio": 0.4 },
+        "regen": { "delayMs": 6000, "perSec": 3 }
       }
     },
     "showIf": "prologue_done"

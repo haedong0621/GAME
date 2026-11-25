@@ -1,4 +1,4 @@
-import { spawnDust } from '../systems/Effects.js';
+import { spawnDust, spawnDamageNumber } from '../systems/Effects.js';
 
 /**
  * 동료 (스카이림식, 장비 바꿔 주기 없음). 어떤 NPC(Npc)에 붙는 "머리" — 지금은 토브.
@@ -7,8 +7,9 @@ import { spawnDust } from '../systems/Effects.js';
  *   따라오기: 멀어지면 걷다가 뛰고, 싸움이 나면 플레이어 뒤(적 반대편)로 물러나 있음, 적이 붙으면 도망.
  *             너무 멀거나 막혀서 못 오면 플레이어 근처로 순간이동 ("헉헉, 기다려!").
  *   치료: 플레이어 체력이 낮으면 잠깐 주문을 외워 회복 (쿨타임).
+ *   싸움(스카이림식): 불꽃 주문(맞음·픽 꺼짐·제 얼굴에 터짐 — 반쪽짜리 마법사), 적이 바로 옆이면 주먹질.
+ *   적도 동료를 노린다(Aggro: 때린 만큼·가까운 만큼). 체력이 다 닳으면 쓰러졌다가, 싸움이 끝나면(또는 한참 뒤) 일어남 — 죽지 않음.
  *   혼잣말: 밤·아침·배고픔·목마름·피로·위험·보스 처치·지역 도착·가끔 심심할 때 말풍선.
- * 적은 동료를 노리지 않는다 (죽지 않는 동료).
  * Godot: Companion.gd (NPC 씬에 붙는 노드) — 같은 상태 3개 + NavigationAgent2D로 따라오기.
  */
 export class Companion {
@@ -34,6 +35,67 @@ export class Companion {
     this.walking = false;
     this.said = {};            // 한 번 말하고 나면 조건이 풀릴 때까지 다시 안 하는 혼잣말
     this.npc.isCompanion = true;
+    // 싸움
+    this.combat = cfg.combat;
+    this.maxHp = this.combat.maxHp;
+    this.hp = this.maxHp;
+    this.downed = false;
+    this.spellCd = 1500;
+    this.bonkCd = 0;
+    this.invulnMs = 0;
+    this.lastHurtMs = 1e9;
+    this.action = null;        // {kind: 'cast'|'bonk', t, dur, target}
+    this.knock = null;
+    this.hpGfx = scene.add.graphics();
+  }
+
+  // ---------- 몬스터가 보는 모습 (Aggro·공격 판정) ----------
+  get x() { return this.npc.x; }
+  get y() { return this.npc.y; }
+  get isDead() { return this.downed; }
+  get isTargetable() { return this.mode === 'follow' && !this.downed && !this.npc.hidden; }
+  get isHittable() { return this.isTargetable; }
+  getHurtbox() { return { x: this.npc.x - 7, y: this.npc.y - 24, width: 14, height: 24 }; }
+
+  /** 몬스터에게 맞음 → 'hit' | 'ignored' */
+  receiveHit(damage, fromX, fromY) {
+    if (!this.isTargetable || this.invulnMs > 0) return 'ignored';
+    this.hp -= damage;
+    this.invulnMs = 450;
+    this.lastHurtMs = 0;
+    spawnDamageNumber(this.scene, this.npc.x, this.npc.y - 30, damage, '#ff8a7a');
+    for (const img of Object.values(this.npc.layers)) img.setTintFill(0xff4030);
+    this.scene.time.delayedCall(90, () => { for (const img of Object.values(this.npc.layers)) img.clearTint(); });
+    const dx = this.npc.x - fromX, dy = this.npc.y - fromY, d = Math.hypot(dx, dy) || 1;
+    this.knock = { x: dx / d, y: dy / d, ms: 180 };
+    this.cancelActions();
+    if (this.hp <= 0) this.goDown();
+    else this.say('hurt');
+    return 'hit';
+  }
+
+  cancelActions() {
+    this.action = null;
+    this.npc.frameOverride = null;
+    if (this.cast) { this.cast.glow.destroy(); this.cast = null; this.healCd = Math.max(this.healCd, 3000); }
+  }
+
+  goDown() {
+    this.hp = 0;
+    this.downed = true;
+    this.downMs = 0;
+    this.quietMs = 0;
+    this.npc.downed = true;
+    this.feet.body.setVelocity(0, 0);
+    this.say('downed', true);
+  }
+
+  getUp() {
+    this.downed = false;
+    this.npc.downed = false;
+    this.hp = Math.round(this.maxHp * this.combat.down.getUpRatio);
+    this.invulnMs = 1200;
+    this.say('getUp', true);
   }
 
   get following() { return this.mode === 'follow'; }
@@ -96,6 +158,22 @@ export class Companion {
     this.healCd -= dt;
     // 물리 몸 → 그림 위치
     npc.moveTo(this.feet.x, this.feet.y + 4);
+    this.invulnMs -= dt;
+    this.lastHurtMs += dt;
+    this.spellCd -= dt;
+    this.bonkCd -= dt;
+    this.drawHp();
+    if (this.downed) { body.setVelocity(0, 0); npc.moving = true; this.updateDowned(dt, ctx); return; }
+    if (this.knock) {
+      // 맞고 밀려남
+      this.knock.ms -= dt;
+      body.setVelocity(this.knock.x * 140, this.knock.y * 140);
+      if (this.knock.ms <= 0) this.knock = null;
+      return;
+    }
+    // 싸움 밖에선 천천히 회복
+    const rg = this.combat.regen;
+    if (!this.inFight && this.lastHurtMs > rg.delayMs) this.hp = Math.min(this.maxHp, this.hp + rg.perSec * dt / 1000);
     let vx = 0, vy = 0, speed = 0;
 
     if (this.mode === 'home') {
@@ -118,12 +196,12 @@ export class Companion {
 
       if (dp > c.teleportDist || (this.stuckMs > c.stuckMs && dp > 90)) {
         this.catchUp(ctx, enemy ? Math.atan2(p.y - enemy.y, p.x - enemy.x) : undefined);
-      } else if (this.cast) {
-        // 주문 외우는 중: 멈춰서 플레이어를 봄
+      } else if (this.cast || this.action) {
+        // 주문 외우는 중·주먹질 중: 멈춤
       } else if (enemy) {
-        // 플레이어 뒤쪽(적 반대편)으로 물러나 있음
+        // 플레이어 쪽(적 반대편)으로, 적에게서 combatDist 떨어져 주문 거리 유지
         const ax = p.x - enemy.x, ay = p.y - enemy.y, al = Math.hypot(ax, ay) || 1;
-        const tx = p.x + (ax / al) * c.combatDist, ty = p.y + (ay / al) * c.combatDist;
+        const tx = enemy.x + (ax / al) * c.combatDist, ty = enemy.y + (ay / al) * c.combatDist;
         const dt_ = Math.hypot(tx - npc.x, ty - npc.y);
         if (dt_ > 18) { vx = tx - npc.x; vy = ty - npc.y; speed = dt_ > c.runAt ? c.runSpeed : c.walkSpeed * 1.4; }
       } else {
@@ -131,14 +209,17 @@ export class Companion {
         if (dp < c.stopDist) this.walking = false;
         if (this.walking) { vx = p.x - npc.x; vy = p.y - npc.y; speed = dp > c.runAt ? c.runSpeed : c.walkSpeed; }
       }
+      if (enemy || this.action) this.updateCombat(dt, ctx);
       // 겁쟁이: 몬스터가 바로 옆이면 반대로 달아남
-      if (!this.cast) {
+      if (!this.cast && !this.action) {
         for (const m of ctx.monsters) {
           if (!m.isHittable || m.awareness !== 'alert') continue;
           const fx = npc.x - m.x, fy = npc.y - m.y, fd = Math.hypot(fx, fy);
           if (fd < c.fleeRadius && fd > 0) {
             const l = Math.hypot(vx, vy) || 1;
-            vx = vx / l + (fx / fd) * 2; vy = vy / l + (fy / fd) * 2; speed = c.runSpeed * 0.85;
+            // 적 반대쪽 + 플레이어 쪽으로 (소년 뒤로 숨기) — 들개보다 조금 느려서 결국 붙잡히면 주먹질
+            const pd = Math.max(1, dp);
+            vx = vx / l + (fx / fd) * 2 + ((p.x - npc.x) / pd) * 1.2; vy = vy / l + (fy / fd) * 2 + ((p.y - npc.y) / pd) * 1.2; speed = c.fleeSpeed;
             if (!this.said.flee) { this.said.flee = true; this.say('flee', true); }
           }
         }
@@ -159,12 +240,112 @@ export class Companion {
       if (moved < (speed * dt / 1000) * 0.25) this.stuckMs += dt; else this.stuckMs = Math.max(0, this.stuckMs - dt * 2);
     } else {
       body.setVelocity(0, 0);
-      npc.moving = !!this.cast;
+      npc.moving = !!this.cast || !!this.action;
       if (this.cast) npc.facing = Math.atan2(p.y - npc.y, p.x - npc.x);
-      npc.anim = 'idle';
+      if (this.action?.target) npc.facing = Math.atan2(this.action.target.y - npc.y, this.action.target.x - npc.x);
+      npc.anim = this.action?.kind === 'bonk' ? 'pn1' : 'idle';
       this.stuckMs = 0;
     }
     this.lastX = this.feet.x; this.lastY = this.feet.y;
+  }
+
+  /** 싸움: 주먹질(바로 옆) · 불꽃 주문(사거리 안) — 하나씩, 쿨타임 */
+  updateCombat(dt, ctx) {
+    const cb = this.combat, npc = this.npc;
+    if (this.action) {
+      const a = this.action;
+      a.t += dt;
+      if (a.kind === 'bonk') {
+        npc.anim = 'pn1';
+        npc.frameOverride = Math.min(4, Math.floor(a.t / a.dur * 5));
+        if (!a.done && a.t >= a.dur * 0.45) {
+          a.done = true;
+          if (a.target.isHittable) a.target.takeDamage(cb.bonk.damage, { fromX: npc.x, fromY: npc.y, source: this });
+        }
+      } else if (a.kind === 'cast') {
+        a.glow.setPosition(npc.x + Math.cos(npc.facing) * 8, npc.y - 18 + Math.sin(npc.facing) * 4).setDepth(npc.y + 1);
+      }
+      if (a.t >= a.dur) {
+        if (a.kind === 'cast') this.finishSpell(a);
+        npc.frameOverride = null;
+        this.action = null;
+      }
+      return;
+    }
+    if (this.cast) return;
+    const alive = ctx.monsters.filter((m) => m.isHittable && m.awareness === 'alert');
+    const near = (r) => alive.map((m) => [m, Math.hypot(m.x - npc.x, m.y - npc.y)]).filter(([, d]) => d <= r).sort((a, b) => a[1] - b[1])[0]?.[0];
+    const close = near(cb.bonk.range);
+    if (close && this.bonkCd <= 0) {
+      this.bonkCd = cb.bonk.cooldownMs;
+      this.action = { kind: 'bonk', t: 0, dur: cb.bonk.durationMs, target: close };
+      if (Math.random() < 0.4) this.say('bonk');
+      return;
+    }
+    const sp = cb.spell;
+    const tgt = near(sp.range);
+    if (tgt && this.spellCd <= 0) {
+      this.spellCd = sp.cooldownMs * (0.8 + Math.random() * 0.4);
+      const glow = this.scene.add.circle(npc.x, npc.y - 18, 4, 0xffa040, 0.9).setBlendMode('ADD');
+      this.scene.tweens.add({ targets: glow, scale: { from: 0.6, to: 1.6 }, duration: 180, yoyo: true, repeat: -1 });
+      this.action = { kind: 'cast', t: 0, dur: sp.castMs, target: tgt, glow };
+    }
+  }
+
+  /** 주문 결과: 맞음 / 픽 꺼짐 / 제 얼굴에 터짐 (반쪽짜리 마법사) */
+  finishSpell(a) {
+    a.glow.destroy();
+    const sp = this.combat.spell, npc = this.npc, scene = this.scene;
+    const o = sp.outcomes, r = Math.random() * (o.hit + o.fizzle + o.backfire);
+    const hx = npc.x + Math.cos(npc.facing) * 8, hy = npc.y - 18;
+    if (r < o.hit && a.target.isHittable) {
+      // 불꽃이 날아감
+      const t = a.target, ball = scene.add.circle(hx, hy, 3.5, 0xffb040, 1).setBlendMode('ADD').setDepth(npc.y + 50);
+      const dist = Math.hypot(t.x - hx, t.y - 14 - hy);
+      scene.tweens.add({ targets: ball, x: t.x, y: t.y - 14, duration: dist / sp.speed * 1000, ease: 'Linear', onComplete: () => {
+        ball.destroy();
+        spawnDust(scene, t.x, t.y - 10, { x: 0, y: 0 }, 3);
+        if (t.isHittable) {
+          const [lo, hi] = sp.damage;
+          t.takeDamage(Math.round(lo + Math.random() * (hi - lo)), { fromX: npc.x, fromY: npc.y, source: this });
+        }
+        if (Math.random() < 0.25) this.say('spellHit');
+      } });
+    } else if (r < o.hit + o.fizzle) {
+      // 픽…: 회색 연기만
+      for (let i = 0; i < 4; i++) {
+        const puff = scene.add.circle(hx + (Math.random() - 0.5) * 6, hy, 2 + Math.random() * 2, 0x8a8480, 0.8).setDepth(npc.y + 50);
+        scene.tweens.add({ targets: puff, y: hy - 10 - Math.random() * 6, alpha: 0, scale: 2, duration: 500 + Math.random() * 300, onComplete: () => puff.destroy() });
+      }
+      this.say('fizzle', Math.random() < 0.6);
+    } else {
+      // 펑: 제 얼굴에 터짐 (자기만 조금 다침, 수염 그을림)
+      const boom = scene.add.circle(hx, hy, 6, 0xff8030, 0.9).setBlendMode('ADD').setDepth(npc.y + 50);
+      scene.tweens.add({ targets: boom, scale: 3, alpha: 0, duration: 300, onComplete: () => boom.destroy() });
+      this.hp = Math.max(1, this.hp - sp.backfireSelfDamage);
+      spawnDamageNumber(scene, npc.x, npc.y - 30, sp.backfireSelfDamage, '#ffb060');
+      this.say('backfire', true);
+    }
+  }
+
+  /** 쓰러져 있음: 근처에 싸우는 적이 없으면 quietMs 뒤, 아니어도 maxMs 뒤 일어남 */
+  updateDowned(dt, ctx) {
+    const d = this.combat.down;
+    this.downMs += dt;
+    const danger = ctx.monsters.some((m) => m.isHittable && m.awareness === 'alert' && Math.hypot(m.x - this.npc.x, m.y - this.npc.y) < this.cfg.dangerRadius);
+    this.quietMs = danger ? 0 : this.quietMs + dt;
+    if (this.quietMs >= d.quietMs || this.downMs >= d.maxMs) this.getUp();
+  }
+
+  /** 머리 위 작은 체력 바 (다쳤을 때만) */
+  drawHp() {
+    const g = this.hpGfx, npc = this.npc;
+    g.clear();
+    if (npc.hidden || this.mode !== 'follow' || (this.hp >= this.maxHp && !this.downed)) return;
+    const w = 24, x = npc.x - w / 2, y = npc.y - (this.downed ? 16 : 37);
+    g.setDepth(npc.y + 2);
+    g.fillStyle(0x000000, 0.6).fillRect(x - 1, y - 1, w + 2, 4);
+    g.fillStyle(this.downed ? 0x6a6a6a : 0x7ad06a).fillRect(x, y, w * Math.max(0, this.hp) / this.maxHp, 2);
   }
 
   /** 체력이 낮으면 주문을 외워 회복 */
@@ -181,7 +362,7 @@ export class Companion {
       }
       return;
     }
-    if (this.healCd > 0 || dp > h.range || p.isDead) return;
+    if (this.healCd > 0 || dp > h.range || p.isDead || this.action) return;
     if (p.stats.hp / p.stats.maxHp >= h.belowRatio) return;
     this.healCd = h.cooldownMs;
     const glow = this.scene.add.graphics();

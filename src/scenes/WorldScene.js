@@ -701,6 +701,7 @@ export class WorldScene extends window.Phaser.Scene {
       stealth: this.player.data_.stealth, showCones: this.player.isSneaking, coneGfx: this.coneGfx,
       summon: (id, x, y) => this.summonMob(id, x, y),
       onTelegraph: (boss, atk) => this.onBossTelegraph(boss, atk),
+      allies: Object.values(this.companions), // 몬스터가 노릴 수 있는 동료 (Aggro)
     };
   }
 
