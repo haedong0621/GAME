@@ -2,6 +2,7 @@
   "_설명": "type = material(소재) | consumable(음식). grade = common(일반 소재) | rare(특수 소재 — 잘 안 나옴, 보스 머리 장비·무기에 필요)",
   "wood": {"name": "나무 조각", "type": "material", "stack": 99, "description": "쓰러진 나무에서 얻은 조각. 제작 재료.", "placeholderColor": "#a0703c", "grade": "common"},
   "stone": {"name": "돌멩이", "type": "material", "stack": 99, "description": "단단한 돌. 도구를 만들 때 쓴다.", "placeholderColor": "#9aa0a6", "grade": "common"},
+  "iron_ore": {"name": "철광석", "type": "material", "stack": 99, "description": "바위 틈에서 캐낸 거무스름한 쇳돌. 두드리면 쓸 만한 쇠가 된다.", "placeholderColor": "#6e625c", "grade": "common"},
   "apple": {"name": "사과", "type": "consumable", "stack": 20, "description": "먹으면 체력을 회복한다. (R)", "heal": 15, "food": 25, "placeholderColor": "#d83c3c"},
   "herb": {"name": "약초", "type": "consumable", "stack": 20, "description": "물가에서 자라는 풀. 씹으면 체력이 조금 돌아온다. (R)", "heal": 10, "food": 8, "placeholderColor": "#5fd06a"},
   "beast_hide": {"name": "늪짐승 가죽", "type": "material", "stack": 99, "description": "질기고 축축한 가죽. 썩은 늪 냄새가 난다.", "placeholderColor": "#5d6b3a", "grade": "common"},

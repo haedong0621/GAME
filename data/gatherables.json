@@ -63,7 +63,14 @@
     "blocker": {
       "width": 26,
       "height": 12
-    }
+    },
+    "bonusDrops": [
+      {
+        "itemId": "iron_ore",
+        "amount": 1,
+        "chance": 0.45
+      }
+    ]
   },
   "herb_patch": {
     "name": "약초",

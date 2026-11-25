@@ -2,6 +2,44 @@
   "_설명": "제작대에서 만들 수 있는 것. result.kind = weapon | gear(방어구). 장신구는 제작하지 않고 몬스터가 완제품으로 낮은 확률로 떨군다. 머리 장비·보스 무기는 특수 소재(grade=rare)가 필요",
   "recipes": [
     {
+      "id": "rusty_sword",
+      "result": {
+        "kind": "weapon",
+        "id": "rusty_sword"
+      },
+      "materials": [
+        {
+          "itemId": "iron_ore",
+          "amount": 3
+        },
+        {
+          "itemId": "wood",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "old_greatsword",
+      "result": {
+        "kind": "weapon",
+        "id": "old_greatsword"
+      },
+      "materials": [
+        {
+          "itemId": "iron_ore",
+          "amount": 6
+        },
+        {
+          "itemId": "wood",
+          "amount": 2
+        },
+        {
+          "itemId": "beast_hide",
+          "amount": 1
+        }
+      ]
+    },
+    {
       "id": "fang_sword",
       "result": {
         "kind": "weapon",
