@@ -124,3 +124,4 @@
 - **프롤로그** (`quests.json prologue`, `cutscenes.json`, `build_region1.py` 프롤로그 블록) — 새 게임이면 `intro`(검은 화면 글) → 어머니 대화로 시작 → ① 장작 3개(have) ② 숲 깊은 곳(trigger → `found_father`, flag) ③ 다친 멧돼지(kill, 회피 안내) ④ 아버지의 도끼 얻고 마을 불탐(`father_axe`: village_burning 깃발) → 솔밭골로(reach, 전력질주 안내) ⑤ 불탄 마을·잿빛 거인(`village`: 분노 붉은 화면, troll_fight) → 쓰러짐(`defeat`) → 사흘 뒤 물레방앗간, 토브 대화. 이야기 경계: 프롤로그 동안 첫 지역 서쪽만, 트롤 싸움 중엔 마을 안만. 무기: 새 게임은 작은 손도끼(한손), 프롤로그 중 아버지의 도끼(양손, 대검 동작). 예전 저장(프롤로그 없음)은 끝난 것으로 옮김. 시험용 `?skipPrologue=1`
 - **도끼 그림** (`pixel_hero.py` 무기 `axe: True`) — 나무 자루 + 끝 한쪽 쐐기 날(head 길이·depth 깊이), `blood` 핏자국. 동작은 무기 종류(sword·greatsword) 그대로
 - **새 몬스터 그림** — 다친 뒤틀린 멧돼지(`pixel_monsters.py boar`: 혹 진 등·갈기·뼈 가시·엄니·상처·옆구리 도끼, 동작 gore·charge), 잿빛 거인(`tools/art/pixel_troll.py`: pixel_hunter 렌더러, 동작 smash·sweep)
+- **가방 고침** — 장비·재료가 섞인 목록에서 아이템 정보는 `ItemDatabase.find`(없으면 null)로 찾음 (`get`은 모르는 id면 오류). 가방 창 오른쪽 위 ✕ 닫기 버튼(휴대폰)
