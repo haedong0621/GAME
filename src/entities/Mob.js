@@ -5,6 +5,7 @@ import { spawnFloatingLabel } from '../systems/Effects.js';
 import { StatusEffects } from '../systems/StatusEffects.js';
 import { AwarenessMeter, Level } from '../systems/Stealth.js';
 import { MonsterSprite } from '../systems/MonsterSprite.js';
+import { Aggro } from '../systems/Aggro.js';
 
 const State = {
   IDLE: 'idle',               // 집 근처 어슬렁 (모름)
@@ -40,6 +41,7 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     this.stats = new Stats(data);
     this.status = new StatusEffects(this);
     this.meter = new AwarenessMeter(data.perception);
+    this.aggro = new Aggro(); // 플레이어·동료 중 누구를 노릴지
     this.home = { x, y };
 
     const f = data.feetCollider;
@@ -89,6 +91,7 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
       spawnFloatingLabel(this.scene, this.x, this.y - 28, '기습!');
     }
     this.stats.takeDamage(dealt);
+    if (!opts.fromStatus) this.aggro.add(opts.source ?? this.lastPlayer, dealt);
     this.visual.setTintFill(opts.fromStatus ? 0x9adf5a : 0xffffff);
     this.scene.time.delayedCall(70, () => this.visual.clearTint());
 
@@ -138,6 +141,7 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
     this.cooldown -= dt;
 
     const p = ctx.player;
+    this.lastPlayer = p;
     const before = this.meter.level;
     const { heard } = this.meter.update(dt, this, p, ctx.env, ctx.noises, ctx.stealth);
     const level = this.meter.level;
@@ -148,8 +152,6 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
       }
     }
 
-    const dx = p.x - this.x, dy = p.y - this.y, dist = Math.hypot(dx, dy) || 1;
-    const toPlayer = { x: dx / dist, y: dy / dist };
 
     switch (this.state) {
       case State.IDLE:
@@ -170,7 +172,11 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
         break;
       }
       case State.CHASE: {
-        if (p.isDead || Math.hypot(this.x - this.home.x, this.y - this.home.y) > this.data_.leashRadius) { this.giveUp(); break; }
+        // 쫓는 대상: 플레이어 또는 동료 (때린 만큼·가까운 만큼)
+        const f = this.aggro.pick(this, ctx, dt);
+        const fdx = f.x - this.x, fdy = f.y - this.y, fd = Math.hypot(fdx, fdy) || 1;
+        const toFoe = { x: fdx / fd, y: fdy / fd };
+        if (f.isDead || Math.hypot(this.x - this.home.x, this.y - this.home.y) > this.data_.leashRadius) { this.giveUp(); break; }
         this.notSeenMs = this.meter.seeing ? 0 : this.notSeenMs + dt;
         if (this.notSeenMs > this.data_.loseSightMs) {
           // 놓침 → 마지막 본 곳을 수색 (의심)
@@ -179,15 +185,16 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
           this.enter(State.INVESTIGATE);
           break;
         }
-        this.face(toPlayer);
+        this.face(toFoe);
         const a = this.data_.attack;
-        if (dist <= a.range && this.cooldown <= 0) {
-          this.attackDir = toPlayer;
+        if (fd <= a.range && this.cooldown <= 0) {
+          this.attackDir = toFoe;
+          this.attackFoe = f;
           this.hitPlayer = false;
           this.enter(State.WINDUP);
           break;
         }
-        this.moveToward(p.x, p.y, this.data_.speed, 12);
+        this.moveToward(f.x, f.y, this.data_.speed, 12);
         break;
       }
       case State.WINDUP:
@@ -199,8 +206,9 @@ export class Mob extends window.Phaser.Physics.Arcade.Sprite {
         this.setVelocity(this.attackDir.x * a.lungeSpeed, this.attackDir.y * a.lungeSpeed);
         if (!this.hitPlayer) {
           const c = { x: this.x + this.attackDir.x * 12, y: this.y - CHEST + this.attackDir.y * 8, radius: a.radius };
-          if (findHits(c, [p]).length) {
-            const r = p.receiveHit(Math.round(a.damage * (this.scene.monsterDamageMultiplier?.() ?? 1)), this.x, this.y - CHEST, { knockdown: !!a.knockdown, source: this });
+          const foe = this.attackFoe?.isTargetable === false ? p : (this.attackFoe ?? p);
+          if (findHits(c, [foe]).length) {
+            const r = foe.receiveHit(Math.round(a.damage * (this.scene.monsterDamageMultiplier?.() ?? 1)), this.x, this.y - CHEST, { knockdown: !!a.knockdown, source: this });
             if (r !== 'ignored') this.hitPlayer = true;
           }
         }

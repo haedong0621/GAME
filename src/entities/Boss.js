@@ -3,6 +3,7 @@ import { Stats } from '../systems/Stats.js';
 import { findHits, groundShapeContains, groundShapePoints, GROUND_SQUASH } from '../systems/Combat.js';
 import { DEBUG } from '../config.js';
 import { spawnFloatingLabel } from '../systems/Effects.js';
+import { Aggro } from '../systems/Aggro.js';
 import { StatusEffects } from '../systems/StatusEffects.js';
 import { AwarenessMeter, Level } from '../systems/Stealth.js';
 import { MonsterSprite } from '../systems/MonsterSprite.js';
@@ -52,6 +53,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     if (data.startHpRatio) this.stats.hp = Math.round(this.stats.maxHp * data.startHpRatio); // 이미 다친 채로 등장 (프롤로그 멧돼지)
     this.status = new StatusEffects(this);
     this.meter = new AwarenessMeter(data.perception); // 시야·청각 (스닉 시스템)
+    this.aggro = new Aggro(); // 플레이어·동료 중 누구를 노릴지
     this.home = { x, y };
 
     const f = data.feetCollider;
@@ -118,6 +120,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
       this.becomeAlert(false);
     }
     this.stats.takeDamage(dealt);
+    if (!opts.fromStatus) this.aggro.add(opts.source ?? this.getPlayer(), dealt);
 
     const v = this.visual;
     v.setTintFill(opts.fromStatus ? 0x9adf5a : 0xffffff);
@@ -139,7 +142,8 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.cooldown -= dt;
     for (const k in this.attackCd) this.attackCd[k] -= dt;
 
-    const p = this.getPlayer();
+    // 노리는 대상: 발견한 뒤엔 플레이어·동료 중 (때린 만큼·가까운 만큼), 그 전엔 플레이어
+    const p = this.awareness === Awareness.ALERT ? this.aggro.pick(this, ctx, dt) : this.getPlayer();
     const dx = p.x - this.x, dy = p.y - this.y;
     const dist = Math.hypot(dx, dy);
     const toPlayer = dist > 0 ? { x: dx / dist, y: dy / dist } : { x: 0, y: 1 };
@@ -323,6 +327,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.hitPlayerThisAttack = false;
     this.mobsHitThisCharge = new Set();
     this.mobsHit = new Set();
+    this.alliesHit = new Set();
     this.enter(State.WINDUP);
     this.ctx?.onTelegraph?.(this, atk); // 공격 예고 시작 (프롤로그 회피 안내 등)
   }
@@ -362,10 +367,16 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
   checkHit(shape, spec = this.attack) {
     this.lastHitShape = shape;
     if (spec.type !== 'charge') this.hitMobsIn(shape, spec); // 돌진은 chaseThroughMobs가 따로 처리
+    const dmg = Math.round(spec.damage * (this.scene.monsterDamageMultiplier?.() ?? 1)); // 밤엔 더 사나움
+    // 동료도 같은 바닥 범위·발밑 기준으로 맞음 (한 공격에 한 번)
+    for (const a of this.ctx?.allies ?? []) {
+      if (!a.isTargetable || this.alliesHit?.has(a) || !groundShapeContains(shape, a.x, a.y)) continue;
+      (this.alliesHit ??= new Set()).add(a);
+      a.receiveHit(dmg, this.x, this.y - CHEST, { knockdown: !!spec.knockdown, source: this });
+    }
     if (this.hitPlayerThisAttack) return;
     const p = this.getPlayer();
     if (p.isDead || !groundShapeContains(shape, p.x, p.y)) return;
-    const dmg = Math.round(spec.damage * (this.scene.monsterDamageMultiplier?.() ?? 1)); // 밤엔 더 사나움
     const result = p.receiveHit(dmg, this.x, this.y - CHEST, { knockdown: !!spec.knockdown, source: this });
     if (result !== 'ignored') this.hitPlayerThisAttack = true; // 회피했어도 이번 공격은 끝
   }
@@ -380,6 +391,7 @@ export class Boss extends window.Phaser.Physics.Arcade.Sprite {
     this.comboGap = this.curHit.gapMs;
     this.comboActive = this.curHit.activeMs;
     this.hitPlayerThisAttack = false;
+    this.alliesHit = new Set();
     this.mobsHit = new Set();
   }
 
