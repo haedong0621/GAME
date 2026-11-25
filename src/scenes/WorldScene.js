@@ -649,7 +649,7 @@ export class WorldScene extends window.Phaser.Scene {
       const r = quest.reward ?? {};
       for (const [id, n] of r.takeItems ?? []) inv.remove(id, n);
       const got = [];
-      for (const [id, n] of r.items ?? []) { inv.add(id, n); got.push(`${items.get(id)?.name ?? id} ×${n}`); }
+      for (const [id, n] of r.items ?? []) { inv.add(id, n); got.push(`${items.find(id)?.name ?? id} ×${n}`); }
       for (const id of r.gear ?? []) { this.player.obtain(id, false); got.push(this.player.equipment.def(id)?.name ?? id); }
       if (!quest.quiet) this.banner(`퀘스트 완료: ${quest.name}${got.length ? ` — ${got.join(', ')}` : ''}`, '#ffe08a');
       this.saveGame('auto', `${quest.name} 완료`);
@@ -927,7 +927,7 @@ export class WorldScene extends window.Phaser.Scene {
       const gear = eq.def(p.itemId);
       if (gear) { this.player.obtain(p.itemId, false); this.banner(`${gear.name} 획득! (I: 장착)`, '#ffd070'); }
       else inv.add(p.itemId, p.amount);
-      spawnFloatingLabel(this, this.player.x, this.player.y - 34 - i * 9, `+${gear?.name ?? items.get(p.itemId)?.name ?? p.itemId}${gear ? '' : ` ${p.amount}`}`);
+      spawnFloatingLabel(this, this.player.x, this.player.y - 34 - i * 9, `+${gear?.name ?? items.find(p.itemId)?.name ?? p.itemId}${gear ? '' : ` ${p.amount}`}`);
       i++;
       if (p.mapId !== null) {
         const { x, homeY, itemId, amount, mapId, respawnMs } = p;

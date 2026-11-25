@@ -20,6 +20,11 @@ export class ItemDatabase {
     return Object.hasOwn(this.items, id);
   }
 
+  /** 아이템이면 그 정보, 아니면 null (장비 id가 섞인 목록에서 씀 — get은 모르는 id면 오류) */
+  find(id) {
+    return this.has(id) ? this.items[id] : null;
+  }
+
   get(id) {
     const item = this.items[id];
     if (!item) throw new Error(`알 수 없는 아이템 id: ${id}`);

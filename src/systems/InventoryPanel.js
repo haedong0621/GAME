@@ -30,7 +30,13 @@ export class InventoryPanel {
     const dim = scene.add.rectangle(cx, cy, scene.scale.width, scene.scale.height, 0x000000, 0.55).setInteractive();
     this.root.add([dim, scene.add.rectangle(cx, cy, W, H, COL.bg, 0.97).setStrokeStyle(2, COL.line)]);
     this.root.add(scene.add.text(this.x0 + 18, this.y0 + 12, '가방 · 장비', { fontFamily: 'serif', fontSize: '22px', fontStyle: 'bold', color: COL.gold }));
-    this.root.add(scene.add.text(this.x0 + W - 18, this.y0 + 18, '우클릭 바로 장착·해제·먹기 · 끌어다 장비칸에 놓기 · Esc / I 닫기', { fontFamily: 'sans-serif', fontSize: '12px', color: COL.dim }).setOrigin(1, 0));
+    this.root.add(scene.add.text(this.x0 + W - 70, this.y0 + 18, '우클릭 바로 장착·해제·먹기 · 끌어다 장비칸에 놓기 · Esc / I 닫기', { fontFamily: 'sans-serif', fontSize: '12px', color: COL.dim }).setOrigin(1, 0));
+    // 닫기 버튼 (휴대폰엔 Esc·I 키가 없음)
+    const closeBg = scene.add.rectangle(this.x0 + W - 34, this.y0 + 24, 44, 30, 0x2a2218).setStrokeStyle(1, COL.line).setInteractive({ useHandCursor: true });
+    const closeTx = scene.add.text(this.x0 + W - 34, this.y0 + 24, '✕', { fontFamily: 'sans-serif', fontSize: '18px', color: COL.gold }).setOrigin(0.5);
+    closeBg.on('pointerover', () => closeBg.setFillStyle(0x3a3022)).on('pointerout', () => closeBg.setFillStyle(0x2a2218));
+    closeBg.on('pointerdown', (ptr) => { ptr.event?.stopPropagation?.(); this.close(); });
+    this.root.add([closeBg, closeTx]);
 
     // ---- 장비칸 + 모습
     this.slotCells = {};
@@ -151,7 +157,7 @@ export class InventoryPanel {
       const where = Object.entries(e.slots).find(([, v]) => v === id)?.[0];
       if (where) pl.unequipSlot(where);
       else pl.equipItem(id, this.isWeapon(id) ? 'right' : null);
-    } else if (this.ctx.items.get(id)?.heal) this.ctx.eat(id);
+    } else if (this.ctx.items.find(id)?.heal) this.ctx.eat(id);
     this.changed();
   }
 
@@ -234,7 +240,7 @@ export class InventoryPanel {
     const { player, inventory, items } = this.ctx;
     const e = player.equipment;
     const gearList = e.owned.map((id) => ({ id, count: 1, equipped: Object.values(e.slots).includes(id), gear: true }));
-    const stuff = inventory.entries().map(([id, n]) => ({ id, count: n, food: !!items.get(id)?.heal }));
+    const stuff = inventory.entries().map(([id, n]) => ({ id, count: n, food: !!items.find(id)?.heal }));
     if (this.tab === 'gear') return gearList;
     if (this.tab === 'material') return stuff.filter((x) => !x.food);
     if (this.tab === 'food') return stuff.filter((x) => x.food);
@@ -246,7 +252,7 @@ export class InventoryPanel {
     return this.list()[this.sel.index]?.id ?? null;
   }
 
-  def(id) { return this.ctx.weapons[id] ?? this.ctx.gear[id] ?? this.ctx.items.get(id) ?? null; }
+  def(id) { return this.ctx.weapons[id] ?? this.ctx.gear[id] ?? this.ctx.items.find(id) ?? null; }
 
   /** 고른 것에 할 수 있는 일 (버튼) */
   actions() {
@@ -266,7 +272,7 @@ export class InventoryPanel {
         }
         for (let q = 0; q < 3; q++) out.push({ label: e.quick[q] === id ? `단축 ${q + 1} ✔` : `단축 ${q + 1}`, fn: () => this.setQuick(id, q) });
       } else if (!where) out.push({ label: '장착', fn: () => { player.equipItem(id); changed(); } });
-    } else if (items.get(id)?.heal) {
+    } else if (items.find(id)?.heal) {
       out.push({ label: '먹기', fn: () => { this.ctx.eat(id); changed(); } });
     }
     return out;
@@ -313,7 +319,7 @@ export class InventoryPanel {
       this.drawIcon(c.icon, it?.id ?? null);
       c.count.setText(it && !it.gear && it.count > 1 ? `${it.count}` : '');
       const q = it && this.isWeapon(it.id) ? e.quick.indexOf(it.id) : -1;
-      const rare = it && items.get(it.id)?.grade === 'rare';
+      const rare = it && items.find(it.id)?.grade === 'rare';
       c.tag.setText(it?.equipped ? 'E' : q >= 0 ? `${q + 1}` : rare ? '특' : '').setColor(it?.equipped ? COL.ok : rare && q < 0 ? '#6ab4ff' : COL.blue);
       if (rare) c.bg.setFillStyle(0x1e2a3a); else c.bg.setFillStyle(COL.panel);
       const selected = this.sel.kind === 'bag' && this.sel.index === this.scroll * COLS + i && it;
@@ -334,7 +340,7 @@ export class InventoryPanel {
     const lines = [];
     if (!id) lines.push(this.sel.kind === 'slot' ? `${SLOT_NAMES[this.sel.slot]} 칸이 비어 있어요. 가방에서 장비를 골라 장착하세요.` : '');
     else if (d) {
-      const kind = this.isWeapon(id) ? (d.hands === 'two' ? '양손 무기' : '한손 무기') : e.gear[id] ? SLOT_NAMES[d.slot] : (items.get(id)?.heal ? '음식' : items.get(id)?.grade === 'rare' ? '특수 소재' : '일반 소재');
+      const kind = this.isWeapon(id) ? (d.hands === 'two' ? '양손 무기' : '한손 무기') : e.gear[id] ? SLOT_NAMES[d.slot] : (items.find(id)?.heal ? '음식' : items.find(id)?.grade === 'rare' ? '특수 소재' : '일반 소재');
       lines.push(`${d.name}  ·  ${kind}`);
       if (d.description) lines.push(d.description);
       if (d.combo) lines.push(`콤보 데미지 ${d.combo.map((m) => m.damage).join(' / ')}`);
