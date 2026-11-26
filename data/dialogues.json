@@ -264,12 +264,17 @@
     "getUp": ["끄응… 아직 안 죽었다.", "누가 날 밟고 지나갔냐…", "에구구… 내 약 한 병만 줘 봐라. 농담이다."]
   },
   "mother": {
-    "entries": [{"if": {"quest": "prologue", "is": "none"}, "node": "ask"}, {"node": "remind"}],
+    "entries": [
+      { "if": {"quest": "prologue", "is": "stage1"}, "node": "ask" },
+      { "if": {"quest": "prologue", "is": "stage0"}, "node": "chores" },
+      { "node": "remind" }
+    ],
     "nodes": {
       "ask": {
         "lines": [
-          ["mother", "얘, 아버지가 아직 안 오셨다. 도시락도 놓고 가 놓고는."],
-          ["mother", "늙은참나무 숲 쪽이야. 가서 일 좀 거들어 드리고, 오는 길에 장작도 좀 패 오고. 손도끼 챙겼지?"]
+          ["mother", "장작은 그만하면 됐다. 팔 빠지겠다, 얘."],
+          ["mother", "그보다… 아버지가 아직 안 오셨어. 점심때 온다더니 해가 벌써 저만큼이야."],
+          ["mother", "늙은참나무 숲 쪽이다. 가서 일 좀 거들어 드리고 같이 와. 손도끼 챙겼지?"]
         ],
         "choices": [
           { "text": "다녀올게요.", "goto": "go" },
@@ -286,13 +291,18 @@
       },
       "go": {
         "lines": [["mother", "해 지기 전에 와라. 요즘 숲 짐승들이 이상하다더라."]],
-        "do": [{"startQuest": "prologue"}]
+        "do": [{"advanceQuest": "prologue"}]
       },
       "remind": {
         "random": [
           [["mother", "아직이니? 늙은참나무 숲은 흙길 따라 북쪽이야."]],
-          [["mother", "장작은 세 개면 돼. 아버지 허리 생각해서 네가 좀 들고 와."]],
-          [["mother", "도시락은 내가 들고 갈까… 아니다, 너 가는 김에 빨리 다녀와."]]
+          [["mother", "해 지기 전에 둘이 같이 와라. 저녁 식는다."]]
+        ]
+      },
+      "chores": {
+        "random": [
+          [["mother", "장작부터 패 놓고 얘기하자. 세 덩이면 된다."]],
+          [["mother", "도끼질은 허리로 하는 거다. 네 아버지가 맨날 하는 말이지만."]]
         ]
       }
     }

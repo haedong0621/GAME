@@ -215,7 +215,10 @@ def build():
     # 숲 깊은 곳: 쓰러진 아버지 + 쪼개다 만 나무 그루터기
     add('corpse', tx(11.6), tx(31.4), 'father', {'outfit': 'father', 'facing': 30, 'hideIf': 'rescued'})
     for x, y in ((10.2, 30.2), (13.4, 29.6)): add('decor', tx(x), tx(y), 'stump', {'kind': 'stump'})
-    for name, (x, y) in {'boar_spot': (14.6, 29.6), 'troll_spot': (15.8, 59.4), 'village_center': (15, 59), 'wake_spot': (44.4, 48.7)}.items():
+    # 마당: 장작 팰 나무 3그루 + 장작 패는 그루터기 (인트로 조작 연습)
+    for x, y in ((23.0, 60.8), (24.2, 62.6), (23.8, 58.6)): add('tree', tx(x), tx(y))
+    add('decor', tx(17.0), tx(61.2), 'stump', {'kind': 'stump'})
+    for name, (x, y) in {'intro_view': (15, 56.5), 'boar_spot': (14.6, 29.6), 'troll_spot': (15.8, 59.4), 'village_center': (15, 59), 'wake_spot': (44.4, 48.7)}.items():
         add('marker', tx(x), tx(y), name)
     add('trigger', tx(7), tx(28), 'found_father', {'cutscene': 'found_father'}, tx(11), tx(7), point=False)
     add('bounds', tx(1), tx(25), 'prologue', {'until': 'prologue_done', 'message': '지금은 아버지를 찾는 게 먼저다.'}, tx(27), tx(44), point=False)

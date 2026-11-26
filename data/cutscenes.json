@@ -3,18 +3,20 @@
   "intro": {
     "if": { "quest": "prologue", "is": "none" },
     "steps": [
-      {
-        "card": ["솔밭골.", "늙은참나무 숲 언저리의 작은 마을.", "아버지는 아침 일찍 도끼를 메고 숲으로 갔다.", "해가 중천을 넘었는데도, 돌아오지 않았다."]
-      },
-      { "fade": "in", "ms": 1400 },
-      { "camera": "npc:mother", "ms": 900 },
-      { "say": ["mother", "얘! 이리 좀 와 봐라."] },
-      { "camera": "player", "ms": 700 },
-      { "hint": "WASD (휴대폰: 화면 왼쪽 끌기) 이동 · E 대화\n어머니에게 말을 걸자", "ms": 8000 }
+      { "card": ["솔밭골.", "늙은참나무 숲 언저리,\n장작 패는 소리로 아침을 여는 마을."] },
+      { "camera": "marker:intro_view", "ms": 1 },
+      { "fade": "in", "ms": 1800 },
+      { "wait": 600 },
+      { "camera": "npc:sol_neighbor", "ms": 2400 },
+      { "say": ["sol_neighbor", "어이, 꼬맹이! 오늘도 장작이냐?"] },
+      { "say": ["sol_neighbor", "그러다 네 아버지처럼 팔뚝만 굵어진다. 머리는 안 굵어지고."] },
+      { "camera": "player", "ms": 1000 },
+      { "say": ["나", "아저씨 닭이나 잡아요. 밤새 울던데."] },
+      { "do": {"startQuest": "prologue"} }
     ]
   },
   "found_father": {
-    "if": { "quest": "prologue", "is": "stage1" },
+    "if": { "quest": "prologue", "is": "stage2" },
     "steps": [
       { "camera": "corpse:father", "ms": 1600 },
       { "say": ["나", "아버지…?"] },
@@ -33,7 +35,7 @@
     ]
   },
   "father_axe": {
-    "if": { "quest": "prologue", "is": "stage3" },
+    "if": { "quest": "prologue", "is": "stage4" },
     "steps": [
       { "wait": 1400 },
       { "say": ["나", "하아… 하아…"] },
@@ -53,7 +55,7 @@
     ]
   },
   "village": {
-    "if": { "quest": "prologue", "is": "stage4" },
+    "if": { "quest": "prologue", "is": "stage5" },
     "steps": [
       { "camera": "marker:village_center", "ms": 900 },
       { "say": ["나", "……"] },
@@ -93,6 +95,16 @@
       { "fade": "in", "ms": 1600 },
       { "talk": "tobb" },
       { "hint": "여기는 토브의 거점 — 제작대(E)에서 장비를 만들고, 쉴 수 있다(Z)", "ms": 7000 }
+    ]
+  },
+  "mother_calls": {
+    "if": { "quest": "prologue", "is": "stage1" },
+    "steps": [
+      { "wait": 500 },
+      { "camera": "npc:mother", "ms": 900 },
+      { "say": ["mother", "얘! 이리 좀 와 봐라!"] },
+      { "camera": "player", "ms": 700 },
+      { "hint": "E: 대화 — 어머니에게 가 보자", "ms": 5000 }
     ]
   }
 }

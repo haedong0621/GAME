@@ -48,13 +48,20 @@
   },
   "prologue": {
     "name": "아버지를 찾아서",
-    "giver": "mother",
+    "giver": null,
     "quiet": true,
     "stages": [
       {
-        "text": "가는 길에 장작 3개 패기",
+        "text": "마당에서 장작 3개 패기",
         "goals": [{"type": "have", "item": "wood", "count": 3}],
-        "hint": "나무를 도끼로 때리자 (왼쪽 클릭 / J)\n떨어진 장작은 가까이 가서 E로 줍는다"
+        "hint": "WASD 이동 · 도끼로 나무를 패자 (왼쪽 클릭 / J)\n떨어진 장작은 가까이 가서 E로 줍는다",
+        "hintMs": 9000
+      },
+      {
+        "text": "어머니에게 가 보기",
+        "goals": [{"type": "talk"}],
+        "turnIn": "mother",
+        "onStart": [{"cutscene": "mother_calls"}]
       },
       {
         "text": "늙은참나무 숲 깊은 곳에서 아버지 찾기",

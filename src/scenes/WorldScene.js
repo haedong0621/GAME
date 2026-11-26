@@ -320,7 +320,7 @@ export class WorldScene extends window.Phaser.Scene {
     // 시험용: ?skipPrologue=1 이면 새 게임을 프롤로그 끝난 상태(물레방앗간, 아버지의 도끼)로 시작
     if (!save && new URLSearchParams(window.location.search).has('skipPrologue')) {
       Object.assign(this.questLog.flags, { prologue_done: true, village_burning: true, rescued: true });
-      this.questLog.state.prologue = { stage: 4, kills: {}, reached: true, done: true };
+      this.questLog.state.prologue = { stage: this.questLog.def('prologue').stages.length - 1, kills: {}, reached: true, done: true };
       this.player.obtain('father_axe', true);
       const m = this.markers.wake_spot; if (m) this.player.body.reset(m.x, m.y);
     }
