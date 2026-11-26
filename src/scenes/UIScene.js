@@ -266,7 +266,8 @@ export class UIScene extends window.Phaser.Scene {
       const prog = q.progress(id);
       const nums = st.goals.map((g, i) => (g.type === 'have' || g.type === 'kill') && prog[i].need > 1 ? ` (${prog[i].cur}/${prog[i].need})` : '').join('');
       lines.push(`◆ ${d.name}`);
-      lines.push(q.status(id) === 'ready' && st.turnIn ? `  → ${npcs[st.turnIn]?.name ?? st.turnIn}에게 보고하기` : `  ${st.text}${nums}`);
+      const justTalk = st.goals.every((g) => g.type === 'talk'); // "가서 말 걸기"만 있는 단계는 단계 설명 그대로
+      lines.push(q.status(id) === 'ready' && st.turnIn && !justTalk ? `  → ${npcs[st.turnIn]?.name ?? st.turnIn}에게 보고하기` : `  ${st.text}${nums}`);
     }
     this.questText.setText(lines.join('\n')).setVisible(lines.length > 0);
   }
